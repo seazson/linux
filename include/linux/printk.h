@@ -224,6 +224,14 @@ extern void dump_stack(void) __cold;
 #define pr_cont(fmt, ...) \
 	printk(KERN_CONT fmt, ##__VA_ARGS__)
 
+#define SEA_DEBUG
+#ifdef SEA_DEBUG
+#define pr_sea(fmt, ...) \
+	printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#else
+#define pr_sea(fmt, ...)
+#endif
+
 /* pr_devel() should produce zero code unless DEBUG is defined */
 #ifdef DEBUG
 #define pr_devel(fmt, ...) \

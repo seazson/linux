@@ -264,7 +264,7 @@ static void __init samsung_clockevent_init(void)
 	struct clk *tscaler;
 
 	pclk = clk_get_rate(timerclk);
-
+	pr_sea("pclk = %ld\n",pclk);
 	tscaler = clk_get_parent(tdiv_event);
 
 	clk_set_rate(tscaler, pclk / TSCALER_DIV);
@@ -272,13 +272,14 @@ static void __init samsung_clockevent_init(void)
 	clk_set_parent(tin_event, tdiv_event);
 
 	clock_rate = clk_get_rate(tin_event);
-	clock_count_per_tick = clock_rate / HZ;
-
+	clock_count_per_tick = clock_rate / HZ; /*200HZz*/
+	pr_sea("clock_rate=%ld clock_count_per_tick=%ld\n",clock_rate,clock_count_per_tick);
 	time_event_device.cpumask = cpumask_of(0);
-	clockevents_config_and_register(&time_event_device, clock_rate, 1, -1);
+	clockevents_config_and_register(&time_event_device, clock_rate, 1, -1);/*注册设备并设置中断处理函数*/
 
 	irq_number = timer_source.event_id + IRQ_TIMER0;
-	setup_irq(irq_number, &samsung_clock_event_irq);
+	setup_irq(irq_number, &samsung_clock_event_irq); /*实际上是clock_event_device->event_handler(clock_event_device)*/	
+
 }
 
 static void __iomem *samsung_timer_reg(void)
@@ -333,7 +334,7 @@ static void __init samsung_clocksource_init(void)
 	clk_set_parent(tin_source, tdiv_source);
 
 	clock_rate = clk_get_rate(tin_source);
-
+	pr_sea("clock_rate=%ld\n",clock_rate);
 	samsung_time_setup(timer_source.source_id, TCNT_MAX);
 	samsung_time_start(timer_source.source_id, PERIODIC);
 
@@ -355,7 +356,7 @@ static void __init samsung_timer_resources(void)
 	if (IS_ERR(timerclk))
 		panic("failed to get timers clock for timer");
 
-	clk_enable(timerclk);
+	clk_enable(timerclk);         /*使能MPLL中的timer位*/
 
 	sprintf(devname, "s3c24xx-pwm.%lu", event_id);
 	s3c_device_timer[event_id].id = event_id;
@@ -388,7 +389,7 @@ static void __init samsung_timer_resources(void)
 
 void __init samsung_timer_init(void)
 {
-	samsung_timer_resources();
-	samsung_clockevent_init();
-	samsung_clocksource_init();
+	samsung_timer_resources();      /*使能时钟clk*/
+	samsung_clockevent_init();      /*注册时钟事件，时钟中断的来源*/
+	samsung_clocksource_init();     /*注册时钟源*/
 }

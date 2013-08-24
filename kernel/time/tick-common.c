@@ -75,7 +75,6 @@ static void tick_periodic(int cpu)
 	update_process_times(user_mode(get_irq_regs()));
 	profile_tick(CPU_PROFILING);
 }
-
 /*
  * Event handler for periodic ticks
  */

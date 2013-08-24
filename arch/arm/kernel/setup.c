@@ -362,7 +362,7 @@ void __init early_print(const char *str, ...)
 #ifdef CONFIG_DEBUG_LL
 	printascii(buf);
 #endif
-	printk("%s", buf);
+//	printk("%s", buf);
 }
 
 static void __init cpuid_init_hwcaps(void)
@@ -854,8 +854,8 @@ void __init setup_arch(char **cmdline_p)
 {
 	struct machine_desc *mdesc;
 
-	setup_processor();
-	mdesc = setup_machine_fdt(__atags_pointer);
+	setup_processor();  /*cpu体系结构相关初始化*/
+	mdesc = setup_machine_fdt(__atags_pointer); /*定义扁平树走这*/
 	if (!mdesc)
 		mdesc = setup_machine_tags(__atags_pointer, __machine_arch_type);
 	machine_desc = mdesc;

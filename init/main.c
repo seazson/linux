@@ -468,7 +468,7 @@ static void __init mm_init(void)
 	pgtable_cache_init();
 	vmalloc_init();
 }
-
+void __init early_print(const char *str, ...);
 asmlinkage void __init start_kernel(void)
 {
 	char * command_line;
@@ -544,24 +544,24 @@ asmlinkage void __init start_kernel(void)
 		local_irq_disable();
 	idr_init_cache();
 	rcu_init();
-	tick_nohz_init();
+	tick_nohz_init();           /*动态时钟初始化*/
 	radix_tree_init();
 	/* init some links before init_ISA_irqs() */
 	early_irq_init();
 	init_IRQ();
-	tick_init();
-	init_timers();
-	hrtimers_init();
+	tick_init();                /*广播时钟相关设置*/
+	init_timers();              /*注册低精度定时器软中断，注册通知链timers_nb*/
+	hrtimers_init();            /*注册高精度定时器软中断，注册通知链hrtimers_nb*/
 	softirq_init();
-	timekeeping_init();
-	time_init();
-	sched_clock_postinit();
+	timekeeping_init();         /*墙上时钟初始化*/
+	time_init();                /*平台相关时钟初始化*/
+	sched_clock_postinit();     /*调度时钟初始化*/
 	perf_event_init();
 	profile_init();
 	call_function_init();
 	WARN(!irqs_disabled(), "Interrupts were enabled early\n");
 	early_boot_irqs_disabled = false;
-	local_irq_enable();
+	local_irq_enable();         /*使能中断的时候定时器已经开始工作了，这个时候中断系统和定时系统都应该初始化完成*/
 
 	kmem_cache_init_late();
 
