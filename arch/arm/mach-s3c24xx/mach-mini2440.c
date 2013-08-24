@@ -61,7 +61,7 @@
 #include <sound/s3c24xx_uda134x.h>
 
 #include "common.h"
-
+#include "regs-mem.h"
 #define MACH_MINI2440_DM9K_BASE (S3C2410_CS4 + 0x300)
 
 static struct map_desc mini2440_iodesc[] __initdata = {
@@ -679,7 +679,8 @@ static void __init mini2440_init(void)
 
 	if (features.count)	/* the optional features */
 		platform_add_devices(features.optional, features.count);
-
+	/*DM9000总线时序设置*/
+	*((volatile unsigned int *)S3C2410_BANKCON4) = 0x1f7c;
 }
 
 
