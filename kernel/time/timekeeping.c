@@ -788,7 +788,7 @@ void __init timekeeping_init(void)
 	struct clocksource *clock;
 	unsigned long flags;
 	struct timespec now, boot, tmp;
-
+	/*获取当前时间，可以从RTC中读取，默认设置了0*/
 	read_persistent_clock(&now);
 
 	if (!timespec_valid_strict(&now)) {
@@ -798,7 +798,7 @@ void __init timekeeping_init(void)
 		now.tv_nsec = 0;
 	} else if (now.tv_sec || now.tv_nsec)
 		persistent_clock_exist = true;
-
+	/*获取boot到现在的时间，默认也是0*/
 	read_boot_clock(&boot);
 	if (!timespec_valid_strict(&boot)) {
 		pr_warn("WARNING: Boot clock returned invalid value!\n"
@@ -814,7 +814,7 @@ void __init timekeeping_init(void)
 	clock = clocksource_default_clock();
 	if (clock->enable)
 		clock->enable(clock);
-	tk_setup_internals(tk, clock);
+	tk_setup_internals(tk, clock);  /*关联时钟源和timekeeper*/
 
 	tk_set_xtime(tk, &now);
 	tk->raw_time.tv_sec = 0;

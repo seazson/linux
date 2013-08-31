@@ -395,7 +395,7 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 				 struct usb_bus *bus, unsigned port1)
 {
 	struct usb_device *dev;
-	struct usb_hcd *usb_hcd = bus_to_hcd(bus);
+	struct usb_hcd *usb_hcd = bus_to_hcd(bus); /*根据主机bus获取主机控制器*/
 	unsigned root_hub = 0;
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
@@ -416,7 +416,7 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 
 	device_initialize(&dev->dev);
 	dev->dev.bus = &usb_bus_type;
-	dev->dev.type = &usb_device_type;
+	dev->dev.type = &usb_device_type;   /*usb_device_match用的就是这个*/
 	dev->dev.groups = usb_device_groups;
 	dev->dev.dma_mask = bus->controller->dma_mask;
 	set_dev_node(&dev->dev, dev_to_node(bus->controller));
@@ -1042,25 +1042,25 @@ static int __init usb_init(void)
 		goto out;
 
 	usb_acpi_register();
-	retval = bus_register(&usb_bus_type);
+	retval = bus_register(&usb_bus_type);  /*注册usb bus*/
 	if (retval)
 		goto bus_register_failed;
 	retval = bus_register_notifier(&usb_bus_type, &usb_bus_nb);
 	if (retval)
 		goto bus_notifier_failed;
-	retval = usb_major_init();
+	retval = usb_major_init();   /*usb总线也是字符设备，需要注册fops*/
 	if (retval)
 		goto major_init_failed;
-	retval = usb_register(&usbfs_driver);
+	retval = usb_register(&usbfs_driver); /*usbfs初始化*/
 	if (retval)
 		goto driver_register_failed;
 	retval = usb_devio_init();
 	if (retval)
 		goto usb_devio_init_failed;
-	retval = usb_hub_init();
+	retval = usb_hub_init();     /*hub初始化*/
 	if (retval)
 		goto hub_init_failed;
-	retval = usb_register_device_driver(&usb_generic_driver, THIS_MODULE);
+	retval = usb_register_device_driver(&usb_generic_driver, THIS_MODULE); /*usb通用设备注册*/
 	if (!retval)
 		goto out;
 

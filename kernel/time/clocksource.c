@@ -754,6 +754,7 @@ void __clocksource_updatefreq_scale(struct clocksource *cs, u32 scale, u32 freq)
 	}
 
 	cs->max_idle_ns = clocksource_max_deferment(cs);
+	pr_sea("mult=%d shift=%d max_idle_ns=%lld\n",cs->mult, cs->shift, cs->max_idle_ns);
 }
 EXPORT_SYMBOL_GPL(__clocksource_updatefreq_scale);
 
@@ -772,13 +773,13 @@ int __clocksource_register_scale(struct clocksource *cs, u32 scale, u32 freq)
 {
 
 	/* Initialize mult/shift and max_idle_ns */
-	__clocksource_updatefreq_scale(cs, scale, freq);
+	__clocksource_updatefreq_scale(cs, scale, freq); /*计算要注册时钟源的乘数位移因子,以及最大能睡眠的时间*/
 
 	/* Add clocksource to the clcoksource list */
 	mutex_lock(&clocksource_mutex);
-	clocksource_enqueue(cs);
+	clocksource_enqueue(cs);             /*添加到clocksource_list链中*/
 	clocksource_enqueue_watchdog(cs);
-	clocksource_select();
+	clocksource_select();                /*切换到最好的时钟源*/
 	mutex_unlock(&clocksource_mutex);
 	return 0;
 }

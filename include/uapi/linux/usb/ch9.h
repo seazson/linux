@@ -263,7 +263,7 @@ struct usb_device_descriptor {
 	__u8  bDeviceClass;
 	__u8  bDeviceSubClass;
 	__u8  bDeviceProtocol;
-	__u8  bMaxPacketSize0;
+	__u8  bMaxPacketSize0;        /*端点0能处理的最大字节数 8,16,32,64*/
 	__le16 idVendor;
 	__le16 idProduct;
 	__le16 bcdDevice;

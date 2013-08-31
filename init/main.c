@@ -553,8 +553,8 @@ asmlinkage void __init start_kernel(void)
 	init_timers();              /*注册低精度定时器软中断，注册通知链timers_nb*/
 	hrtimers_init();            /*注册高精度定时器软中断，注册通知链hrtimers_nb*/
 	softirq_init();
-	timekeeping_init();         /*墙上时钟初始化*/
-	time_init();                /*平台相关时钟初始化*/
+	timekeeping_init();         /*墙上时钟初始化,这个时候使用了默认时钟源clocksource_jiffies*/
+	time_init();                /*平台相关时钟初始化,会注册时钟源和时钟事件*/
 	sched_clock_postinit();     /*调度时钟初始化*/
 	perf_event_init();
 	profile_init();

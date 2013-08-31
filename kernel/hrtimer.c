@@ -705,7 +705,7 @@ static int hrtimer_switch_to_hres(void)
 
 	local_irq_save(flags);
 
-	if (tick_init_highres()) {
+	if (tick_init_highres()) {  /*切换到hrtimer_interrupt*/
 		local_irq_restore(flags);
 		printk(KERN_WARNING "Could not switch to high resolution "
 				    "mode on CPU %d\n", cpu);
@@ -715,7 +715,7 @@ static int hrtimer_switch_to_hres(void)
 	for (i = 0; i < HRTIMER_MAX_CLOCK_BASES; i++)
 		base->clock_base[i].resolution = KTIME_HIGH_RES;
 
-	tick_setup_sched_timer();
+	tick_setup_sched_timer();   /*设置模拟tick timer*/
 	/* "Retrigger" the interrupt to get things going */
 	retrigger_next_event(NULL);
 	local_irq_restore(flags);
@@ -1458,7 +1458,7 @@ static inline void __hrtimer_peek_ahead_timers(void) { }
  */
 void hrtimer_run_pending(void)
 {
-	if (hrtimer_hres_active())
+	if (hrtimer_hres_active())           /*如果高分辨率定时器已被激活就返回*/
 		return;
 
 	/*

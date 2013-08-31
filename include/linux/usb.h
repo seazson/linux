@@ -5,7 +5,7 @@
 #include <linux/usb/ch9.h>
 
 #define USB_MAJOR			180
-#define USB_DEVICE_MAJOR		189
+#define USB_DEVICE_MAJOR		189  /*用于usbfs*/
 
 
 #ifdef __KERNEL__
@@ -184,7 +184,7 @@ struct usb_interface {
 
 	struct device dev;		/* interface specific device info */
 	struct device *usb_dev;
-	atomic_t pm_usage_cnt;		/* usage counter for autosuspend */
+	atomic_t pm_usage_cnt;		/* usage counter for autosuspend 只有计数为零才能自动休眠*/
 	struct work_struct reset_ws;	/* for resets in atomic context */
 };
 #define	to_usb_interface(d) container_of(d, struct usb_interface, dev)
@@ -512,7 +512,7 @@ struct usb_device {
 	enum usb_device_state	state;
 	enum usb_device_speed	speed;
 
-	struct usb_tt	*tt;
+	struct usb_tt	*tt;  /*用于兼容低速设备*/
 	int		ttport;
 
 	unsigned int toggle[2];

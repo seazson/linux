@@ -101,7 +101,7 @@ static void samsung_time_setup(enum samsung_timer_mode mode, unsigned long tcnt)
 
 	case SAMSUNG_PWM4:
 		tcon &= ~(0x07 << 20);
-		tcon |= S3C2410_TCON_T4MANUALUPD;
+		tcon |= S3C2410_TCON_T4MANUALUPD;  /*更新cnt和cmp的值到cpu内部*/
 		break;
 
 	default:
@@ -109,8 +109,8 @@ static void samsung_time_setup(enum samsung_timer_mode mode, unsigned long tcnt)
 		break;
 	}
 
-	__raw_writel(tcnt, S3C2410_TCNTB(mode));
-	__raw_writel(tcnt, S3C2410_TCMPB(mode));
+	__raw_writel(tcnt, S3C2410_TCNTB(mode));  /*设置减计数起始值*/
+	__raw_writel(tcnt, S3C2410_TCMPB(mode));  /*设置比较计数值*/
 	__raw_writel(tcon, S3C2410_TCON);
 }
 
@@ -162,11 +162,11 @@ static void samsung_time_start(enum samsung_timer_mode mode, bool periodic)
 		break;
 
 	case SAMSUNG_PWM4:
-		tcon |= S3C2410_TCON_T4START;
-		tcon &= ~S3C2410_TCON_T4MANUALUPD;
+		tcon |= S3C2410_TCON_T4START;        /*使能计数器*/
+		tcon &= ~S3C2410_TCON_T4MANUALUPD;   /*不用当前值更新cnt cmp*/
 
 		if (periodic)
-			tcon |= S3C2410_TCON_T4RELOAD;
+			tcon |= S3C2410_TCON_T4RELOAD;   /*自动装载模式*/
 		else
 			tcon &= ~S3C2410_TCON_T4RELOAD;
 		break;
@@ -328,12 +328,12 @@ static void __init samsung_clocksource_init(void)
 	unsigned long pclk;
 	unsigned long clock_rate;
 
-	pclk = clk_get_rate(timerclk);
+	pclk = clk_get_rate(timerclk);    /*pclk 50M*/
 
 	clk_set_rate(tdiv_source, pclk / TDIV);
 	clk_set_parent(tin_source, tdiv_source);
 
-	clock_rate = clk_get_rate(tin_source);
+	clock_rate = clk_get_rate(tin_source); /*clock_rate 1000,000*/
 	pr_sea("clock_rate=%ld\n",clock_rate);
 	samsung_time_setup(timer_source.source_id, TCNT_MAX);
 	samsung_time_start(timer_source.source_id, PERIODIC);
@@ -341,7 +341,7 @@ static void __init samsung_clocksource_init(void)
 	setup_sched_clock(samsung_read_sched_clock, TSIZE, clock_rate);
 
 	if (clocksource_mmio_init(samsung_timer_reg(), "samsung_clocksource_timer",
-			clock_rate, 250, TSIZE, clocksource_mmio_readl_down))
+			clock_rate, 250, TSIZE, clocksource_mmio_readl_down)) /*里面会注册时钟源*/
 		panic("samsung_clocksource_timer: can't register clocksource\n");
 }
 

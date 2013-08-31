@@ -371,9 +371,9 @@ static int usb_hcd_s3c2410_probe(const struct hc_driver *driver,
 		goto err_put;
 	}
 
-	s3c2410_start_hc(dev, hcd);
+	s3c2410_start_hc(dev, hcd);        /*使能usb clk*/
 
-	ohci_hcd_init(hcd_to_ohci(hcd));
+	ohci_hcd_init(hcd_to_ohci(hcd));   /*初始化hcd中ohci部分*/
 
 	retval = usb_add_hcd(hcd, dev->resource[1].start, 0);
 	if (retval != 0)

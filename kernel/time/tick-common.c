@@ -115,7 +115,7 @@ void tick_handle_periodic(struct clock_event_device *dev)
  */
 void tick_setup_periodic(struct clock_event_device *dev, int broadcast)
 {
-	tick_set_periodic_handler(dev, broadcast);
+	tick_set_periodic_handler(dev, broadcast);   /*设置周期模式dev->event_handler。tick_handle_periodic或者tick_handle_periodic_broadcast*/
 
 	/* Broadcast setup ? */
 	if (!tick_device_is_functional(dev))
@@ -133,7 +133,7 @@ void tick_setup_periodic(struct clock_event_device *dev, int broadcast)
 			next = tick_next_period;
 		} while (read_seqretry(&jiffies_lock, seq));
 
-		clockevents_set_mode(dev, CLOCK_EVT_MODE_ONESHOT);
+		clockevents_set_mode(dev, CLOCK_EVT_MODE_ONESHOT); /*由之前的周期模式转换为单触发模式*/
 
 		for (;;) {
 			if (!clockevents_program_event(dev, next, false))
@@ -156,7 +156,7 @@ static void tick_setup_device(struct tick_device *td,
 	/*
 	 * First device setup ?
 	 */
-	if (!td->evtdev) {
+	if (!td->evtdev) {/*初始设置需要担任全局时钟功能*/
 		/*
 		 * If no cpu took the do_timer update, assign it to
 		 * this cpu:
@@ -173,14 +173,14 @@ static void tick_setup_device(struct tick_device *td,
 		/*
 		 * Startup in periodic mode first.
 		 */
-		td->mode = TICKDEV_MODE_PERIODIC;
+		td->mode = TICKDEV_MODE_PERIODIC;    /*启动过程中必须是周期模式*/
 	} else {
-		handler = td->evtdev->event_handler;
+		handler = td->evtdev->event_handler; /*保留之前的tick处理函数*/
 		next_event = td->evtdev->next_event;
 		td->evtdev->event_handler = clockevents_handle_noop;
 	}
 
-	td->evtdev = newdev;
+	td->evtdev = newdev; 
 
 	/*
 	 * When the device is not per cpu, pin the interrupt to the
@@ -196,13 +196,13 @@ static void tick_setup_device(struct tick_device *td,
 	 * way. This function also returns !=0 when we keep the
 	 * current active broadcast state for this CPU.
 	 */
-	if (tick_device_uses_broadcast(newdev, cpu))
+	if (tick_device_uses_broadcast(newdev, cpu))  /*支持广播直接返回*/
 		return;
 
 	if (td->mode == TICKDEV_MODE_PERIODIC)
-		tick_setup_periodic(newdev, 0);
+		tick_setup_periodic(newdev, 0);           /*周期模式*/
 	else
-		tick_setup_oneshot(newdev, handler, next_event);
+		tick_setup_oneshot(newdev, handler, next_event);  /*单触发模式*/
 }
 
 void tick_install_replacement(struct clock_event_device *newdev)
@@ -276,18 +276,18 @@ void tick_check_new_device(struct clock_event_device *newdev)
 	int cpu;
 
 	cpu = smp_processor_id();
-	if (!cpumask_test_cpu(cpu, newdev->cpumask))
+	if (!cpumask_test_cpu(cpu, newdev->cpumask)) /*首先判断新注册的时钟事件设备能否用于本cpu*/
 		goto out_bc;
 
-	td = &per_cpu(tick_cpu_device, cpu);
+	td = &per_cpu(tick_cpu_device, cpu);  /*获取本cpu上的时钟设备*/
 	curdev = td->evtdev;
 
 	/* cpu local device ? */
-	if (!tick_check_percpu(curdev, newdev, cpu))
+	if (!tick_check_percpu(curdev, newdev, cpu)) /*检查中断等能否绑定到此*/
 		goto out_bc;
 
 	/* Preference decision */
-	if (!tick_check_preferred(curdev, newdev))
+	if (!tick_check_preferred(curdev, newdev))   /*判断是否需要替换现有的时钟设备。新的支持oneshot老的不支持，or新的rating高*/
 		goto out_bc;
 
 	if (!try_module_get(newdev->owner))
@@ -303,7 +303,7 @@ void tick_check_new_device(struct clock_event_device *newdev)
 		curdev = NULL;
 	}
 	clockevents_exchange_device(curdev, newdev);
-	tick_setup_device(td, newdev, cpu, cpumask_of(cpu));
+	tick_setup_device(td, newdev, cpu, cpumask_of(cpu)); /*将时钟设备与新的时钟事件设备关联*/
 	if (newdev->features & CLOCK_EVT_FEAT_ONESHOT)
 		tick_oneshot_notify();
 	return;

@@ -1141,7 +1141,7 @@ static void call_timer_fn(struct timer_list *timer, void (*fn)(unsigned long),
  * This function cascades all vectors and executes all expired timer
  * vectors.
  */
-static inline void __run_timers(struct tvec_base *base)
+static inline void __run_timers(struct tvec_base *base) /*低分辨率定时器算法核心，以jiffies为基准*/
 {
 	struct timer_list *timer;
 
@@ -1370,7 +1370,7 @@ static void run_timer_softirq(struct softirq_action *h)
 {
 	struct tvec_base *base = __this_cpu_read(tvec_bases);
 
-	hrtimer_run_pending();
+	hrtimer_run_pending();  /*检查是否要切换到高分辨率模式*/
 
 	if (time_after_eq(jiffies, base->timer_jiffies))
 		__run_timers(base);

@@ -1192,7 +1192,7 @@ void tick_oneshot_notify(void)
  * mode, because high resolution timers are disabled (either compile
  * or runtime).
  */
-int tick_check_oneshot_change(int allow_nohz)
+int tick_check_oneshot_change(int allow_nohz) /*通常传入的是0*/
 {
 	struct tick_sched *ts = &__get_cpu_var(tick_cpu_sched);
 
@@ -1202,7 +1202,7 @@ int tick_check_oneshot_change(int allow_nohz)
 	if (ts->nohz_mode != NOHZ_MODE_INACTIVE)
 		return 0;
 
-	if (!timekeeping_valid_for_hres() || !tick_is_oneshot_available())
+	if (!timekeeping_valid_for_hres() || !tick_is_oneshot_available()) /*确保时钟源支持高精度，并且时钟事件支持单触发*/
 		return 0;
 
 	if (!allow_nohz)

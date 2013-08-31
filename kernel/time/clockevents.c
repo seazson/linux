@@ -366,7 +366,7 @@ void clockevents_config(struct clock_event_device *dev, u32 freq)
 
 	if (!(dev->features & CLOCK_EVT_FEAT_ONESHOT))
 		return;
-
+	/*单触发模式需要设置睡眠最大值，防止溢出*/
 	/*
 	 * Calculate the maximum number of seconds we can sleep. Limit
 	 * to 10 minutes for hardware which can program more than
@@ -382,6 +382,7 @@ void clockevents_config(struct clock_event_device *dev, u32 freq)
 	clockevents_calc_mult_shift(dev, freq, sec);
 	dev->min_delta_ns = clockevent_delta2ns(dev->min_delta_ticks, dev);
 	dev->max_delta_ns = clockevent_delta2ns(dev->max_delta_ticks, dev);
+	pr_sea("min_delta_ns=%d max_delta_ns=%d\n",dev->min_delta_ns,dev->max_delta_ns);
 }
 
 /**
@@ -399,7 +400,7 @@ void clockevents_config_and_register(struct clock_event_device *dev,
 {
 	dev->min_delta_ticks = min_delta;
 	dev->max_delta_ticks = max_delta;
-	clockevents_config(dev, freq);
+	clockevents_config(dev, freq);       /*为单触发模式设置最大定时间隔*/
 	clockevents_register_device(dev);
 }
 EXPORT_SYMBOL_GPL(clockevents_config_and_register);
