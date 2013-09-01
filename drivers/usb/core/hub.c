@@ -2202,7 +2202,7 @@ fail:
 static int usb_enumerate_device(struct usb_device *udev)
 {
 	int err;
-
+	pr_sea("try to getconfig\n");
 	if (udev->config == NULL) {
 		err = usb_get_configuration(udev);
 		if (err < 0) {
@@ -2289,7 +2289,7 @@ static void set_usb_port_removable(struct usb_device *udev)
 int usb_new_device(struct usb_device *udev)
 {
 	int err;
-
+	pr_sea("add new usb device\n");
 	if (udev->parent) {
 		/* Initialize non-root-hub device wakeup to disabled;
 		 * device (un)configuration controls wakeup capable
@@ -4337,6 +4337,8 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 	struct usb_device *udev;
 	int status, i;
 	unsigned unit_load;
+	pr_sea("port %d, status %04x, change %04x, %s\n",
+	port1, portstatus, portchange, portspeed(hub, portstatus));
 
 	dev_dbg (hub_dev,
 		"port %d, status %04x, change %04x, %s\n",
@@ -4877,7 +4879,7 @@ static int hub_thread(void *__unused)
 		wait_event_freezable(khubd_wait,
 				!list_empty(&hub_event_list) ||
 				kthread_should_stop());
-	} while (!kthread_should_stop() || !list_empty(&hub_event_list));
+	} while (!kthread_should_stop() || !list_empty(&hub_event_list));/*等待被强行终止或事件链表为空*/
 
 	pr_debug("%s: khubd exiting\n", usbcore_name);
 	return 0;

@@ -133,11 +133,11 @@ struct usb_hcd {
 	unsigned		authorized_default:1;
 	unsigned		has_tt:1;	/* Integrated TT in root hub */
 
-	unsigned int		irq;		/* irq allocated */
-	void __iomem		*regs;		/* device memory/io */
+	unsigned int		irq;		/* irq allocated */         /*usb 中断号*/
+	void __iomem		*regs;		/* device memory/io */    /*映射usb控制器的地址*/
 	resource_size_t		rsrc_start;	/* memory/io resource start */
 	resource_size_t		rsrc_len;	/* memory/io resource length */
-	unsigned		power_budget;	/* in mA, 0 = no limit */
+	unsigned		power_budget;	/* in mA, 0 = no limit */  /*能够提供的电流*/
 
 	/* bandwidth_mutex should be taken before adding or removing
 	 * any new bus bandwidth constraints:

@@ -1009,7 +1009,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 	struct usb_device *usb_dev = hcd->self.root_hub;
 	const int devnum = 1;
 	int retval;
-
+	pr_sea("register root hub\n");
 	usb_dev->devnum = devnum;
 	usb_dev->bus->devnum_next = devnum + 1;
 	memset (&usb_dev->bus->devmap.devicemap, 0,

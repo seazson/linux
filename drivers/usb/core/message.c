@@ -633,7 +633,7 @@ int usb_get_descriptor(struct usb_device *dev, unsigned char type,
 	int result;
 
 	memset(buf, 0, size);	/* Make sure we parse really received data */
-
+	pr_sea("Type=%d\n",type);
 	for (i = 0; i < 3; ++i) {
 		/* retry on length 0 or error; some devices are flakey */
 		result = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),

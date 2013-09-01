@@ -798,6 +798,7 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 	 * work on all systems (edge triggering for OHCI can be a factor).
 	 */
 	ints = ohci_readl(ohci, &regs->intrstatus);
+	pr_sea("usb_irq %d\n",ints);
 
 	/* Check for an all 1's result which is a typical consequence
 	 * of dead, unclocked, or unplugged (CardBus...) devices
