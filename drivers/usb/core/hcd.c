@@ -1002,7 +1002,7 @@ static void usb_deregister_bus (struct usb_bus *bus)
  * the device properly in the device tree and then calls usb_new_device()
  * to register the usb device.  It also assigns the root hub's USB address
  * (always 1).
- */
+ */ /*注册根hub*/
 static int register_root_hub(struct usb_hcd *hcd)
 {
 	struct device *parent_dev = hcd->self.controller;
@@ -1010,17 +1010,17 @@ static int register_root_hub(struct usb_hcd *hcd)
 	const int devnum = 1;
 	int retval;
 	pr_sea("register root hub\n");
-	usb_dev->devnum = devnum;
+	usb_dev->devnum = devnum;       /*root hub默认使用的地址是1*/
 	usb_dev->bus->devnum_next = devnum + 1;
 	memset (&usb_dev->bus->devmap.devicemap, 0,
 			sizeof usb_dev->bus->devmap.devicemap);
 	set_bit (devnum, usb_dev->bus->devmap.devicemap);
-	usb_set_device_state(usb_dev, USB_STATE_ADDRESS);
+	usb_set_device_state(usb_dev, USB_STATE_ADDRESS);  /*设置当前为分配地址状态*/
 
 	mutex_lock(&usb_bus_list_lock);
 
 	usb_dev->ep0.desc.wMaxPacketSize = cpu_to_le16(64);
-	retval = usb_get_device_descriptor(usb_dev, USB_DT_DEVICE_SIZE);
+	retval = usb_get_device_descriptor(usb_dev, USB_DT_DEVICE_SIZE);  /*获取设备配置表*/
 	if (retval != sizeof usb_dev->descriptor) {
 		mutex_unlock(&usb_bus_list_lock);
 		dev_dbg (parent_dev, "can't read %s device descriptor %d\n",
@@ -1037,7 +1037,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 		}
 	}
 
-	retval = usb_new_device (usb_dev);
+	retval = usb_new_device (usb_dev); /*将root_hub注册到总线上，会调用usb_device_match,设备匹配后generic_probe*/
 	if (retval) {
 		dev_err (parent_dev, "can't register root hub for %s, %d\n",
 				dev_name(&usb_dev->dev), retval);
@@ -2342,7 +2342,7 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 			return NULL;
 		}
 		mutex_init(hcd->bandwidth_mutex);
-		dev_set_drvdata(dev, hcd);
+		dev_set_drvdata(dev, hcd);   /*将hcd与device关联起来*/
 	} else {
 		hcd->bandwidth_mutex = primary_hcd->bandwidth_mutex;
 		hcd->primary_hcd = primary_hcd;
@@ -2353,7 +2353,7 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 
 	kref_init(&hcd->kref);
 
-	usb_bus_init(&hcd->self);
+	usb_bus_init(&hcd->self);        /*将hcd的总线与当前device关联起来，总线在platform下*/
 	hcd->self.controller = dev;
 	hcd->self.bus_name = bus_name;
 	hcd->self.uses_dma = (dev->dma_mask != NULL);
@@ -2514,20 +2514,20 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	 * bottom up so that hcds can customize the root hubs before khubd
 	 * starts talking to them.  (Note, bus id is assigned early too.)
 	 */
-	if ((retval = hcd_buffer_create(hcd)) != 0) {
+	if ((retval = hcd_buffer_create(hcd)) != 0) {    /*分配DMA池*/
 		dev_dbg(hcd->self.controller, "pool alloc failed\n");
 		return retval;
 	}
 
-	if ((retval = usb_register_bus(&hcd->self)) < 0)
+	if ((retval = usb_register_bus(&hcd->self)) < 0) /*为当前控制器分配总线号*/
 		goto err_register_bus;
 
-	if ((rhdev = usb_alloc_dev(NULL, &hcd->self, 0)) == NULL) {
+	if ((rhdev = usb_alloc_dev(NULL, &hcd->self, 0)) == NULL) { /*创建并初始化一个usb_device，设置为attach状态，用做根集线器*/
 		dev_err(hcd->self.controller, "unable to allocate root hub\n");
 		retval = -ENOMEM;
 		goto err_allocate_root_hub;
 	}
-	hcd->self.root_hub = rhdev;
+	hcd->self.root_hub = rhdev; /*把刚创建的设备作为控制器的root hub*/
 
 	switch (hcd->speed) {
 	case HCD_USB11:
@@ -2562,7 +2562,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	/* "reset" is misnamed; its role is now one-time init. the controller
 	 * should already have been reset (and boot firmware kicked off etc).
 	 */
-	if (hcd->driver->reset && (retval = hcd->driver->reset(hcd)) < 0) {
+	if (hcd->driver->reset && (retval = hcd->driver->reset(hcd)) < 0) {/*复位控制器*/
 		dev_err(hcd->self.controller, "can't setup\n");
 		goto err_hcd_driver_setup;
 	}
@@ -2577,13 +2577,13 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	 * if the BIOS provides legacy PCI irqs.
 	 */
 	if (usb_hcd_is_primary_hcd(hcd) && irqnum) {
-		retval = usb_hcd_request_irqs(hcd, irqnum, irqflags);
+		retval = usb_hcd_request_irqs(hcd, irqnum, irqflags);  /*注册中断ohci_irq*/
 		if (retval)
 			goto err_request_irq;
 	}
 
 	hcd->state = HC_STATE_RUNNING;
-	retval = hcd->driver->start(hcd);
+	retval = hcd->driver->start(hcd);                          /*ohci_s3c2410_start,初始化并使能ohci控制器*/
 	if (retval < 0) {
 		dev_err(hcd->self.controller, "startup error %d\n", retval);
 		goto err_hcd_driver_start;

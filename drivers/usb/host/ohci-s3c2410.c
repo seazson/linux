@@ -343,8 +343,8 @@ static int usb_hcd_s3c2410_probe(const struct hc_driver *driver,
 
 	s3c2410_usb_set_power(dev->dev.platform_data, 1, 1);
 	s3c2410_usb_set_power(dev->dev.platform_data, 2, 1);
-
-	hcd = usb_create_hcd(driver, &dev->dev, "s3c24xx");
+	pr_sea("\n");
+	hcd = usb_create_hcd(driver, &dev->dev, "s3c24xx");  /*创建并初始化一个hcd，并与platform_device关联起来*/
 	if (hcd == NULL)
 		return -ENOMEM;
 
@@ -375,7 +375,7 @@ static int usb_hcd_s3c2410_probe(const struct hc_driver *driver,
 
 	ohci_hcd_init(hcd_to_ohci(hcd));   /*初始化hcd中ohci部分*/
 
-	retval = usb_add_hcd(hcd, dev->resource[1].start, 0);
+	retval = usb_add_hcd(hcd, dev->resource[1].start, 0); /*初始化主机控制器，添加根集线器*/
 	if (retval != 0)
 		goto err_ioremap;
 
@@ -422,7 +422,7 @@ static const struct hc_driver ohci_s3c2410_hc_driver = {
 	 * generic hardware linkage
 	 */
 	.irq =			ohci_irq,
-	.flags =		HCD_USB11 | HCD_MEMORY,
+	.flags =		HCD_USB11 | HCD_MEMORY,    /*定义了控制器的速度等级*/
 
 	/*
 	 * basic lifecycle operations

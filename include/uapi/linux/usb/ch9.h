@@ -920,7 +920,7 @@ enum usb_device_state {
 	/* NOTATTACHED isn't in the USB spec, and this state acts
 	 * the same as ATTACHED ... but it's clearer this way.
 	 */
-	USB_STATE_NOTATTACHED = 0,
+	USB_STATE_NOTATTACHED = 0,   /*设备断开连接了*/
 
 	/* chapter 9 and authentication (wireless) device states */
 	USB_STATE_ATTACHED,

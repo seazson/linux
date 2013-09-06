@@ -40,7 +40,7 @@ static void usb_api_blocking_completion(struct urb *urb)
  * is NOT interruptible. Many device driver i/o requests should be
  * interruptible and therefore these drivers should implement their
  * own interruptible routines.
- */
+ */ /*递交urb,并等待hcd完成发送*/
 static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 {
 	struct api_context ctx;
@@ -128,7 +128,7 @@ static int usb_internal_control_msg(struct usb_device *usb_dev,
  * If a thread in your driver uses this call, make sure your disconnect()
  * method can wait for it to complete.  Since you don't have a handle on the
  * URB used, you can't cancel the request.
- */
+ */ /*用于构造控制传输包*/
 int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 		    __u8 requesttype, __u16 value, __u16 index, void *data,
 		    __u16 size, int timeout)
@@ -1052,7 +1052,7 @@ static void remove_intf_ep_devs(struct usb_interface *intf)
  * Disables the endpoint for URB submission and nukes all pending URBs.
  * If @reset_hardware is set then also deallocates hcd/hardware state
  * for the endpoint.
- */
+ */ /*设置ep_out/in[epnum] = NULL，清除urb*/
 void usb_disable_endpoint(struct usb_device *dev, unsigned int epaddr,
 		bool reset_hardware)
 {
@@ -1830,7 +1830,7 @@ free_interfaces:
 		intf->dev.parent = &dev->dev;
 		intf->dev.driver = NULL;
 		intf->dev.bus = &usb_bus_type;
-		intf->dev.type = &usb_if_device_type;
+		intf->dev.type = &usb_if_device_type;      /*设置为usb接口*/
 		intf->dev.groups = usb_interface_groups;
 		intf->dev.dma_mask = dev->dev.dma_mask;
 		INIT_WORK(&intf->reset_ws, __usb_queue_reset_device);

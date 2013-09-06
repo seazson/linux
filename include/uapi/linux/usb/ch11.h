@@ -232,16 +232,16 @@ struct usb_hub_status {
 struct usb_hub_descriptor {
 	__u8  bDescLength;
 	__u8  bDescriptorType;
-	__u8  bNbrPorts;
+	__u8  bNbrPorts;              /*下行端口数*/
 	__le16 wHubCharacteristics;
 	__u8  bPwrOn2PwrGood;
-	__u8  bHubContrCurrent;
+	__u8  bHubContrCurrent;       /*最大电流需求*/
 
 	/* 2.0 and 3.0 hubs differ here */
 	union {
 		struct {
 			/* add 1 bit for hub status change; round to bytes */
-			__u8  DeviceRemovable[(USB_MAXCHILDREN + 1 + 7) / 8];
+			__u8  DeviceRemovable[(USB_MAXCHILDREN + 1 + 7) / 8];  /*下行端口能否被移除*/
 			__u8  PortPwrCtrlMask[(USB_MAXCHILDREN + 1 + 7) / 8];
 		}  __attribute__ ((packed)) hs;
 

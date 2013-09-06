@@ -638,10 +638,10 @@ int usb_match_one_id(struct usb_interface *interface,
 	intf = interface->cur_altsetting;
 	dev = interface_to_usbdev(interface);
 
-	if (!usb_match_device(dev, id))
+	if (!usb_match_device(dev, id)) /*检查接口parent是否匹配，匹配就成功返回*/
 		return 0;
 
-	return usb_match_one_id_intf(dev, intf, id);
+	return usb_match_one_id_intf(dev, intf, id); /*检查接口本身是否匹配*/
 }
 EXPORT_SYMBOL_GPL(usb_match_one_id);
 
@@ -737,14 +737,17 @@ const struct usb_device_id *usb_match_id(struct usb_interface *interface,
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(usb_match_id);
-
+/*处理 接口+接口驱动 or 设备+设备驱动*/
 static int usb_device_match(struct device *dev, struct device_driver *drv)
 {
+	if(dev)
+		pr_sea("usb bus probe:dev=%s is_usb_device=%d\n",dev->init_name,is_usb_device(dev));
+	if(drv)
+		pr_sea("usb bus probe:drv=%s is_usb_device_driver=%d\n",drv->name,is_usb_device_driver(drv));
 	/* devices and interfaces are handled separately */
 	if (is_usb_device(dev)) {
-
 		/* interface drivers never match devices */
-		if (!is_usb_device_driver(drv))
+		if (!is_usb_device_driver(drv))  /*扫描到的drv是interface就返回了，扫到usb_generic_driver才继续*/
 			return 0;
 
 		/* TODO: Add real matching code */
@@ -759,8 +762,8 @@ static int usb_device_match(struct device *dev, struct device_driver *drv)
 		if (is_usb_device_driver(drv))
 			return 0;
 
-		intf = to_usb_interface(dev);
-		usb_drv = to_usb_driver(drv);
+		intf = to_usb_interface(dev); /*获取接口 : usb_interface*/
+		usb_drv = to_usb_driver(drv); /*获取接口驱动 : usb_driver*/
 
 		id = usb_match_id(intf, usb_drv->id_table);
 		if (id)
@@ -824,7 +827,7 @@ static int usb_uevent(struct device *dev, struct kobj_uevent_env *env)
  * unattached devices will be rescanned whenever a new driver is
  * added, allowing the new driver to attach to any recognized devices.
  * Returns a negative error code on failure and 0 on success.
- */
+ */ /*与usb_register不同的是，将for_devices=1*/
 int usb_register_device_driver(struct usb_device_driver *new_udriver,
 		struct module *owner)
 {
@@ -903,7 +906,7 @@ int usb_register_driver(struct usb_driver *new_driver, struct module *owner,
 	spin_lock_init(&new_driver->dynids.lock);
 	INIT_LIST_HEAD(&new_driver->dynids.list);
 
-	retval = driver_register(&new_driver->drvwrap.driver);
+	retval = driver_register(&new_driver->drvwrap.driver); /*添加到usb总线的driver链表上*/
 	if (retval)
 		goto out;
 

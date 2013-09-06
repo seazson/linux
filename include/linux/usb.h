@@ -322,9 +322,9 @@ struct usb_devmap {
  */
 struct usb_bus {
 	struct device *controller;	/* host/master side hardware */
-	int busnum;			/* Bus number (in order of reg) */
-	const char *bus_name;		/* stable id (PCI slot_name etc) */
-	u8 uses_dma;			/* Does the host controller use DMA? */
+	int busnum;			/* Bus number (in order of reg) */          /*总线编号，如果有多个usb控制器的话*/
+	const char *bus_name;		/* stable id (PCI slot_name etc) */ /*platform上的名字*/
+	u8 uses_dma;			/* Does the host controller use DMA? */ /*这两项表示用dma还是io传输数据*/
 	u8 uses_pio_for_control;	/*
 					 * Does the host controller use PIO
 					 * for control transfers?
@@ -340,21 +340,21 @@ struct usb_bus {
 	unsigned sg_tablesize;		/* 0 or largest number of sg list entries */
 
 	int devnum_next;		/* Next open device number in
-					 * round-robin allocation */
+					 * round-robin allocation */                    /*总线上可以为下一个设备分配的地址*/
 
-	struct usb_devmap devmap;	/* device address allocation map */
-	struct usb_device *root_hub;	/* Root hub */
+	struct usb_devmap devmap;	/* device address allocation map */ /*分配位图*/
+	struct usb_device *root_hub;	/* Root hub */                  /*指向根集线器*/
 	struct usb_bus *hs_companion;	/* Companion EHCI bus, if any */
-	struct list_head bus_list;	/* list of busses */
+	struct list_head bus_list;	/* list of busses */                /*所有usb总线通过这个链接到usb_bus_list*/
 
-	int bandwidth_allocated;	/* on this bus: how much of the time
+	int bandwidth_allocated;	/* on this bus: how much of the time 总线为中断传输和等时传输预留了多少带宽
 					 * reserved for periodic (intr/iso)
 					 * requests is used, on average?
 					 * Units: microseconds/frame.
 					 * Limits: Full/low speed reserve 90%,
 					 * while high speed reserves 80%.
 					 */
-	int bandwidth_int_reqs;		/* number of Interrupt requests */
+	int bandwidth_int_reqs;		/* number of Interrupt requests */   /*中断传输和等时传输的数量*/
 	int bandwidth_isoc_reqs;	/* number of Isoc. requests */
 
 	unsigned resuming_ports;	/* bit array: resuming root-hub ports */
@@ -506,7 +506,7 @@ struct usb3_lpm_parameters {
  * usb_set_device_state().
  */
 struct usb_device {
-	int		devnum;
+	int		devnum;  /*usb 设备在总线上的地址*/
 	char		devpath[16];
 	u32		route;
 	enum usb_device_state	state;
@@ -961,7 +961,7 @@ extern ssize_t usb_show_dynids(struct usb_dynids *dynids, char *buf);
 /**
  * struct usbdrv_wrap - wrapper for driver-model structure
  * @driver: The driver-model core driver structure.
- * @for_devices: Non-zero for device drivers, 0 for interface drivers.
+ * @for_devices: Non-zero for device drivers, 0 for interface drivers.<-看这里
  */
 struct usbdrv_wrap {
 	struct device_driver driver;
@@ -1395,14 +1395,14 @@ typedef void (*usb_complete_t)(struct urb *);
 struct urb {
 	/* private: usb core and host controller only fields in the urb */
 	struct kref kref;		/* reference count of the URB */
-	void *hcpriv;			/* private data for host controller */
+	void *hcpriv;			/* private data for host controller */ /*指向主机控制器*/
 	atomic_t use_count;		/* concurrent submissions counter */
 	atomic_t reject;		/* submissions will fail */
 	int unlinked;			/* unlink error code */
 
 	/* public: documented fields in the urb that can be used by drivers */
 	struct list_head urb_list;	/* list head for use by the urb's
-					 * current owner */
+					 * current owner */ /*链接到相同的端点下*/
 	struct list_head anchor_list;	/* the URB may be anchored */
 	struct usb_anchor *anchor;
 	struct usb_device *dev;		/* (in) pointer to associated device */
@@ -1417,17 +1417,17 @@ struct urb {
 	int num_mapped_sgs;		/* (internal) mapped sg entries */
 	int num_sgs;			/* (in) number of entries in the sg list */
 	u32 transfer_buffer_length;	/* (in) data buffer length */
-	u32 actual_length;		/* (return) actual transfer length */
-	unsigned char *setup_packet;	/* (in) setup packet (control only) */
+	u32 actual_length;		/* (return) actual transfer length */ /*实际传输了多少数据*/
+	unsigned char *setup_packet;	/* (in) setup packet (control only) */ /*控制传输必须的设置，有kmalloc分配*/
 	dma_addr_t setup_dma;		/* (in) dma addr for setup_packet */
 	int start_frame;		/* (modify) start frame (ISO) */
 	int number_of_packets;		/* (in) number of ISO packets */
 	int interval;			/* (modify) transfer interval
-					 * (INT/ISO) */
+					 * (INT/ISO) */  /*用于设置等时和中断传输的间隔*/
 	int error_count;		/* (return) number of ISO errors */
 	void *context;			/* (in) context for completion */
-	usb_complete_t complete;	/* (in) completion routine */
-	struct usb_iso_packet_descriptor iso_frame_desc[0];
+	usb_complete_t complete;	/* (in) completion routine */    /*同于发送完成信号*/
+	struct usb_iso_packet_descriptor iso_frame_desc[0];          /*等时传输附加包*/
 					/* (in) ISO ONLY */
 };
 
@@ -1446,7 +1446,7 @@ struct urb {
  *
  * Initializes a control urb with the proper information needed to submit
  * it to a device.
- */
+ */ /*用于控制传输填充urb*/
 static inline void usb_fill_control_urb(struct urb *urb,
 					struct usb_device *dev,
 					unsigned int pipe,
@@ -1535,7 +1535,7 @@ static inline void usb_fill_int_urb(struct urb *urb,
 	urb->complete = complete_fn;
 	urb->context = context;
 	if (dev->speed == USB_SPEED_HIGH || dev->speed == USB_SPEED_SUPER)
-		urb->interval = 1 << (interval - 1);
+		urb->interval = 1 << (interval - 1);  /*高速传输时间单位为微帧*/
 	else
 		urb->interval = interval;
 	urb->start_frame = -1;

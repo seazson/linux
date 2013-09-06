@@ -336,7 +336,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 	 * will be required to set urb->ep directly and we will eliminate
 	 * urb->pipe.
 	 */
-	ep = usb_pipe_endpoint(dev, urb->pipe);
+	ep = usb_pipe_endpoint(dev, urb->pipe); /*获取端点指针*/
 	if (!ep)
 		return -ENOENT;
 
@@ -369,7 +369,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 
 	if (xfertype != USB_ENDPOINT_XFER_CONTROL &&
 			dev->state < USB_STATE_CONFIGURED)
-		return -ENODEV;
+		return -ENODEV;  /*配置完成之前只能进行控制传输*/
 
 	max = usb_endpoint_maxp(&ep->desc);
 	if (max <= 0) {

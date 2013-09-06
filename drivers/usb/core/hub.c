@@ -494,7 +494,7 @@ static void led_work (struct work_struct *work)
 			continue;
 		}
 		if (selector != HUB_LED_AUTO)
-			changed = 1;
+			changed = 1;  /*软件闪*/
 		set_port_led(hub, i + 1, selector);
 		hub->indicator[i] = mode;
 	}
@@ -506,7 +506,7 @@ static void led_work (struct work_struct *work)
 		changed++;
 	}
 	if (changed)
-		schedule_delayed_work(&hub->leds, LED_CYCLE_PERIOD);
+		schedule_delayed_work(&hub->leds, LED_CYCLE_PERIOD);  /*以0.66Hz调用*/
 }
 
 /* use a short timeout for hub/port status fetches */
@@ -656,7 +656,7 @@ static void hub_irq(struct urb *urb)
 	kick_khubd(hub);
 
 resubmit:
-	if (hub->quiescing)
+	if (hub->quiescing) /*表示hub被挂起了，或者要被reset了。不用重新提交urb*/
 		return;
 
 	if ((status = usb_submit_urb (hub->urb, GFP_ATOMIC)) != 0
@@ -1210,7 +1210,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 		schedule_delayed_work(&hub->leds, LED_CYCLE_PERIOD);
 
 	/* Scan all ports that need attention */
-	kick_khubd(hub);
+	kick_khubd(hub);/*唤醒hub_thread*/
 
 	/* Allow autosuspend if it was suppressed */
 	if (type <= HUB_INIT3)
@@ -1321,7 +1321,7 @@ static int hub_configure(struct usb_hub *hub,
 	if (ret < 0) {
 		message = "can't read hub descriptor";
 		goto fail;
-	} else if (hub->descriptor->bNbrPorts > USB_MAXCHILDREN) {
+	} else if (hub->descriptor->bNbrPorts > USB_MAXCHILDREN) {/*代表hub下接了多少个端口*/
 		message = "hub has too many ports!";
 		ret = -ENODEV;
 		goto fail;
@@ -1366,7 +1366,7 @@ static int hub_configure(struct usb_hub *hub,
 	} else
 		dev_dbg(hub_dev, "standalone hub\n");
 
-	switch (wHubCharacteristics & HUB_CHAR_LPSM) {
+	switch (wHubCharacteristics & HUB_CHAR_LPSM) {  /*电源切换方式*/
 	case HUB_CHAR_COMMON_LPSM:
 		dev_dbg(hub_dev, "ganged power switching\n");
 		break;
@@ -1379,7 +1379,7 @@ static int hub_configure(struct usb_hub *hub,
 		break;
 	}
 
-	switch (wHubCharacteristics & HUB_CHAR_OCPM) {
+	switch (wHubCharacteristics & HUB_CHAR_OCPM) {  /*过流保护模式*/
 	case HUB_CHAR_COMMON_OCPM:
 		dev_dbg(hub_dev, "global over-current protection\n");
 		break;
@@ -1391,7 +1391,7 @@ static int hub_configure(struct usb_hub *hub,
 		dev_dbg(hub_dev, "no over-current protection\n");
 		break;
 	}
-
+	/*初始化tt*/
 	spin_lock_init (&hub->tt.lock);
 	INIT_LIST_HEAD (&hub->tt.clear_list);
 	INIT_WORK(&hub->tt.clear_work, hub_tt_work);
@@ -1420,8 +1420,8 @@ static int hub_configure(struct usb_hub *hub,
 			hdev->descriptor.bDeviceProtocol);
 		break;
 	}
-
-	/* Note 8 FS bit times == (8 bits / 12000000 bps) ~= 666ns */
+	
+	/* Note 8 FS bit times == (8 bits / 12000000 bps) ~= 666ns */ /*设置高低速转换的缓冲时间*/
 	switch (wHubCharacteristics & HUB_CHAR_TTTT) {
 		case HUB_TTTT_8_BITS:
 			if (hdev->descriptor.bDeviceProtocol != 0) {
@@ -1451,8 +1451,8 @@ static int hub_configure(struct usb_hub *hub,
 			break;
 	}
 
-	/* probe() zeroes hub->indicator[] */
-	if (wHubCharacteristics & HUB_CHAR_PORTIND) {
+	/* probe() zeroes hub->indicator[] */  /*是否支持指示灯控制*/ 
+	if (wHubCharacteristics & HUB_CHAR_PORTIND) { 
 		hub->has_indicators = 1;
 		dev_dbg(hub_dev, "Port indicators are supported\n");
 	}
@@ -1463,7 +1463,7 @@ static int hub_configure(struct usb_hub *hub,
 	/* power budgeting mostly matters with bus-powered hubs,
 	 * and battery-powered root hubs (may provide just 8 mA).
 	 */
-	ret = usb_get_status(hdev, USB_RECIP_DEVICE, 0, &hubstatus);
+	ret = usb_get_status(hdev, USB_RECIP_DEVICE, 0, &hubstatus);  /*获取usb设备状态，所有usb设备包括hub都有*/
 	if (ret < 2) {
 		message = "can't get hub status";
 		goto fail;
@@ -1516,7 +1516,7 @@ static int hub_configure(struct usb_hub *hub,
 		}
 	}
 
-	ret = hub_hub_status(hub, &hubstatus, &hubchange);
+	ret = hub_hub_status(hub, &hubstatus, &hubchange);  /*获取hub状态，hub专有*/
 	if (ret < 0) {
 		message = "can't get hub status";
 		goto fail;
@@ -1539,7 +1539,7 @@ static int hub_configure(struct usb_hub *hub,
 	 * maxpktsize is defined in hcd.c's fake endpoint descriptors
 	 * to be big enough for at least USB_MAXCHILDREN ports. */
 	pipe = usb_rcvintpipe(hdev, endpoint->bEndpointAddress);
-	maxp = usb_maxpacket(hdev, pipe, usb_pipeout(pipe));
+	maxp = usb_maxpacket(hdev, pipe, usb_pipeout(pipe));  /*端点的最大传输长度*/
 
 	if (maxp > sizeof(*hub->buffer))
 		maxp = sizeof(*hub->buffer);
@@ -1684,7 +1684,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 #endif
 
 	/* Some hubs have a subclass of 1, which AFAICT according to the */
-	/*  specs is not defined, but it works */
+	/*  specs is not defined, but it works */ /*必须保证子类型是usb hub*/
 	if ((desc->desc.bInterfaceSubClass != 0) &&
 	    (desc->desc.bInterfaceSubClass != 1)) {
 descriptor_error:
@@ -1692,13 +1692,13 @@ descriptor_error:
 		return -EIO;
 	}
 
-	/* Multiple endpoints? What kind of mutant ninja-hub is this? */
+	/* Multiple endpoints? What kind of mutant ninja-hub is this? */ /*hub除去端点0之外只有一个端点，而且是中断传输*/
 	if (desc->desc.bNumEndpoints != 1)
 		goto descriptor_error;
 
 	endpoint = &desc->endpoint[0].desc;
 
-	/* If it's not an interrupt in endpoint, we'd better punt! */
+	/* If it's not an interrupt in endpoint, we'd better punt! */   /*确保是中断传输模式*/
 	if (!usb_endpoint_is_int_in(endpoint))
 		goto descriptor_error;
 
@@ -1712,7 +1712,7 @@ descriptor_error:
 	}
 
 	kref_init(&hub->kref);
-	INIT_LIST_HEAD(&hub->event_list);
+	INIT_LIST_HEAD(&hub->event_list);  /*本hub上相关的事件*/
 	hub->intfdev = &intf->dev;
 	hub->hdev = hdev;
 	INIT_DELAYED_WORK(&hub->leds, led_work);
@@ -2218,8 +2218,8 @@ static int usb_enumerate_device(struct usb_device *udev)
 		udev->serial = kstrdup("n/a (unauthorized)", GFP_KERNEL);
 	}
 	else {
-		/* read the standard strings and cache them if present */
-		udev->product = usb_cache_string(udev, udev->descriptor.iProduct);
+		/* read the standard strings and cache them if present */ /*获取设备字符串*/
+		udev->product = usb_cache_string(udev, udev->descriptor.iProduct);  
 		udev->manufacturer = usb_cache_string(udev,
 						      udev->descriptor.iManufacturer);
 		udev->serial = usb_cache_string(udev, udev->descriptor.iSerialNumber);
@@ -2228,7 +2228,7 @@ static int usb_enumerate_device(struct usb_device *udev)
 	if (err < 0)
 		return err;
 
-	usb_detect_interface_quirks(udev);
+	usb_detect_interface_quirks(udev);  /*判断是否是不标准设备，并做相应处理*/
 
 	return 0;
 }
@@ -2309,7 +2309,7 @@ int usb_new_device(struct usb_device *udev)
 	 */
 	usb_disable_autosuspend(udev);
 
-	err = usb_enumerate_device(udev);	/* Read descriptors */
+	err = usb_enumerate_device(udev);	/* Read descriptors */  /*获取设备配置描述符*/
 	if (err < 0)
 		goto fail;
 	dev_dbg(&udev->dev, "udev %d, busnum %d, minor = %d\n",
@@ -2344,7 +2344,7 @@ int usb_new_device(struct usb_device *udev)
 	 * for configuring the device and invoking the add-device
 	 * notifier chain (used by usbfs and possibly others).
 	 */
-	err = device_add(&udev->dev);
+	err = device_add(&udev->dev);   /*会调用probe*/
 	if (err) {
 		dev_err(&udev->dev, "can't device_add, error %d\n", err);
 		goto fail;
@@ -2551,7 +2551,7 @@ static int hub_port_wait_reset(struct usb_hub *hub, int port1,
 		return -ENOTCONN;
 
 	/* Device went away? */
-	if (!(portstatus & USB_PORT_STAT_CONNECTION))
+	if (!(portstatus & USB_PORT_STAT_CONNECTION))  /*在复位期间设备移除了*/
 		return -ENOTCONN;
 
 	/* bomb out completely if the connection bounced.  A USB 3.0
@@ -2559,16 +2559,16 @@ static int hub_port_wait_reset(struct usb_hub *hub, int port1,
 	 * but the device may have successfully re-connected. Ignore it.
 	 */
 	if (!hub_is_superspeed(hub->hdev) &&
-			(portchange & USB_PORT_STAT_C_CONNECTION))
+			(portchange & USB_PORT_STAT_C_CONNECTION)) /*复位期间又一次检测到插入*/
 		return -ENOTCONN;
 
-	if (!(portstatus & USB_PORT_STAT_ENABLE))
+	if (!(portstatus & USB_PORT_STAT_ENABLE))          /*复位之后端口应该是enable状态*/
 		return -EBUSY;
 
 	if (!udev)
 		return 0;
 
-	if (hub_is_wusb(hub))
+	if (hub_is_wusb(hub))                              /*标记速度*/
 		udev->speed = USB_SPEED_WIRELESS;
 	else if (hub_is_superspeed(hub->hdev))
 		udev->speed = USB_SPEED_SUPER;
@@ -2598,7 +2598,7 @@ static void hub_port_finish_reset(struct usb_hub *hub, int port1,
 			if (hcd->driver->reset_device)
 				hcd->driver->reset_device(hcd, udev);
 		}
-		/* FALL THROUGH */
+		/* FALL THROUGH */     /*注意没有break*/
 	case -ENOTCONN:
 	case -ENODEV:
 		usb_clear_port_feature(hub->hdev,
@@ -2614,7 +2614,7 @@ static void hub_port_finish_reset(struct usb_hub *hub, int port1,
 		if (udev)
 			usb_set_device_state(udev, *status
 					? USB_STATE_NOTATTACHED
-					: USB_STATE_DEFAULT);
+					: USB_STATE_DEFAULT);  /*设置为default状态*/
 		break;
 	}
 }
@@ -2654,7 +2654,7 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 	for (i = 0; i < PORT_RESET_TRIES; i++) {
 		status = set_port_feature(hub->hdev, port1, (warm ?
 					USB_PORT_FEAT_BH_PORT_RESET :
-					USB_PORT_FEAT_RESET));
+					USB_PORT_FEAT_RESET));  /*复位hub下接的设备*/
 		if (status == -ENODEV) {
 			;	/* The hub is gone */
 		} else if (status) {
@@ -3940,7 +3940,7 @@ static int hub_set_address(struct usb_device *udev, int devnum)
 		update_devnum(udev, devnum);
 		/* Device now using proper address. */
 		usb_set_device_state(udev, USB_STATE_ADDRESS);
-		usb_ep0_reinit(udev);
+		usb_ep0_reinit(udev);  /*重新初始化端点0*/
 	}
 	return retval;
 }
@@ -3972,7 +3972,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 	 * (from USB 2.0 spec, section 7.1.7.5)
 	 */
 	if (!hdev->parent) {
-		delay = HUB_ROOT_RESET_TIME;
+		delay = HUB_ROOT_RESET_TIME;  /*root hub 复位是50ms*/
 		if (port1 == hdev->bus->otg_port)
 			hdev->bus->b_hnp_enable = 0;
 	}
@@ -3980,7 +3980,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 	/* Some low speed devices have problems with the quick delay, so */
 	/*  be a bit pessimistic with those devices. RHbug #23670 */
 	if (oldspeed == USB_SPEED_LOW)
-		delay = HUB_LONG_RESET_TIME;
+		delay = HUB_LONG_RESET_TIME;  /*低速设备复位需要200ms*/
 
 	mutex_lock(&usb_address0_mutex);
 
@@ -3993,7 +3993,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 
 	retval = -ENODEV;
 
-	if (oldspeed != USB_SPEED_UNKNOWN && oldspeed != udev->speed) {
+	if (oldspeed != USB_SPEED_UNKNOWN && oldspeed != udev->speed) { /*复位期间速度产生了改变，不合理*/
 		dev_dbg(&udev->dev, "device reset changed speed!\n");
 		goto fail;
 	}
@@ -4003,7 +4003,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 	 * it's fixed size except for full speed devices.
 	 * For Wireless USB devices, ep0 max packet is always 512 (tho
 	 * reported as 0xff in the device descriptor). WUSB1.0[4.8.1].
-	 */
+	 */   /*设置端口0的最大包大小*/
 	switch (udev->speed) {
 	case USB_SPEED_SUPER:
 	case USB_SPEED_WIRELESS:	/* fixed at 512 */
@@ -4063,7 +4063,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 	 * Otherwise we start with SET_ADDRESS and then try to read the
 	 * first 8 bytes of the device descriptor to get the ep0 maxpacket
 	 * value.
-	 */
+	 */ /*尝试获取usb设备描述符，主要是想得到端点0大小*/
 	for (i = 0; i < GET_DESCRIPTOR_TRIES; (++i, msleep(100))) {
 		if (USE_NEW_SCHEME(retry_counter) && !(hcd->driver->flags & HCD_USB3)) {
 			struct usb_device_descriptor *buf;
@@ -4130,7 +4130,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
  		 * If device is WUSB, we already assigned an
  		 * unauthorized address in the Connect Ack sequence;
  		 * authorization will assign the final address.
- 		 */
+ 		 */ /*发送设置设备地址命令*/
 		if (udev->wusb == 0) {
 			for (j = 0; j < SET_ADDRESS_TRIES; ++j) {
 				retval = hub_set_address(udev, devnum);
@@ -4215,7 +4215,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 		udev->ep0.desc.wMaxPacketSize = cpu_to_le16(i);
 		usb_ep0_reinit(udev);
 	}
-  
+/*真正获取usb设备描述符*/  
 	retval = usb_get_device_descriptor(udev, USB_DT_DEVICE_SIZE);
 	if (retval < (signed)sizeof(udev->descriptor)) {
 		if (retval != -ENODEV)
@@ -4259,13 +4259,13 @@ check_highspeed (struct usb_hub *hub, struct usb_device *udev, int port1)
 
 	status = usb_get_descriptor (udev, USB_DT_DEVICE_QUALIFIER, 0,
 			qual, sizeof *qual);
-	if (status == sizeof *qual) {
+	if (status == sizeof *qual) { /*相等说明是一个高速设备，全速设备没有这个描述符*/
 		dev_info(&udev->dev, "not running at top speed; "
 			"connect to a high speed hub\n");
 		/* hub LEDs are probably harder to miss than syslog */
 		if (hub->has_indicators) {
 			hub->indicator[port1-1] = INDICATOR_GREEN_BLINK;
-			schedule_delayed_work (&hub->leds, 0);
+			schedule_delayed_work (&hub->leds, 0);  /*高速设备却工作在全速模式，绿灯闪，表示是软件有问题*/
 		}
 	}
 	kfree(qual);
@@ -4344,7 +4344,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		"port %d, status %04x, change %04x, %s\n",
 		port1, portstatus, portchange, portspeed(hub, portstatus));
 
-	if (hub->has_indicators) {
+	if (hub->has_indicators) {/*设置灯的状态*/
 		set_port_led(hub, port1, HUB_LED_AUTO);
 		hub->indicator[port1-1] = INDICATOR_AUTO;
 	}
@@ -4355,7 +4355,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		portchange &= ~(USB_PORT_STAT_C_CONNECTION |
 				USB_PORT_STAT_C_ENABLE);
 #endif
-
+/*设备从有到无*/
 	/* Try to resuscitate an existing device */
 	udev = hub->ports[port1 - 1]->child;
 	if ((portstatus & USB_PORT_STAT_CONNECTION) && udev &&
@@ -4392,7 +4392,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		usb_disconnect(&hub->ports[port1 - 1]->child);
 	}
 	clear_bit(port1, hub->change_bits);
-
+/*去抖*/
 	/* We can forget about a "removed" device when there's a physical
 	 * disconnect or the connect status changes.
 	 */
@@ -4412,7 +4412,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 			portstatus = status;
 		}
 	}
-
+/*设备还是没有，打开电源再试试*/
 	/* Return now if debouncing failed or nothing is connected or
 	 * the device was "removed".
 	 */
@@ -4432,14 +4432,14 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		unit_load = 150;
 	else
 		unit_load = 100;
-
+/*检测到设备插入，开始probe*/
 	status = 0;
 	for (i = 0; i < SET_CONFIG_TRIES; i++) {
 
 		/* reallocate for each attempt, since references
 		 * to the previous one can escape in various ways
 		 */
-		udev = usb_alloc_dev(hdev, hdev->bus, port1);
+		udev = usb_alloc_dev(hdev, hdev->bus, port1);  /*为hub下接的设备分配一个usb_device*/
 		if (!udev) {
 			dev_err (hub_dev,
 				"couldn't allocate port %d usb_device\n",
@@ -4447,8 +4447,8 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 			goto done;
 		}
 
-		usb_set_device_state(udev, USB_STATE_POWERED);
- 		udev->bus_mA = hub->mA_per_port;
+		usb_set_device_state(udev, USB_STATE_POWERED); /*设置为上电状态*/
+ 		udev->bus_mA = hub->mA_per_port;     /*能够从总线上获取的电流*/
 		udev->level = hdev->level + 1;
 		udev->wusb = hub_is_wusb(hub);
 
@@ -4458,14 +4458,14 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		else
 			udev->speed = USB_SPEED_UNKNOWN;
 
-		choose_devnum(udev);
+		choose_devnum(udev);                           /*为usb设备分配地址*/
 		if (udev->devnum <= 0) {
 			status = -ENOTCONN;	/* Don't retry */
 			goto loop;
 		}
 
 		/* reset (non-USB 3.0 devices) and get descriptor */
-		status = hub_port_init(hub, udev, port1, i);
+		status = hub_port_init(hub, udev, port1, i);   /*获取设备描述符*/
 		if (status < 0)
 			goto loop;
 
@@ -4478,7 +4478,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		 * a "powered" LED, users should notice we didn't enable it
 		 * (without reading syslog), even without per-port LEDs
 		 * on the parent.
-		 */
+		 */           /*如果hub下接的还是一个hub，并且电力不足分配*/
 		if (udev->descriptor.bDeviceClass == USB_CLASS_HUB
 				&& udev->bus_mA <= unit_load) {
 			u16	devstat;
@@ -4496,8 +4496,8 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 					"to this port\n");
 				if (hub->has_indicators) {
 					hub->indicator[port1-1] =
-						INDICATOR_AMBER_BLINK;
-					schedule_delayed_work (&hub->leds, 0);
+						INDICATOR_AMBER_BLINK;              /*黄灯闪烁*/
+					schedule_delayed_work (&hub->leds, 0);  /*激活点灯工作队列*/
 				}
 				status = -ENOTCONN;	/* Don't retry */
 				goto loop_disable;
@@ -4505,7 +4505,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		}
  
 		/* check for devices running slower than they could */
-		if (le16_to_cpu(udev->descriptor.bcdUSB) >= 0x0200
+		if (le16_to_cpu(udev->descriptor.bcdUSB) >= 0x0200  /*有高速hub，设备也支持高速，但是却工作在全速模式*/
 				&& udev->speed == USB_SPEED_FULL
 				&& highspeed_hubs != 0)
 			check_highspeed (hub, udev, port1);
@@ -4540,7 +4540,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		if (status)
 			goto loop_disable;
 
-		status = hub_power_remaining(hub);
+		status = hub_power_remaining(hub);    /*计算hub还能提供的电流*/
 		if (status)
 			dev_dbg(hub_dev, "%dmA power budget left\n", status);
 
@@ -4681,7 +4681,7 @@ static void hub_events(void)
 		if (hub->quiescing)
 			goto loop_autopm;
 
-		if (hub->error) {
+		if (hub->error) {/*有错误的话需要复位设备*/
 			dev_dbg (hub_dev, "resetting for error %d\n",
 				hub->error);
 
@@ -4695,10 +4695,10 @@ static void hub_events(void)
 			hub->nerrors = 0;
 			hub->error = 0;
 		}
-
+/*循环处理每个端口*/
 		/* deal with port status changes */
 		for (i = 1; i <= hub->descriptor->bNbrPorts; i++) {
-			if (test_bit(i, hub->busy_bits))
+			if (test_bit(i, hub->busy_bits)) /*在reset和resume时才会设置*/
 				continue;
 			connect_change = test_bit(i, hub->change_bits);
 			wakeup_change = test_and_clear_bit(i, hub->wakeup_bits);
@@ -4711,13 +4711,13 @@ static void hub_events(void)
 			if (ret < 0)
 				continue;
 
-			if (portchange & USB_PORT_STAT_C_CONNECTION) {
+			if (portchange & USB_PORT_STAT_C_CONNECTION) {/*连接发生变化*/
 				usb_clear_port_feature(hdev, i,
 					USB_PORT_FEAT_C_CONNECTION);
 				connect_change = 1;
 			}
 
-			if (portchange & USB_PORT_STAT_C_ENABLE) {
+			if (portchange & USB_PORT_STAT_C_ENABLE) {/*端口开关发生变化*/
 				if (!connect_change)
 					dev_dbg (hub_dev,
 						"port %d enable change, "
@@ -4732,7 +4732,7 @@ static void hub_events(void)
 				 * the hub, this hack enables them again.
 				 * Works at least with mouse driver. 
 				 */
-				if (!(portstatus & USB_PORT_STAT_ENABLE)
+				if (!(portstatus & USB_PORT_STAT_ENABLE) /*由于电磁干扰产生开关现象*/
 				    && !connect_change
 				    && hub->ports[i - 1]->child) {
 					dev_err (hub_dev,
@@ -4745,10 +4745,10 @@ static void hub_events(void)
 			}
 
 			if (hub_handle_remote_wakeup(hub, i,
-						portstatus, portchange))
+						portstatus, portchange))   /*端口是被唤醒resume的*/
 				connect_change = 1;
 
-			if (portchange & USB_PORT_STAT_C_OVERCURRENT) {
+			if (portchange & USB_PORT_STAT_C_OVERCURRENT) { /*端口过流了*/
 				u16 status = 0;
 				u16 unused;
 
@@ -4815,7 +4815,7 @@ static void hub_events(void)
 				}
 			}
 
-			if (connect_change)
+			if (connect_change)  /*核心*/
 				hub_port_connect_change(hub, i,
 						portstatus, portchange);
 		} /* end for i */
@@ -4829,13 +4829,13 @@ static void hub_events(void)
 			if (hubchange & HUB_CHANGE_LOCAL_POWER) {
 				dev_dbg (hub_dev, "power change\n");
 				clear_hub_feature(hdev, C_HUB_LOCAL_POWER);
-				if (hubstatus & HUB_STATUS_LOCAL_POWER)
+				if (hubstatus & HUB_STATUS_LOCAL_POWER) /*是否有外接电源*/  
 					/* FIXME: Is this always true? */
-					hub->limited_power = 1;
+					hub->limited_power = 1;   /*表示有外接电源*/
 				else
-					hub->limited_power = 0;
+					hub->limited_power = 0;   
 			}
-			if (hubchange & HUB_CHANGE_OVERCURRENT) {
+			if (hubchange & HUB_CHANGE_OVERCURRENT) {/*发生过流事件端口电源可能已经关闭了，需要重新上电*/
 				u16 status = 0;
 				u16 unused;
 
@@ -4916,13 +4916,13 @@ static struct usb_driver hub_driver = {
 
 int usb_hub_init(void)
 {
-	if (usb_register(&hub_driver) < 0) {
+	if (usb_register(&hub_driver) < 0) {/*注册usb interface驱动usb_driver: hub*/
 		printk(KERN_ERR "%s: can't register hub driver\n",
 			usbcore_name);
 		return -1;
 	}
 
-	khubd_task = kthread_run(hub_thread, NULL, "khubd");
+	khubd_task = kthread_run(hub_thread, NULL, "khubd"); /*开启hub线程*/
 	if (!IS_ERR(khubd_task))
 		return 0;
 
@@ -5237,7 +5237,7 @@ int usb_reset_device(struct usb_device *udev)
 	usb_autoresume_device(udev);
 
 	if (config) {
-		for (i = 0; i < config->desc.bNumInterfaces; ++i) {
+		for (i = 0; i < config->desc.bNumInterfaces; ++i) {/*对当前配置下的每个接口调用他的前复位函数*/
 			struct usb_interface *cintf = config->interface[i];
 			struct usb_driver *drv;
 			int unbind = 0;
@@ -5258,7 +5258,7 @@ int usb_reset_device(struct usb_device *udev)
 	ret = usb_reset_and_verify_device(udev);
 
 	if (config) {
-		for (i = config->desc.bNumInterfaces - 1; i >= 0; --i) {
+		for (i = config->desc.bNumInterfaces - 1; i >= 0; --i) {/*后复位函数*/
 			struct usb_interface *cintf = config->interface[i];
 			struct usb_driver *drv;
 			int rebind = cintf->needs_binding;

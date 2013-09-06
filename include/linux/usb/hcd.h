@@ -72,15 +72,15 @@ struct usb_hcd {
 	/*
 	 * housekeeping
 	 */
-	struct usb_bus		self;		/* hcd is-a bus */
+	struct usb_bus		self;		/* hcd is-a bus */          /*platform下某个主机控制器*/
 	struct kref		kref;		/* reference counter */
 
-	const char		*product_desc;	/* product/vendor string */
+	const char		*product_desc;	/* product/vendor string */ /*主机控制器的产品名 OHCI*/
 	int			speed;		/* Speed for this roothub.
 						 * May be different from
 						 * hcd->driver->flags & HCD_MASK
 						 */
-	char			irq_descr[24];	/* driver + bus # */
+	char			irq_descr[24];	/* driver + bus # */        /*保存主机控制器驱动的名称+总线号*/
 
 	struct timer_list	rh_timer;	/* drives root-hub polling */
 	struct urb		*status_urb;	/* the current status urb */
@@ -135,7 +135,7 @@ struct usb_hcd {
 
 	unsigned int		irq;		/* irq allocated */         /*usb 中断号*/
 	void __iomem		*regs;		/* device memory/io */    /*映射usb控制器的地址*/
-	resource_size_t		rsrc_start;	/* memory/io resource start */
+	resource_size_t		rsrc_start;	/* memory/io resource start */  /*物理起始地址*/
 	resource_size_t		rsrc_len;	/* memory/io resource length */
 	unsigned		power_budget;	/* in mA, 0 = no limit */  /*能够提供的电流*/
 
@@ -156,7 +156,7 @@ struct usb_hcd {
 
 
 #define HCD_BUFFER_POOLS	4
-	struct dma_pool		*pool[HCD_BUFFER_POOLS];
+	struct dma_pool		*pool[HCD_BUFFER_POOLS];    /*DMA池*/
 
 	int			state;
 #	define	__ACTIVE		0x01
@@ -182,7 +182,7 @@ struct usb_hcd {
 	 * this structure.
 	 */
 	unsigned long hcd_priv[0]
-			__attribute__ ((aligned(sizeof(s64))));
+			__attribute__ ((aligned(sizeof(s64))));  /*通常保存ohci_hcd ehci_hcd等类型*/
 };
 
 /* 2.4 does this a bit differently ... */
@@ -206,8 +206,8 @@ struct hcd_timeout {	/* timeouts we allocate */
 
 struct hc_driver {
 	const char	*description;	/* "ehci-hcd" etc */
-	const char	*product_desc;	/* product/vendor string */
-	size_t		hcd_priv_size;	/* size of private data */
+	const char	*product_desc;	/* product/vendor string */ /*usb_hcd中此位相同*/
+	size_t		hcd_priv_size;	/* size of private data */  /*指定主机控制器中hcd_priv的大小*/
 
 	/* irq handler */
 	irqreturn_t	(*irq) (struct usb_hcd *hcd);

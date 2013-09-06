@@ -416,14 +416,14 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 
 	device_initialize(&dev->dev);
 	dev->dev.bus = &usb_bus_type;
-	dev->dev.type = &usb_device_type;   /*usb_device_match用的就是这个*/
+	dev->dev.type = &usb_device_type;   /*usb_device_match用的就是这个来判断是不是一个usb设备*/
 	dev->dev.groups = usb_device_groups;
 	dev->dev.dma_mask = bus->controller->dma_mask;
 	set_dev_node(&dev->dev, dev_to_node(bus->controller));
-	dev->state = USB_STATE_ATTACHED;
+	dev->state = USB_STATE_ATTACHED;    /*更改设备状态，表示设备已经插入*/
 	dev->lpm_disable_count = 1;
 	atomic_set(&dev->urbnum, 0);
-
+/*初始化端点0*/
 	INIT_LIST_HEAD(&dev->ep0.urb_list);
 	dev->ep0.desc.bLength = USB_DT_ENDPOINT_SIZE;
 	dev->ep0.desc.bDescriptorType = USB_DT_ENDPOINT;
@@ -439,7 +439,7 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 	 * as stable:  bus->busnum changes easily from modprobe order,
 	 * cardbus or pci hotplugging, and so on.
 	 */
-	if (unlikely(!parent)) {
+	if (unlikely(!parent)) {                    /*是根集线器，设置为usbx名字*/
 		dev->devpath[0] = '0';
 		dev->route = 0;
 
@@ -448,7 +448,7 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 		root_hub = 1;
 	} else {
 		/* match any labeling on the hubs; it's one-based */
-		if (parent->devpath[0] == '0') {
+		if (parent->devpath[0] == '0') {        /*代表直接接在root下*/
 			snprintf(dev->devpath, sizeof dev->devpath,
 				"%d", port1);
 			/* Root ports are not counted in route string */
@@ -974,7 +974,7 @@ static int usb_bus_notify(struct notifier_block *nb, unsigned long action,
 		void *data)
 {
 	struct device *dev = data;
-
+//	pr_sea("usb_bus_notify action=%d\n",action);
 	switch (action) {
 	case BUS_NOTIFY_ADD_DEVICE:
 		if (dev->type == &usb_device_type)
@@ -1027,7 +1027,8 @@ static void usb_debugfs_cleanup(void)
 }
 
 /*
- * Init
+ * Init 注册了2个interface driver : hub, usbfs 
+              1个device driver    : usb_generic_driver 
  */
 static int __init usb_init(void)
 {
@@ -1042,25 +1043,25 @@ static int __init usb_init(void)
 		goto out;
 
 	usb_acpi_register();
-	retval = bus_register(&usb_bus_type);  /*注册usb bus*/
+	retval = bus_register(&usb_bus_type);  /*注册usb bus，于是有/sys/bus/usb*/
 	if (retval)
 		goto bus_register_failed;
 	retval = bus_register_notifier(&usb_bus_type, &usb_bus_nb);
 	if (retval)
 		goto bus_notifier_failed;
-	retval = usb_major_init();   /*usb总线也是字符设备，需要注册fops*/
+	retval = usb_major_init();   /*usb总线也是字符设备，需要注册180 fops*/
 	if (retval)
 		goto major_init_failed;
-	retval = usb_register(&usbfs_driver); /*usbfs初始化*/
+	retval = usb_register(&usbfs_driver); /*注册接口驱动usb_driver: usbfs, 添加到/sys/bus/usb/driver下*/
 	if (retval)
 		goto driver_register_failed;
-	retval = usb_devio_init();
+	retval = usb_devio_init();   /*注册189字符设备，用于usbfs*/
 	if (retval)
 		goto usb_devio_init_failed;
-	retval = usb_hub_init();     /*hub初始化*/
+	retval = usb_hub_init();     /*注册hub驱动，开启khubd线程。注意:usbfs和hub的driver类型都是usb_driver(接口驱动)，在usb总线上注册的是interface*/
 	if (retval)
 		goto hub_init_failed;
-	retval = usb_register_device_driver(&usb_generic_driver, THIS_MODULE); /*usb通用设备注册*/
+	retval = usb_register_device_driver(&usb_generic_driver, THIS_MODULE); /*在usb总线上注册设备驱动usb_device_driver: usb*/
 	if (!retval)
 		goto out;
 

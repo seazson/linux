@@ -56,7 +56,7 @@ struct usb_hub {
 #endif
 
 	struct usb_hub_descriptor *descriptor;	/* class descriptor */
-	struct usb_tt		tt;		/* Transaction Translator */
+	struct usb_tt		tt;		/* Transaction Translator */ /*用于高速设备向低速设备转换*/
 
 	unsigned		mA_per_port;	/* current for each child */
 #ifdef	CONFIG_PM
@@ -73,7 +73,7 @@ struct usb_hub {
 	u8			indicator[USB_MAXCHILDREN];
 	struct delayed_work	leds;
 	struct delayed_work	init_work;
-	struct usb_port		**ports;
+	struct usb_port		**ports;          /*指向hub下接的设备*/
 };
 
 /**

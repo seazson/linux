@@ -159,14 +159,14 @@ int usb_choose_configuration(struct usb_device *udev)
 static int generic_probe(struct usb_device *udev)
 {
 	int err, c;
-
+	pr_sea("%d:%s\n",udev->devnum,udev->devpath);
 	/* Choose and set the configuration.  This registers the interfaces
 	 * with the driver core and lets interface drivers bind to them.
 	 */
 	if (udev->authorized == 0)
 		dev_err(&udev->dev, "Device is not authorized for usage\n");
 	else {
-		c = usb_choose_configuration(udev);
+		c = usb_choose_configuration(udev);  /*为usb选择一个合适的配置*/
 		if (c >= 0) {
 			err = usb_set_configuration(udev, c);
 			if (err && err != -ENODEV) {
