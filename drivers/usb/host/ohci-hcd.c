@@ -560,7 +560,7 @@ static int ohci_init (struct ohci_hcd *ohci)
 		ohci->hc_control |= OHCI_CTRL_RWC;
 
 	/* Read the number of ports unless overridden */
-	if (ohci->num_ports == 0)
+	if (ohci->num_ports == 0)  /*获取主hub下行端口数目*/
 		ohci->num_ports = roothub_a(ohci) & RH_A_NDP;
 
 	if (ohci->hcca)

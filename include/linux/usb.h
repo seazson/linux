@@ -64,8 +64,8 @@ struct ep_device;
 struct usb_host_endpoint {
 	struct usb_endpoint_descriptor		desc;
 	struct usb_ss_ep_comp_descriptor	ss_ep_comp;
-	struct list_head		urb_list;
-	void				*hcpriv;
+	struct list_head		urb_list;   /*urb队列*/
+	void				*hcpriv;        /*指向hcd*/
 	struct ep_device		*ep_dev;	/* For sysfs info */
 
 	unsigned char *extra;   /* Extra descriptors */
@@ -74,7 +74,7 @@ struct usb_host_endpoint {
 };
 
 /* host-side wrapper for one interface setting's parsed descriptors */
-struct usb_host_interface {
+struct usb_host_interface { /*接口的设置*/
 	struct usb_interface_descriptor	desc;
 
 	int extralen;
@@ -160,19 +160,19 @@ enum usb_interface_condition {
 struct usb_interface {
 	/* array of alternate settings for this interface,
 	 * stored in no particular order */
-	struct usb_host_interface *altsetting;
+	struct usb_host_interface *altsetting;          /*指向接口的所有设置*/
 
 	struct usb_host_interface *cur_altsetting;	/* the currently
-					 * active alternate setting */
-	unsigned num_altsetting;	/* number of alternate settings */
+					 * active alternate setting */  /*接口当前在使用的设置*/
+	unsigned num_altsetting;	/* number of alternate settings */ /*接口所包含的设置的总数*/
 
 	/* If there is an interface association descriptor then it will list
 	 * the associated interfaces */
 	struct usb_interface_assoc_descriptor *intf_assoc;
 
 	int minor;			/* minor number this interface is
-					 * bound to */
-	enum usb_interface_condition condition;		/* state of binding */
+					 * bound to */                  /*接口的次设备号*/
+	enum usb_interface_condition condition;		/* state of binding */ /*接口与驱动的绑定状态*/
 	unsigned sysfs_files_created:1;	/* the sysfs attributes exist */
 	unsigned ep_devs_created:1;	/* endpoint "devices" exist */
 	unsigned unregistering:1;	/* unregistration is in progress */
@@ -182,7 +182,7 @@ struct usb_interface {
 	unsigned reset_running:1;
 	unsigned resetting_device:1;	/* true: bandwidth alloc after reset */
 
-	struct device dev;		/* interface specific device info */
+	struct device dev;		/* interface specific device info */       /*设备模型的device*/
 	struct device *usb_dev;
 	atomic_t pm_usage_cnt;		/* usage counter for autosuspend 只有计数为零才能自动休眠*/
 	struct work_struct reset_ws;	/* for resets in atomic context */
@@ -283,11 +283,11 @@ struct usb_host_config {
 
 	/* the interfaces associated with this configuration,
 	 * stored in no particular order */
-	struct usb_interface *interface[USB_MAXINTERFACES];
+	struct usb_interface *interface[USB_MAXINTERFACES];  /*配置之下的所有接口，不一定按顺序排列*/
 
 	/* Interface information available even when this is not the
 	 * active configuration */
-	struct usb_interface_cache *intf_cache[USB_MAXINTERFACES];
+	struct usb_interface_cache *intf_cache[USB_MAXINTERFACES]; /*接口缓存*/
 
 	unsigned char *extra;   /* Extra descriptors */
 	int extralen;
@@ -506,40 +506,40 @@ struct usb3_lpm_parameters {
  * usb_set_device_state().
  */
 struct usb_device {
-	int		devnum;  /*usb 设备在总线上的地址*/
+	int		devnum;                  /*usb 设备在总线上的地址，根集线器在总线上地址为1*/
 	char		devpath[16];
 	u32		route;
-	enum usb_device_state	state;
-	enum usb_device_speed	speed;
+	enum usb_device_state	state;  /*设备当前的状态，根据协议走*/
+	enum usb_device_speed	speed;  /*速度等级*/
 
-	struct usb_tt	*tt;  /*用于兼容低速设备*/
+	struct usb_tt	*tt;                  /*用于兼容低速设备*/
 	int		ttport;
 
-	unsigned int toggle[2];
+	unsigned int toggle[2];               /*用于表示data0 data1*/
 
-	struct usb_device *parent;
-	struct usb_bus *bus;
+	struct usb_device *parent;            /*root hub 为NULL*/
+	struct usb_bus *bus;                  /*设备所在的usb总线*/
 	struct usb_host_endpoint ep0;
 
-	struct device dev;
+	struct device dev;                    /*设备模型*/
 
 	struct usb_device_descriptor descriptor;
 	struct usb_host_bos *bos;
-	struct usb_host_config *config;
+	struct usb_host_config *config;       /*指向所有配置*/
 
-	struct usb_host_config *actconfig;
+	struct usb_host_config *actconfig;    /*当前正在使用的配置*/
 	struct usb_host_endpoint *ep_in[16];
 	struct usb_host_endpoint *ep_out[16];
 
-	char **rawdescriptors;
+	char **rawdescriptors;                /*获取的原始的配置描述*/
 
 	unsigned short bus_mA;
-	u8 portnum;
-	u8 level;
+	u8 portnum;                           /*插在那个hub端口上，root hub为0*/
+	u8 level;                             /*级联级别，root hub为0，之后递加*/
 
 	unsigned can_submit:1;
 	unsigned persist_enabled:1;
-	unsigned have_langid:1;
+	unsigned have_langid:1;  /*用来指定string_langid是否有效*/
 	unsigned authorized:1;
 	unsigned authenticated:1;
 	unsigned wusb:1;
@@ -548,7 +548,7 @@ struct usb_device {
 	unsigned usb2_hw_lpm_besl_capable:1;
 	unsigned usb2_hw_lpm_enabled:1;
 	unsigned usb3_lpm_enabled:1;
-	int string_langid;
+	int string_langid;  /*用于指定字符串使用何种语言集*/
 
 	/* static strings from the device */
 	char *product;
@@ -557,7 +557,7 @@ struct usb_device {
 
 	struct list_head filelist;
 
-	int maxchild;
+	int maxchild;                          /*hub的端口数，不包括上行端口*/
 
 	u32 quirks;
 	atomic_t urbnum;
@@ -1418,7 +1418,7 @@ struct urb {
 	int num_sgs;			/* (in) number of entries in the sg list */
 	u32 transfer_buffer_length;	/* (in) data buffer length */
 	u32 actual_length;		/* (return) actual transfer length */ /*实际传输了多少数据*/
-	unsigned char *setup_packet;	/* (in) setup packet (control only) */ /*控制传输必须的设置，有kmalloc分配*/
+	unsigned char *setup_packet;	/* (in) setup packet (control only) */ /*控制传输必须的设置，由kmalloc分配*/
 	dma_addr_t setup_dma;		/* (in) dma addr for setup_packet */
 	int start_frame;		/* (modify) start frame (ISO) */
 	int number_of_packets;		/* (in) number of ISO packets */

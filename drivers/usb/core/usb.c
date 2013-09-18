@@ -448,12 +448,12 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 		root_hub = 1;
 	} else {
 		/* match any labeling on the hubs; it's one-based */
-		if (parent->devpath[0] == '0') {        /*代表直接接在root下*/
+		if (parent->devpath[0] == '0') {        /*代表直接接在root下,名字为0,1,2..*/
 			snprintf(dev->devpath, sizeof dev->devpath,
 				"%d", port1);
 			/* Root ports are not counted in route string */
 			dev->route = 0;
-		} else {
+		} else {                                /*hub级联，名字为0.1, 0.2, 1.1 等*/
 			snprintf(dev->devpath, sizeof dev->devpath,
 				"%s.%d", parent->devpath, port1);
 			/* Route string assumes hubs have less than 16 ports */
@@ -466,7 +466,7 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 		}
 
 		dev->dev.parent = &parent->dev;
-		dev_set_name(&dev->dev, "%d-%s", bus->busnum, dev->devpath);
+		dev_set_name(&dev->dev, "%d-%s", bus->busnum, dev->devpath);  /*加上总线号，形成真正名字*/
 
 		/* hub driver sets up TT records */
 	}

@@ -166,9 +166,9 @@ static int generic_probe(struct usb_device *udev)
 	if (udev->authorized == 0)
 		dev_err(&udev->dev, "Device is not authorized for usage\n");
 	else {
-		c = usb_choose_configuration(udev);  /*为usb选择一个合适的配置*/
+		c = usb_choose_configuration(udev);  /*为usb选择一个合适的配置，返回的是这个配置的bConfigurationValue*/
 		if (c >= 0) {
-			err = usb_set_configuration(udev, c);
+			err = usb_set_configuration(udev, c);  /*添加接口，并使设备进入configure状态*/
 			if (err && err != -ENODEV) {
 				dev_err(&udev->dev, "can't set config #%d, error %d\n",
 					c, err);
@@ -178,7 +178,7 @@ static int generic_probe(struct usb_device *udev)
 		}
 	}
 	/* USB device state == configured ... usable */
-	usb_notify_add_device(udev);
+	usb_notify_add_device(udev);   /*通知链，有设备添加*/
 
 	return 0;
 }

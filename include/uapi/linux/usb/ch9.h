@@ -257,20 +257,20 @@ struct usb_descriptor_header {
 /* USB_DT_DEVICE: Device descriptor */
 struct usb_device_descriptor {
 	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bDescriptorType;        /*设备描述符，应该为USB_DT_DEVICE*/
 
-	__le16 bcdUSB;
+	__le16 bcdUSB;                /*usb版本号*/
 	__u8  bDeviceClass;
 	__u8  bDeviceSubClass;
 	__u8  bDeviceProtocol;
 	__u8  bMaxPacketSize0;        /*端点0能处理的最大字节数 8,16,32,64*/
-	__le16 idVendor;
-	__le16 idProduct;
-	__le16 bcdDevice;
-	__u8  iManufacturer;
+	__le16 idVendor;              /*厂商id*/
+	__le16 idProduct;             /*设备id*/
+	__le16 bcdDevice;             /*设备版本号*/
+	__u8  iManufacturer;          /*以下三个对应字符串索引*/
 	__u8  iProduct;
 	__u8  iSerialNumber;
-	__u8  bNumConfigurations;
+	__u8  bNumConfigurations;     /*支持配置个数*/
 } __attribute__ ((packed));
 
 #define USB_DT_DEVICE_SIZE		18
@@ -313,14 +313,14 @@ struct usb_device_descriptor {
  */
 struct usb_config_descriptor {
 	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bDescriptorType;      /*描述符类型，应该是USB_DT_CONFIG*/
 
-	__le16 wTotalLength;
-	__u8  bNumInterfaces;
-	__u8  bConfigurationValue;
-	__u8  iConfiguration;
-	__u8  bmAttributes;
-	__u8  bMaxPower;
+	__le16 wTotalLength;        /*配置描述符及之后描述符总大小*/
+	__u8  bNumInterfaces;       /*包含接口的个数*/
+	__u8  bConfigurationValue;  /*配置标识号，set config的时候就是用这个*/
+	__u8  iConfiguration;       /*config的字符串索引*/
+	__u8  bmAttributes;         /*特性标志*/
+	__u8  bMaxPower;            /*从总线分到最大电流*/
 } __attribute__ ((packed));
 
 #define USB_DT_CONFIG_SIZE		9
@@ -350,15 +350,15 @@ struct usb_string_descriptor {
 /* USB_DT_INTERFACE: Interface descriptor */
 struct usb_interface_descriptor {
 	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bDescriptorType;      /*描述符类型，应该为USB_DT_INTERFACE*/
 
-	__u8  bInterfaceNumber;
-	__u8  bAlternateSetting;
-	__u8  bNumEndpoints;
+	__u8  bInterfaceNumber;     /*接口的编号*/
+	__u8  bAlternateSetting;    /*接口使用的设置的编号*/
+	__u8  bNumEndpoints;        /*接口所拥有端点的个数*/
 	__u8  bInterfaceClass;
 	__u8  bInterfaceSubClass;
 	__u8  bInterfaceProtocol;
-	__u8  iInterface;
+	__u8  iInterface;           /*接口描述符字符串索引号*/
 } __attribute__ ((packed));
 
 #define USB_DT_INTERFACE_SIZE		9
@@ -368,12 +368,12 @@ struct usb_interface_descriptor {
 /* USB_DT_ENDPOINT: Endpoint descriptor */
 struct usb_endpoint_descriptor {
 	__u8  bLength;
-	__u8  bDescriptorType;
+	__u8  bDescriptorType;  /*描述符类型 USB_DT_ENDPOINT*/
 
-	__u8  bEndpointAddress;
-	__u8  bmAttributes;
-	__le16 wMaxPacketSize;
-	__u8  bInterval;
+	__u8  bEndpointAddress; /*in/out + 端点号*/
+	__u8  bmAttributes;     /*传输类型*/
+	__le16 wMaxPacketSize;  /*一次可以处理的最大字节数*/
+	__u8  bInterval;        /*期望轮询间隔*/
 
 	/* NOTE:  these two are _only_ in audio endpoints. */
 	/* use USB_DT_ENDPOINT*_SIZE in bLength, not sizeof. */

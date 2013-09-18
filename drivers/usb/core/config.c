@@ -674,7 +674,7 @@ int usb_get_configuration(struct usb_device *dev)
 		dev->descriptor.bNumConfigurations = ncfg = USB_MAXCONFIG;
 	}
 
-	if (ncfg < 1) {
+	if (ncfg < 1) {            /*设备至少保证有一种配置*/ 
 		dev_err(ddev, "no configurations\n");
 		return -EINVAL;
 	}
@@ -685,7 +685,7 @@ int usb_get_configuration(struct usb_device *dev)
 		goto err2;
 
 	length = ncfg * sizeof(char *);
-	dev->rawdescriptors = kzalloc(length, GFP_KERNEL);
+	dev->rawdescriptors = kzalloc(length, GFP_KERNEL); /*实际上是一个指针数组*/
 	if (!dev->rawdescriptors)
 		goto err2;
 

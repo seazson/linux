@@ -1070,8 +1070,8 @@ do {						     \
 #else
 #define dev_dbg(dev, format, arg...)				\
 ({								\
-	if (0)							\
-		dev_printk(KERN_DEBUG, dev, format, ##arg);	\
+	if (1)							\
+		dev_printk(KERN_ALERT, dev, format, ##arg);	\
 	0;							\
 })
 #endif

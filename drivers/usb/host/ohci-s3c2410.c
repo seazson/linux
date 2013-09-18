@@ -160,10 +160,14 @@ static int ohci_s3c2410_hub_control(
 		"s3c2410_hub_control(%p,0x%04x,0x%04x,0x%04x,%p,%04x)\n",
 		hcd, typeReq, wValue, wIndex, buf, wLength);
 
+	pr_sea("s3c2410_hub_control(%p,0x%04x,0x%04x,0x%04x,%p,%04x)\n",
+		hcd, typeReq, wValue, wIndex, buf, wLength);
+
 	/* if we are only an humble host without any special capabilities
 	 * process the request straight away and exit */
 
 	if (info == NULL) {
+		pr_sea("\n");
 		ret = ohci_hub_control(hcd, typeReq, wValue,
 				       wIndex, buf, wLength);
 		goto out;
@@ -344,14 +348,14 @@ static int usb_hcd_s3c2410_probe(const struct hc_driver *driver,
 	s3c2410_usb_set_power(dev->dev.platform_data, 1, 1);
 	s3c2410_usb_set_power(dev->dev.platform_data, 2, 1);
 	pr_sea("\n");
-	hcd = usb_create_hcd(driver, &dev->dev, "s3c24xx");  /*创建并初始化一个hcd，并与platform_device关联起来*/
+	hcd = usb_create_hcd(driver, &dev->dev, "s3c24xx");  /*创建并初始化一个hcd，并与platform_device相互关联起来*/
 	if (hcd == NULL)
 		return -ENOMEM;
 
 	hcd->rsrc_start = dev->resource[0].start;
 	hcd->rsrc_len	= resource_size(&dev->resource[0]);
 
-	hcd->regs = devm_ioremap_resource(&dev->dev, &dev->resource[0]);
+	hcd->regs = devm_ioremap_resource(&dev->dev, &dev->resource[0]);  /*映射标准hcd控制器寄存器*/
 	if (IS_ERR(hcd->regs)) {
 		retval = PTR_ERR(hcd->regs);
 		goto err_put;
@@ -416,13 +420,13 @@ ohci_s3c2410_start(struct usb_hcd *hcd)
 static const struct hc_driver ohci_s3c2410_hc_driver = {
 	.description =		hcd_name,
 	.product_desc =		"S3C24XX OHCI",
-	.hcd_priv_size =	sizeof(struct ohci_hcd),
+	.hcd_priv_size =	sizeof(struct ohci_hcd),  /*用于指定hcd私用结构体的大小*/
 
 	/*
 	 * generic hardware linkage
 	 */
 	.irq =			ohci_irq,
-	.flags =		HCD_USB11 | HCD_MEMORY,    /*定义了控制器的速度等级*/
+	.flags =		HCD_USB11 | HCD_MEMORY,       /*定义了控制器的速度等级*/
 
 	/*
 	 * basic lifecycle operations

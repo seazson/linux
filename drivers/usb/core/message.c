@@ -718,7 +718,7 @@ static int usb_string_sub(struct usb_device *dev, unsigned int langid,
 
 	/* Try to read the string descriptor by asking for the maximum
 	 * possible number of bytes */
-	if (dev->quirks & USB_QUIRK_STRING_FETCH_255)
+	if (dev->quirks & USB_QUIRK_STRING_FETCH_255)  /*确保不是有问题的设备*/
 		rc = -EIO;
 	else
 		rc = usb_get_string(dev, langid, index, buf, 255);
@@ -726,14 +726,14 @@ static int usb_string_sub(struct usb_device *dev, unsigned int langid,
 	/* If that failed try to read the descriptor length, then
 	 * ask for just that many bytes */
 	if (rc < 2) {
-		rc = usb_get_string(dev, langid, index, buf, 2);
+		rc = usb_get_string(dev, langid, index, buf, 2); /*获取精确长度*/
 		if (rc == 2)
-			rc = usb_get_string(dev, langid, index, buf, buf[0]);
+			rc = usb_get_string(dev, langid, index, buf, buf[0]); /*用精确长度发送*/
 	}
 
 	if (rc >= 2) {
 		if (!buf[0] && !buf[1])
-			usb_try_string_workarounds(buf, &rc);
+			usb_try_string_workarounds(buf, &rc);  /*没有长度的话，对unicode的内容进行解析，以获取长度*/
 
 		/* There might be extra junk at the end of the descriptor */
 		if (buf[0] < rc)
@@ -758,7 +758,7 @@ static int usb_get_langid(struct usb_device *dev, unsigned char *tbuf)
 	if (dev->string_langid < 0)
 		return -EPIPE;
 
-	err = usb_string_sub(dev, 0, 0, tbuf);
+	err = usb_string_sub(dev, 0, 0, tbuf);  /*获取支持的语言列表*/
 
 	/* If the string was reported but is malformed, default to english
 	 * (0x0409) */
@@ -782,7 +782,7 @@ static int usb_get_langid(struct usb_device *dev, unsigned char *tbuf)
 		return -EPIPE;
 	}
 
-	/* always use the first langid listed */
+	/* always use the first langid listed */  /*在驱动没有指定使用何种语言的时候，使用语言0*/
 	dev->string_langid = tbuf[2] | (tbuf[3] << 8);
 	dev->have_langid = 1;
 	dev_dbg(&dev->dev, "default language 0x%04x\n",
@@ -821,11 +821,11 @@ int usb_string(struct usb_device *dev, int index, char *buf, size_t size)
 	if (!tbuf)
 		return -ENOMEM;
 
-	err = usb_get_langid(dev, tbuf);
+	err = usb_get_langid(dev, tbuf);  /*获取语言编码*/
 	if (err < 0)
 		goto errout;
 
-	err = usb_string_sub(dev, dev->string_langid, index, tbuf);
+	err = usb_string_sub(dev, dev->string_langid, index, tbuf); /*获取字符串*/
 	if (err < 0)
 		goto errout;
 
@@ -869,7 +869,7 @@ char *usb_cache_string(struct usb_device *udev, int index)
 	if (buf) {
 		len = usb_string(udev, index, buf, MAX_USB_STRING_SIZE);
 		if (len > 0) {
-			smallbuf = kmalloc(++len, GFP_NOIO);
+			smallbuf = kmalloc(++len, GFP_NOIO); /*usb_string返回的字符串末尾会自动加0，但是长度不包括这个0*/
 			if (!smallbuf)
 				return buf;
 			memcpy(smallbuf, buf, len);
@@ -1143,7 +1143,7 @@ void usb_disable_device(struct usb_device *dev, int skip_ep0)
 	/* getting rid of interfaces will disconnect
 	 * any drivers bound to them (a key side effect)
 	 */
-	if (dev->actconfig) {
+	if (dev->actconfig) { /*表示设备当前激活的配置*/ 
 		/*
 		 * FIXME: In order to avoid self-deadlock involving the
 		 * bandwidth_mutex, we have to mark all the interfaces
@@ -1193,7 +1193,7 @@ void usb_disable_device(struct usb_device *dev, int skip_ep0)
 		mutex_unlock(hcd->bandwidth_mutex);
 		/* Second pass: remove endpoint pointers */
 	}
-	for (i = skip_ep0; i < 16; ++i) {
+	for (i = skip_ep0; i < 16; ++i) {  /*删除接口下的端点*/
 		usb_disable_endpoint(dev, i, true);
 		usb_disable_endpoint(dev, i + USB_DIR_IN, true);
 	}
@@ -1708,7 +1708,7 @@ int usb_set_configuration(struct usb_device *dev, int configuration)
 		for (i = 0; i < dev->descriptor.bNumConfigurations; i++) {
 			if (dev->config[i].desc.bConfigurationValue ==
 					configuration) {
-				cp = &dev->config[i];
+				cp = &dev->config[i];   /*cp就是我们需要的那个配置*/
 				break;
 			}
 		}
@@ -1721,13 +1721,13 @@ int usb_set_configuration(struct usb_device *dev, int configuration)
 	 * we will accept it as a correctly configured state.
 	 * Use -1 if you really want to unconfigure the device.
 	 */
-	if (cp && configuration == 0)
+	if (cp && configuration == 0)       /*cp的bConfigurationValue是0，这usb设备不规范，给出警告*/
 		dev_warn(&dev->dev, "config 0 descriptor??\n");
 
 	/* Allocate memory for new interfaces before doing anything else,
 	 * so that if we run out then nothing will have changed. */
 	n = nintf = 0;
-	if (cp) {
+	if (cp) {                           /*为当前配置申请若干个interface*/
 		nintf = cp->desc.bNumInterfaces;
 		new_interfaces = kmalloc(nintf * sizeof(*new_interfaces),
 				GFP_NOIO);
@@ -1767,7 +1767,7 @@ free_interfaces:
 	 * getting rid of old interfaces means unbinding their drivers.
 	 */
 	if (dev->state != USB_STATE_ADDRESS)
-		usb_disable_device(dev, 1);	/* Skip ep0 */
+		usb_disable_device(dev, 1);	/* Skip ep0 */  /*如果之前已经配置过了，解注册，再返回address状态*/
 
 	/* Get rid of pending async Set-Config requests for this device */
 	cancel_async_set_config(dev);
@@ -1813,7 +1813,7 @@ free_interfaces:
 		intf->num_altsetting = intfc->num_altsetting;
 		kref_get(&intfc->ref);
 
-		alt = usb_altnum_to_altsetting(intf, 0);
+		alt = usb_altnum_to_altsetting(intf, 0);  /*默认设置是0号，获取设置0的interface结构*/
 
 		/* No altsetting 0?  We'll assume the first altsetting.
 		 * We could use a GetInterface call, but if a device is
@@ -1837,15 +1837,15 @@ free_interfaces:
 		intf->minor = -1;
 		device_initialize(&intf->dev);
 		pm_runtime_no_callbacks(&intf->dev);
-		dev_set_name(&intf->dev, "%d-%s:%d.%d",
+		dev_set_name(&intf->dev, "%d-%s:%d.%d",    /*设置接口的名称*/
 			dev->bus->busnum, dev->devpath,
-			configuration, alt->desc.bInterfaceNumber);
+			configuration, alt->desc.bInterfaceNumber);  /*设置接口的名称*/
 	}
 	kfree(new_interfaces);
 
 	ret = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 			      USB_REQ_SET_CONFIGURATION, 0, configuration, 0,
-			      NULL, 0, USB_CTRL_SET_TIMEOUT);
+			      NULL, 0, USB_CTRL_SET_TIMEOUT);   /*发送配置设备的命令*/
 	if (ret < 0 && cp) {
 		/*
 		 * All the old state is gone, so what else can we do?
@@ -1870,11 +1870,11 @@ free_interfaces:
 		usb_autosuspend_device(dev);
 		return ret;
 	}
-	usb_set_device_state(dev, USB_STATE_CONFIGURED);
+	usb_set_device_state(dev, USB_STATE_CONFIGURED);  /*从address状态进入configure状态*/
 
 	if (cp->string == NULL &&
 			!(dev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
-		cp->string = usb_cache_string(dev, cp->desc.iConfiguration);
+		cp->string = usb_cache_string(dev, cp->desc.iConfiguration); /*获取控制字段的字符串*/
 
 	/* Now that the interfaces are installed, re-enable LPM. */
 	usb_unlocked_enable_lpm(dev);
@@ -1890,12 +1890,11 @@ free_interfaces:
 	for (i = 0; i < nintf; ++i) {
 		struct usb_interface *intf = cp->interface[i];
 
-		dev_dbg(&dev->dev,
-			"adding %s (config #%d, interface %d)\n",
+		pr_sea("adding %s (config #%d, interface %d)\n",
 			dev_name(&intf->dev), configuration,
 			intf->cur_altsetting->desc.bInterfaceNumber);
 		device_enable_async_suspend(&intf->dev);
-		ret = device_add(&intf->dev);
+		ret = device_add(&intf->dev);              /*添加接口，这样接口就会绑定到接口驱动上*/
 		if (ret != 0) {
 			dev_err(&dev->dev, "device_add(%s) --> %d\n",
 				dev_name(&intf->dev), ret);

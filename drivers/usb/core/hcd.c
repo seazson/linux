@@ -199,7 +199,7 @@ static const u8 usb11_rh_dev_descriptor [18] = {
 	0x01,       /*  __u8  bDescriptorType; Device */
 	0x10, 0x01, /*  __le16 bcdUSB; v1.1 */
 
-	0x09,	    /*  __u8  bDeviceClass; HUB_CLASSCODE */
+	0x09,	    /*  __u8  bDeviceClass; HUB_CLASSCODE */ /*指示根集线器是hub类型*/
 	0x00,	    /*  __u8  bDeviceSubClass; */
 	0x00,       /*  __u8  bDeviceProtocol; [ low/full speeds only ] */
 	0x40,       /*  __u8  bMaxPacketSize0; 64 Bytes */
@@ -252,7 +252,7 @@ static const u8 fs_rh_config_descriptor [] = {
 	0x00,       /*  __u8  if_bInterfaceNumber; */
 	0x00,       /*  __u8  if_bAlternateSetting; */
 	0x01,       /*  __u8  if_bNumEndpoints; */
-	0x09,       /*  __u8  if_bInterfaceClass; HUB_CLASSCODE */
+	0x09,       /*  __u8  if_bInterfaceClass; HUB_CLASSCODE */  /*接口类型也是hub*/
 	0x00,       /*  __u8  if_bInterfaceSubClass; */
 	0x00,       /*  __u8  if_bInterfaceProtocol; [usb1.1 or single tt] */
 	0x00,       /*  __u8  if_iInterface; */
@@ -477,7 +477,7 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 	u8		patch_protocol = 0;
 
 	might_sleep();
-
+	pr_sea("root hub control msg\n");
 	spin_lock_irq(&hcd_root_hub_lock);
 	status = usb_hcd_link_urb_to_ep(hcd, urb);
 	spin_unlock_irq(&hcd_root_hub_lock);
@@ -555,6 +555,7 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 				bufp = usb2_rh_dev_descriptor;
 				break;
 			case HCD_USB11:
+				pr_sea("root hub use usb11_rh_dev_descriptor\n");
 				bufp = usb11_rh_dev_descriptor;
 				break;
 			default:
@@ -1010,8 +1011,8 @@ static int register_root_hub(struct usb_hcd *hcd)
 	const int devnum = 1;
 	int retval;
 	pr_sea("register root hub\n");
-	usb_dev->devnum = devnum;       /*root hub默认使用的地址是1*/
-	usb_dev->bus->devnum_next = devnum + 1;
+	usb_dev->devnum = devnum;                      /*root hub默认使用的地址是1*/
+	usb_dev->bus->devnum_next = devnum + 1;        /*本总线上下一个要分配的地址*/
 	memset (&usb_dev->bus->devmap.devicemap, 0,
 			sizeof usb_dev->bus->devmap.devicemap);
 	set_bit (devnum, usb_dev->bus->devmap.devicemap);
@@ -1020,7 +1021,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 	mutex_lock(&usb_bus_list_lock);
 
 	usb_dev->ep0.desc.wMaxPacketSize = cpu_to_le16(64);
-	retval = usb_get_device_descriptor(usb_dev, USB_DT_DEVICE_SIZE);  /*获取设备配置表*/
+	retval = usb_get_device_descriptor(usb_dev, USB_DT_DEVICE_SIZE);  /*获取设备配置表,root hub的配置表其实是软件固定好的*/
 	if (retval != sizeof usb_dev->descriptor) {
 		mutex_unlock(&usb_bus_list_lock);
 		dev_dbg (parent_dev, "can't read %s device descriptor %d\n",
@@ -1562,7 +1563,7 @@ int usb_hcd_submit_urb (struct urb *urb, gfp_t mem_flags)
 	 * enabled.
 	 */
 
-	if (is_root_hub(urb->dev)) {
+	if (is_root_hub(urb->dev)) {/*root hub走这里*/
 		status = rh_urb_enqueue(hcd, urb);
 	} else {
 		status = map_urb_for_dma(hcd, urb, mem_flags);
@@ -2342,7 +2343,7 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 			return NULL;
 		}
 		mutex_init(hcd->bandwidth_mutex);
-		dev_set_drvdata(dev, hcd);   /*将hcd与device关联起来*/
+		dev_set_drvdata(dev, hcd);   /*将device与hcd关联起来*/
 	} else {
 		hcd->bandwidth_mutex = primary_hcd->bandwidth_mutex;
 		hcd->primary_hcd = primary_hcd;
@@ -2519,10 +2520,10 @@ int usb_add_hcd(struct usb_hcd *hcd,
 		return retval;
 	}
 
-	if ((retval = usb_register_bus(&hcd->self)) < 0) /*为当前控制器分配总线号*/
+	if ((retval = usb_register_bus(&hcd->self)) < 0) /*为当前控制器分配总线号,usb内部使用，不要跟usb_bus_type混淆。一个控制器对应一个usb总线*/
 		goto err_register_bus;
 
-	if ((rhdev = usb_alloc_dev(NULL, &hcd->self, 0)) == NULL) { /*创建并初始化一个usb_device，设置为attach状态，用做根集线器*/
+	if ((rhdev = usb_alloc_dev(NULL, &hcd->self, 0)) == NULL) { /*创建并初始化一个usb_device，设置为attach状态，用做根集线器。并分配设备名称usb1 usb2...*/
 		dev_err(hcd->self.controller, "unable to allocate root hub\n");
 		retval = -ENOMEM;
 		goto err_allocate_root_hub;

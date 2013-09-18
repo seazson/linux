@@ -1714,7 +1714,7 @@ descriptor_error:
 	kref_init(&hub->kref);
 	INIT_LIST_HEAD(&hub->event_list);  /*本hub上相关的事件*/
 	hub->intfdev = &intf->dev;
-	hub->hdev = hdev;
+	hub->hdev = hdev;                 /*将hub与usb_device对应起来*/
 	INIT_DELAYED_WORK(&hub->leds, led_work);
 	INIT_DELAYED_WORK(&hub->init_work, NULL);
 	usb_get_intf(intf);
@@ -2204,7 +2204,7 @@ static int usb_enumerate_device(struct usb_device *udev)
 	int err;
 	pr_sea("try to getconfig\n");
 	if (udev->config == NULL) {
-		err = usb_get_configuration(udev);
+		err = usb_get_configuration(udev);  /*一次获取所有的配置*/
 		if (err < 0) {
 			if (err != -ENODEV)
 				dev_err(&udev->dev, "can't read configurations, error %d\n",
@@ -2218,7 +2218,7 @@ static int usb_enumerate_device(struct usb_device *udev)
 		udev->serial = kstrdup("n/a (unauthorized)", GFP_KERNEL);
 	}
 	else {
-		/* read the standard strings and cache them if present */ /*获取设备字符串*/
+		/* read the standard strings and cache them if present */ /*获取设备字符串，对于root hub是从hcd中拷贝过来的*/
 		udev->product = usb_cache_string(udev, udev->descriptor.iProduct);  
 		udev->manufacturer = usb_cache_string(udev,
 						      udev->descriptor.iManufacturer);
@@ -2289,7 +2289,7 @@ static void set_usb_port_removable(struct usb_device *udev)
 int usb_new_device(struct usb_device *udev)
 {
 	int err;
-	pr_sea("add new usb device\n");
+	pr_sea("add new usb device to usb bus\n");
 	if (udev->parent) {
 		/* Initialize non-root-hub device wakeup to disabled;
 		 * device (un)configuration controls wakeup capable

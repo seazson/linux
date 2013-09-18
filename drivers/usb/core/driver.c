@@ -638,9 +638,12 @@ int usb_match_one_id(struct usb_interface *interface,
 	intf = interface->cur_altsetting;
 	dev = interface_to_usbdev(interface);
 
-	if (!usb_match_device(dev, id)) /*检查接口parent是否匹配，匹配就成功返回*/
+	if (!usb_match_device(dev, id)) /*检查接口parent是否匹配，匹配成功才能继续*/
+	{
+		pr_sea("interface parent dismatch\n");
 		return 0;
-
+	}
+	pr_sea("interface parent match\n");
 	return usb_match_one_id_intf(dev, intf, id); /*检查接口本身是否匹配*/
 }
 EXPORT_SYMBOL_GPL(usb_match_one_id);
@@ -740,10 +743,8 @@ EXPORT_SYMBOL_GPL(usb_match_id);
 /*处理 接口+接口驱动 or 设备+设备驱动*/
 static int usb_device_match(struct device *dev, struct device_driver *drv)
 {
-	if(dev)
-		pr_sea("usb bus probe:dev=%s is_usb_device=%d\n",dev->init_name,is_usb_device(dev));
-	if(drv)
-		pr_sea("usb bus probe:drv=%s is_usb_device_driver=%d\n",drv->name,is_usb_device_driver(drv));
+
+	pr_sea("dev=%s %d - drv=%s %d\n",dev->init_name,is_usb_device(dev),drv->name,is_usb_device_driver(drv));
 	/* devices and interfaces are handled separately */
 	if (is_usb_device(dev)) {
 		/* interface drivers never match devices */
@@ -887,7 +888,7 @@ EXPORT_SYMBOL_GPL(usb_deregister_device_driver);
  * NOTE: if you want your driver to use the USB major number, you must call
  * usb_register_dev() to enable that functionality.  This function no longer
  * takes care of that.
- */
+ */ /*usb_interface 注册*/
 int usb_register_driver(struct usb_driver *new_driver, struct module *owner,
 			const char *mod_name)
 {
