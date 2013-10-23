@@ -402,14 +402,14 @@ static struct ed *ed_get (
 		int		is_out;
 		u32		info;
 
-		ed = ed_alloc (ohci, GFP_ATOMIC);
+		ed = ed_alloc (ohci, GFP_ATOMIC);            /*分配一个ed*/
 		if (!ed) {
 			/* out of memory */
 			goto done;
 		}
 
 		/* dummy td; end of td list for ed */
-		td = td_alloc (ohci, GFP_ATOMIC);
+		td = td_alloc (ohci, GFP_ATOMIC);            /*分配一个td*/
 		if (!td) {
 			/* out of memory */
 			ed_free (ohci, ed);
@@ -417,7 +417,7 @@ static struct ed *ed_get (
 			goto done;
 		}
 		ed->dummy = td;
-		ed->hwTailP = cpu_to_hc32 (ohci, td->td_dma);
+		ed->hwTailP = cpu_to_hc32 (ohci, td->td_dma);  /*初始化头尾指针*/
 		ed->hwHeadP = ed->hwTailP;	/* ED_C, ED_H zeroed */
 		ed->state = ED_IDLE;
 
@@ -653,20 +653,20 @@ static void td_submit_urb (
 	 */
 	case PIPE_CONTROL:
 		info = TD_CC | TD_DP_SETUP | TD_T_DATA0;
-		td_fill (ohci, info, urb->setup_dma, 8, urb, cnt++);
+		td_fill (ohci, info, urb->setup_dma, 8, urb, cnt++);  /*填充setup包*/
 		if (data_len > 0) {
 			info = TD_CC | TD_R | TD_T_DATA1;
 			info |= is_out ? TD_DP_OUT : TD_DP_IN;
 			/* NOTE:  mishandles transfers >8K, some >4K */
-			td_fill (ohci, info, data, data_len, urb, cnt++);
+			td_fill (ohci, info, data, data_len, urb, cnt++); /*填充数据包*/
 		}
 		info = (is_out || data_len == 0)
 			? TD_CC | TD_DP_IN | TD_T_DATA1
 			: TD_CC | TD_DP_OUT | TD_T_DATA1;
-		td_fill (ohci, info, data, 0, urb, cnt++);
+		td_fill (ohci, info, data, 0, urb, cnt++);            /*填充ack包*/
 		/* maybe kickstart control list */
 		wmb ();
-		ohci_writel (ohci, OHCI_CLF, &ohci->regs->cmdstatus);
+		ohci_writel (ohci, OHCI_CLF, &ohci->regs->cmdstatus); 
 		break;
 
 	/* ISO has no retransmit, so no toggle; and it uses special TDs.
@@ -1087,7 +1087,7 @@ static void takeback_td(struct ohci_hcd *ohci, struct td *td)
 
 	/* If all this urb's TDs are done, call complete() */
 	if (urb_priv->td_cnt == urb_priv->length)
-		finish_urb(ohci, urb, status);
+		finish_urb(ohci, urb, status);                   /*会调用urb的complete*/
 
 	/* clean schedule:  unlink EDs that are no longer busy */
 	if (list_empty(&ed->td_list)) {

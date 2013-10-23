@@ -348,16 +348,16 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 	 * and don't need to duplicate tests
 	 */
 	xfertype = usb_endpoint_type(&ep->desc);
-	if (xfertype == USB_ENDPOINT_XFER_CONTROL) {
+	if (xfertype == USB_ENDPOINT_XFER_CONTROL) {     /*判断数据方向，控制传输判断方式不同*/
 		struct usb_ctrlrequest *setup =
 				(struct usb_ctrlrequest *) urb->setup_packet;
-
+                                                     /*控制传输根据setup中字段判断*/
 		if (!setup)
 			return -ENOEXEC;
 		is_out = !(setup->bRequestType & USB_DIR_IN) ||
 				!setup->wLength;
 	} else {
-		is_out = usb_endpoint_dir_out(&ep->desc);
+		is_out = usb_endpoint_dir_out(&ep->desc);    /*其他模式根据端口描述符判断*/
 	}
 
 	/* Clear the internal flags and cache the direction for later use */
@@ -369,9 +369,9 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 
 	if (xfertype != USB_ENDPOINT_XFER_CONTROL &&
 			dev->state < USB_STATE_CONFIGURED)
-		return -ENODEV;  /*配置完成之前只能进行控制传输*/
+		return -ENODEV;  /*配置完成之前只能进行控制传输,否则出错*/
 
-	max = usb_endpoint_maxp(&ep->desc);
+	max = usb_endpoint_maxp(&ep->desc);   /*传输包的最大值至少要大于0吧*/
 	if (max <= 0) {
 		dev_dbg(&dev->dev,
 			"bogus endpoint ep%d%s in %s (bad maxpacket %d)\n",
@@ -384,7 +384,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 	 * but drivers only control those sizes for ISO.
 	 * while we're checking, initialize return status.
 	 */
-	if (xfertype == USB_ENDPOINT_XFER_ISOC) {
+	if (xfertype == USB_ENDPOINT_XFER_ISOC) {  /*解析等时传输*/
 		int	n, len;
 
 		/* SuperSpeed isoc endpoints have up to 16 bursts of up to
@@ -468,7 +468,7 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 	 * FIXME want bus->{intr,iso}_sched_horizon values here.  Each HC
 	 * supports different values... this uses EHCI/UHCI defaults (and
 	 * EHCI can use smaller non-default values).
-	 */
+	 */ /*设置传输间隔*/
 	switch (xfertype) {
 	case USB_ENDPOINT_XFER_ISOC:
 	case USB_ENDPOINT_XFER_INT:

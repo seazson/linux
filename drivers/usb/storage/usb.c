@@ -278,7 +278,7 @@ void fill_inquiry_response(struct us_data *us, unsigned char *data,
 			      device, it may return zeros or ASCII spaces
 			      (20h) in those fields until the data is
 			      available from the device."). */
-	} else {
+	} else {  /*从用户定义的unusual_dev中复制产品信息*/
 		u16 bcdDevice = le16_to_cpu(us->pusb_dev->descriptor.bcdDevice);
 		int n;
 
@@ -293,10 +293,10 @@ void fill_inquiry_response(struct us_data *us, unsigned char *data,
 		data[35] = 0x30 + ((bcdDevice) & 0x0F);
 	}
 
-	usb_stor_set_xfer_buf(data, data_len, us->srb);
+	usb_stor_set_xfer_buf(data, data_len, us->srb);  /*包装成scsi返回命令，对于地址不连续可能会用到离散传输*/
 }
 EXPORT_SYMBOL_GPL(fill_inquiry_response);
-
+/*每次SCSI下发命令的时候都会唤醒*/
 static int usb_stor_control_thread(void * __us)
 {
 	struct us_data *us = (struct us_data *)__us;
@@ -324,7 +324,7 @@ static int usb_stor_control_thread(void * __us)
 		}
 
 		/* has the command timed out *already* ? */
-		if (test_bit(US_FLIDX_TIMED_OUT, &us->dflags)) {
+		if (test_bit(US_FLIDX_TIMED_OUT, &us->dflags)) {   /*是否超时，由command_abort设置*/
 			us->srb->result = DID_ABORT << 16;
 			goto SkipForAbort;
 		}
@@ -334,7 +334,7 @@ static int usb_stor_control_thread(void * __us)
 		/* reject the command if the direction indicator
 		 * is UNKNOWN
 		 */
-		if (us->srb->sc_data_direction == DMA_BIDIRECTIONAL) {
+		if (us->srb->sc_data_direction == DMA_BIDIRECTIONAL) { /*scsi数据传输只能是一个方向的*/
 			usb_stor_dbg(us, "UNKNOWN data direction\n");
 			us->srb->result = DID_ERROR << 16;
 		}
@@ -343,7 +343,7 @@ static int usb_stor_control_thread(void * __us)
 		 * the maximum known LUN
 		 */
 		else if (us->srb->device->id &&
-				!(us->fflags & US_FL_SCM_MULT_TARG)) {
+				!(us->fflags & US_FL_SCM_MULT_TARG)) {  /*对于不支持多个tagret的设备，id必须为0*/
 			usb_stor_dbg(us, "Bad target number (%d:%d)\n",
 				     us->srb->device->id, us->srb->device->lun);
 			us->srb->result = DID_BAD_TARGET << 16;
@@ -358,7 +358,7 @@ static int usb_stor_control_thread(void * __us)
 		/* Handle those devices which need us to fake
 		 * their inquiry data */
 		else if ((us->srb->cmnd[0] == INQUIRY) &&
-			    (us->fflags & US_FL_FIX_INQUIRY)) {
+			    (us->fflags & US_FL_FIX_INQUIRY)) {     /*表明厂商名和产品名不需要实际查询，通过软件设置*/
 			unsigned char data_ptr[36] = {
 			    0x00, 0x80, 0x02, 0x02,
 			    0x1F, 0x00, 0x00, 0x00};
@@ -370,8 +370,8 @@ static int usb_stor_control_thread(void * __us)
 
 		/* we've got a command, let's do it! */
 		else {
-			US_DEBUG(usb_stor_show_command(us, us->srb));
-			us->proto_handler(us->srb, us);
+			US_DEBUG(usb_stor_show_command(us, us->srb));  /*打印scsi命令*/
+			us->proto_handler(us->srb, us);             /*真正的scsi传输在这里!*/ /*u盘定义为usb_stor_transparent_scsi_command*/
 			usb_mark_last_busy(us->pusb_dev);
 		}
 
@@ -430,7 +430,7 @@ static int associate_dev(struct us_data *us, struct usb_interface *intf)
 	/* Fill in the device-related fields */
 	us->pusb_dev = interface_to_usbdev(intf);
 	us->pusb_intf = intf;
-	us->ifnum = intf->cur_altsetting->desc.bInterfaceNumber;
+	us->ifnum = intf->cur_altsetting->desc.bInterfaceNumber;   /*使用的接口编号*/
 	usb_stor_dbg(us, "Vendor: 0x%04x, Product: 0x%04x, Revision: 0x%04x\n",
 		     le16_to_cpu(us->pusb_dev->descriptor.idVendor),
 		     le16_to_cpu(us->pusb_dev->descriptor.idProduct),
@@ -642,7 +642,7 @@ static void get_transport(struct us_data *us)
 		us->max_lun = 7;
 		break;
 
-	case USB_PR_BULK:
+	case USB_PR_BULK:  /*u盘走这*/
 		us->transport_name = "Bulk";
 		us->transport = usb_stor_Bulk_transport;
 		us->transport_reset = usb_stor_Bulk_reset;
@@ -677,7 +677,7 @@ static void get_protocol(struct us_data *us)
 		us->max_lun = 0;
 		break;
 
-	case USB_SC_SCSI:
+	case USB_SC_SCSI:    /*u 盘走这*/
 		us->protocol_name = "Transparent SCSI";
 		us->proto_handler = usb_stor_transparent_scsi_command;
 		break;
@@ -696,9 +696,9 @@ static int get_pipes(struct us_data *us)
 		us->pusb_intf->cur_altsetting;
 	int i;
 	struct usb_endpoint_descriptor *ep;
-	struct usb_endpoint_descriptor *ep_in = NULL;
-	struct usb_endpoint_descriptor *ep_out = NULL;
-	struct usb_endpoint_descriptor *ep_int = NULL;
+	struct usb_endpoint_descriptor *ep_in = NULL;    /*记录bulk-in*/
+	struct usb_endpoint_descriptor *ep_out = NULL;   /*记录bulk-out*/
+	struct usb_endpoint_descriptor *ep_int = NULL;   /*记录中断，如果有的话*/
 
 	/*
 	 * Find the first endpoint of each type we need.
@@ -821,7 +821,7 @@ static void quiesce_and_remove_host(struct us_data *us)
 	/* If the device is really gone, cut short reset delays */
 	if (us->pusb_dev->state == USB_STATE_NOTATTACHED) {
 		set_bit(US_FLIDX_DISCONNECTING, &us->dflags);
-		wake_up(&us->delay_wait);
+		wake_up(&us->delay_wait);  /*唤醒usb_stor_reset_common*/
 	}
 
 	/* Prevent SCSI scanning (if it hasn't started yet)
@@ -925,15 +925,15 @@ int usb_stor_probe1(struct us_data **pus,
 	init_completion(&us->cmnd_ready);
 	init_completion(&(us->notify));
 	init_waitqueue_head(&us->delay_wait);
-	INIT_DELAYED_WORK(&us->scan_dwork, usb_stor_scan_dwork);
+	INIT_DELAYED_WORK(&us->scan_dwork, usb_stor_scan_dwork); /*在probe2阶段会调用*/
 
 	/* Associate the us_data structure with the USB device */
-	result = associate_dev(us, intf);
+	result = associate_dev(us, intf);               /*将us_data和usb_interface关联起来*/
 	if (result)
 		goto BadDevice;
 
 	/* Get the unusual_devs entries and the descriptors */
-	result = get_device_info(us, id, unusual_dev);
+	result = get_device_info(us, id, unusual_dev);  /*设置us中设备信息相关字段*/
 	if (result)
 		goto BadDevice;
 
@@ -987,7 +987,7 @@ int usb_stor_probe2(struct us_data *us)
 		set_bit(US_FLIDX_REDO_READ10, &us->dflags);
 
 	/* Acquire all the other resources and add the host */
-	result = usb_stor_acquire_resources(us);
+	result = usb_stor_acquire_resources(us);    /*分配urb，创建内核线程*/
 	if (result)
 		goto BadDevice;
 	snprintf(us->scsi_name, sizeof(us->scsi_name), "usb-storage %s",
@@ -1006,7 +1006,7 @@ int usb_stor_probe2(struct us_data *us)
 	if (delay_use > 0)
 		dev_dbg(dev, "waiting for device to settle before scanning\n");
 	queue_delayed_work(system_freezable_wq, &us->scan_dwork,
-			delay_use * HZ);
+			delay_use * HZ);    /*唤醒usb_stor_scan_dwork*/
 	return 0;
 
 	/* We come here if there are any problems */
@@ -1085,4 +1085,4 @@ static struct usb_driver usb_storage_driver = {
 	.soft_unbind =	1,
 };
 
-module_usb_driver(usb_storage_driver);
+module_usb_driver(usb_storage_driver);  /*定义在usb.h中，相当于定义了init和exit函数。注册usb_register_driver(usb_storage_driver)*/

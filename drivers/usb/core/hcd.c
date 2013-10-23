@@ -477,7 +477,7 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 	u8		patch_protocol = 0;
 
 	might_sleep();
-	pr_sea("root hub control msg\n");
+
 	spin_lock_irq(&hcd_root_hub_lock);
 	status = usb_hcd_link_urb_to_ep(hcd, urb);
 	spin_unlock_irq(&hcd_root_hub_lock);
@@ -639,13 +639,13 @@ nongeneric:
 		case GetHubDescriptor:
 			len = sizeof (struct usb_hub_descriptor);
 			break;
-		case DeviceRequest | USB_REQ_GET_DESCRIPTOR:
+		case DeviceRequest | USB_REQ_GET_DESCRIPTOR:   /*root hub的hub描述符请求*/
 			/* len is returned by hub_control */
 			break;
 		}
 		status = hcd->driver->hub_control (hcd,
 			typeReq, wValue, wIndex,
-			tbuf, wLength);
+			tbuf, wLength);                            /*ohci_s3c2410_hub_control*/
 
 		if (typeReq == GetHubDescriptor)
 			usb_hub_adjust_deviceremovable(hcd->self.root_hub,
@@ -730,7 +730,8 @@ void usb_hcd_poll_rh_status(struct usb_hcd *hcd)
 	if (!hcd->uses_new_polling && !hcd->status_urb)
 		return;
 
-	length = hcd->driver->hub_status_data(hcd, buffer);
+	length = hcd->driver->hub_status_data(hcd, buffer); /*获取hub端口状态ohci_s3c2410_hub_status_data*/
+	pr_sea("length=%d buffer=0x%x\n",length,buffer[0]);
 	if (length > 0) {
 
 		/* try to complete the status urb */
@@ -744,7 +745,7 @@ void usb_hcd_poll_rh_status(struct usb_hcd *hcd)
 
 			usb_hcd_unlink_urb_from_ep(hcd, urb);
 			spin_unlock(&hcd_root_hub_lock);
-			usb_hcd_giveback_urb(hcd, urb, 0);
+			usb_hcd_giveback_urb(hcd, urb, 0);           /*回收urb，执行urb的complete函数，hub是hub_irq*/
 			spin_lock(&hcd_root_hub_lock);
 		} else {
 			length = 0;
@@ -757,15 +758,19 @@ void usb_hcd_poll_rh_status(struct usb_hcd *hcd)
 	 * exceed that limit if HZ is 100. The math is more clunky than
 	 * maybe expected, this is to make sure that all timers for USB devices
 	 * fire at the same time to give the CPU a break in between */
+//	pr_sea("uses_new_polling=%d HCD_POLL_RH=%d\n",hcd->uses_new_polling,HCD_POLL_RH(hcd));
 	if (hcd->uses_new_polling ? HCD_POLL_RH(hcd) :
 			(length == 0 && hcd->status_urb != NULL))
+	{
 		mod_timer (&hcd->rh_timer, (jiffies/(HZ/4) + 1) * (HZ/4));
+	}
 }
 EXPORT_SYMBOL_GPL(usb_hcd_poll_rh_status);
 
 /* timer callback */
 static void rh_timer_func (unsigned long _hcd)
 {
+	pr_sea("\n");
 	usb_hcd_poll_rh_status((struct usb_hcd *) _hcd);
 }
 
@@ -784,14 +789,15 @@ static int rh_queue_status (struct usb_hcd *hcd, struct urb *urb)
 		goto done;
 	}
 
-	retval = usb_hcd_link_urb_to_ep(hcd, urb);
+	retval = usb_hcd_link_urb_to_ep(hcd, urb);         /*加入到端点任务链表中*/
+
 	if (retval)
 		goto done;
 
 	hcd->status_urb = urb;
 	urb->hcpriv = hcd;	/* indicate it's queued */
 	if (!hcd->uses_new_polling)
-		mod_timer(&hcd->rh_timer, (jiffies/(HZ/4) + 1) * (HZ/4));
+		mod_timer(&hcd->rh_timer, (jiffies/(HZ/4) + 1) * (HZ/4));  /*uses_new_polling=1,不会触发rh_timer_func*/
 
 	/* If a status change has already occurred, report it ASAP */
 	else if (HCD_POLL_PENDING(hcd))
@@ -1550,7 +1556,7 @@ int usb_hcd_submit_urb (struct urb *urb, gfp_t mem_flags)
 	 * (which will control it).  HCD guarantees that it either returns
 	 * an error or calls giveback(), but not both.
 	 */
-	usb_get_urb(urb);
+	usb_get_urb(urb);        /*计数加1*/
 	atomic_inc(&urb->use_count);
 	atomic_inc(&urb->dev->urbnum);
 	usbmon_urb_submit(&hcd->self, urb);
@@ -1564,8 +1570,10 @@ int usb_hcd_submit_urb (struct urb *urb, gfp_t mem_flags)
 	 */
 
 	if (is_root_hub(urb->dev)) {/*root hub走这里*/
+		pr_sea("=====>roothub %s submit\n",usb_endpoint_xfer_int(&urb->ep->desc) ? "int" : "control");
 		status = rh_urb_enqueue(hcd, urb);
 	} else {
+		pr_sea("=====>normal submit\n");
 		status = map_urb_for_dma(hcd, urb, mem_flags);
 		if (likely(status == 0)) {
 			status = hcd->driver->urb_enqueue(hcd, urb, mem_flags);
@@ -1686,7 +1694,7 @@ void usb_hcd_giveback_urb(struct usb_hcd *hcd, struct urb *urb, int status)
 	atomic_dec (&urb->use_count);
 	if (unlikely(atomic_read(&urb->reject)))
 		wake_up (&usb_kill_urb_queue);
-	usb_put_urb (urb);
+	usb_put_urb (urb);   /*之前compele中其实又提交了urb,所以这里不会销毁*/
 }
 EXPORT_SYMBOL_GPL(usb_hcd_giveback_urb);
 
@@ -2360,7 +2368,7 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 	hcd->self.uses_dma = (dev->dma_mask != NULL);
 
 	init_timer(&hcd->rh_timer);
-	hcd->rh_timer.function = rh_timer_func;
+	hcd->rh_timer.function = rh_timer_func;  /*中断传输轮询定时器*/
 	hcd->rh_timer.data = (unsigned long) hcd;
 #ifdef CONFIG_PM_RUNTIME
 	INIT_WORK(&hcd->wakeup_work, hcd_resume_work);
@@ -2520,7 +2528,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 		return retval;
 	}
 
-	if ((retval = usb_register_bus(&hcd->self)) < 0) /*为当前控制器分配总线号,usb内部使用，不要跟usb_bus_type混淆。一个控制器对应一个usb总线*/
+	if ((retval = usb_register_bus(&hcd->self)) < 0) /*为当前控制器分配总线号,usb内部使用，不要跟设备模型的usb_bus_type混淆。一个控制器对应一个usb总线*/
 		goto err_register_bus;
 
 	if ((rhdev = usb_alloc_dev(NULL, &hcd->self, 0)) == NULL) { /*创建并初始化一个usb_device，设置为attach状态，用做根集线器。并分配设备名称usb1 usb2...*/

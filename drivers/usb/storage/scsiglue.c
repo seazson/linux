@@ -306,7 +306,7 @@ static int target_alloc(struct scsi_target *starget)
 	return 0;
 }
 
-/* queue a command */
+/* queue a command *//*scsi²ã»½ĞÑusb_stor_control_thread*/
 /* This is always called with scsi_lock(host) held */
 static int queuecommand_lck(struct scsi_cmnd *srb,
 			void (*done)(struct scsi_cmnd *))
@@ -388,7 +388,7 @@ static int device_reset(struct scsi_cmnd *srb)
 
 	/* lock the device pointers and do the reset */
 	mutex_lock(&(us->dev_mutex));
-	result = us->transport_reset(us);
+	result = us->transport_reset(us);    /*uÅÌ¶ÔÓ¦usb_stor_Bulk_reset*/
 	mutex_unlock(&us->dev_mutex);
 
 	return result < 0 ? FAILED : SUCCESS;

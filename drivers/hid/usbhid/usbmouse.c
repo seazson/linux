@@ -65,7 +65,7 @@ static void usb_mouse_irq(struct urb *urb)
 	signed char *data = mouse->data;
 	struct input_dev *dev = mouse->dev;
 	int status;
-
+	pr_sea("=============================\n");
 	switch (urb->status) {
 	case 0:			/* success */
 		break;
@@ -125,9 +125,9 @@ static int usb_mouse_probe(struct usb_interface *intf, const struct usb_device_i
 	struct input_dev *input_dev;
 	int pipe, maxp;
 	int error = -ENOMEM;
-
+	pr_sea("\n");
 	interface = intf->cur_altsetting;
-
+/*鼠标仅有一个中断类型in端点*/
 	if (interface->desc.bNumEndpoints != 1)
 		return -ENODEV;
 
@@ -135,11 +135,11 @@ static int usb_mouse_probe(struct usb_interface *intf, const struct usb_device_i
 	if (!usb_endpoint_is_int_in(endpoint))
 		return -ENODEV;
 
-	pipe = usb_rcvintpipe(dev, endpoint->bEndpointAddress);
-	maxp = usb_maxpacket(dev, pipe, usb_pipeout(pipe));
+	pipe = usb_rcvintpipe(dev, endpoint->bEndpointAddress);  /*构造中断端点的管道*/
+	maxp = usb_maxpacket(dev, pipe, usb_pipeout(pipe));      /*中断端点传输数据最大值，通常是4*/
 
 	mouse = kzalloc(sizeof(struct usb_mouse), GFP_KERNEL);
-	input_dev = input_allocate_device();
+	input_dev = input_allocate_device();                     /*分配一个input_dev*/
 	if (!mouse || !input_dev)
 		goto fail1;
 
@@ -153,7 +153,7 @@ static int usb_mouse_probe(struct usb_interface *intf, const struct usb_device_i
 
 	mouse->usbdev = dev;
 	mouse->dev = input_dev;
-
+/*获取鼠标设备的名称*/
 	if (dev->manufacturer)
 		strlcpy(mouse->name, dev->manufacturer, sizeof(mouse->name));
 
@@ -168,21 +168,29 @@ static int usb_mouse_probe(struct usb_interface *intf, const struct usb_device_i
 			 "USB HIDBP Mouse %04x:%04x",
 			 le16_to_cpu(dev->descriptor.idVendor),
 			 le16_to_cpu(dev->descriptor.idProduct));
-
+/*构造路径名*/
 	usb_make_path(dev, mouse->phys, sizeof(mouse->phys));
 	strlcat(mouse->phys, "/input0", sizeof(mouse->phys));
-
+/*填充input_dev*/
 	input_dev->name = mouse->name;
 	input_dev->phys = mouse->phys;
 	usb_to_input_id(dev, &input_dev->id);
 	input_dev->dev.parent = &intf->dev;
-
+/* evbit 用来描述事件，EV_KEY 是按键事件，EV_REL 是相对坐标事件 */ 
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REL);
+
+/* keybit 表示键值，包括左键、右键和中键 */  
 	input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |
 		BIT_MASK(BTN_RIGHT) | BIT_MASK(BTN_MIDDLE);
+
+/* relbit 用于表示相对坐标值 */  
 	input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y);
+
+/* 有的鼠标还有其它按键 */ 	
 	input_dev->keybit[BIT_WORD(BTN_MOUSE)] |= BIT_MASK(BTN_SIDE) |
 		BIT_MASK(BTN_EXTRA);
+
+/* 中键滚轮的滚动值 */  
 	input_dev->relbit[0] |= BIT_MASK(REL_WHEEL);
 
 	input_set_drvdata(input_dev, mouse);
@@ -195,7 +203,7 @@ static int usb_mouse_probe(struct usb_interface *intf, const struct usb_device_i
 			 usb_mouse_irq, mouse, endpoint->bInterval);
 	mouse->irq->transfer_dma = mouse->data_dma;
 	mouse->irq->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
-
+/* 注册一个input设备 */
 	error = input_register_device(mouse->dev);
 	if (error)
 		goto fail3;

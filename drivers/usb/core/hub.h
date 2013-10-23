@@ -73,7 +73,7 @@ struct usb_hub {
 	u8			indicator[USB_MAXCHILDREN];
 	struct delayed_work	leds;
 	struct delayed_work	init_work;
-	struct usb_port		**ports;          /*指向hub下接的设备*/
+	struct usb_port		**ports;          /*指向hub下接所有的端口*/
 };
 
 /**

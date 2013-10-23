@@ -123,7 +123,7 @@ static int ohci_urb_enqueue (
 	struct ed	*ed;
 	urb_priv_t	*urb_priv;
 	unsigned int	pipe = urb->pipe;
-	int		i, size = 0;
+	int		i, size = 0;    /*size代表几个传输过程，或者说是几个包(td)*/
 	unsigned long	flags;
 	int		retval = 0;
 
@@ -132,9 +132,9 @@ static int ohci_urb_enqueue (
 #endif
 
 	/* every endpoint has a ed, locate and maybe (re)initialize it */
-	if (! (ed = ed_get (ohci, urb->ep, urb->dev, pipe, urb->interval)))
+	if (! (ed = ed_get (ohci, urb->ep, urb->dev, pipe, urb->interval)))   /*分配或者获取端口对应的ed*/
 		return -ENOMEM;
-
+/*确定要传几个包*/
 	/* for the private part of the URB we need the number of TDs (size) */
 	switch (ed->type) {
 		case PIPE_CONTROL:
@@ -197,13 +197,13 @@ static int ohci_urb_enqueue (
 		retval = -ENODEV;
 		goto fail;
 	}
-	retval = usb_hcd_link_urb_to_ep(hcd, urb);
+	retval = usb_hcd_link_urb_to_ep(hcd, urb);  /*添加到ep下的链表上*/
 	if (retval)
 		goto fail;
 
 	/* schedule the ed if needed */
 	if (ed->state == ED_IDLE) {
-		retval = ed_schedule (ohci, ed);
+		retval = ed_schedule (ohci, ed);        /*设置ohci控制器寄存器中对应指针指向*/
 		if (retval < 0) {
 			usb_hcd_unlink_urb_from_ep(hcd, urb);
 			goto fail;
@@ -261,7 +261,7 @@ static int ohci_urb_enqueue (
 	 * and update count of queued periodic urbs
 	 */
 	urb->hcpriv = urb_priv;
-	td_submit_urb (ohci, urb);
+	td_submit_urb (ohci, urb);    /*填充td并发送*/
 
 fail:
 	if (retval)
@@ -553,25 +553,25 @@ static int ohci_init (struct ohci_hcd *ohci)
 #endif
 
 	/* Disable HC interrupts */
-	ohci_writel (ohci, OHCI_INTR_MIE, &ohci->regs->intrdisable);
+	ohci_writel (ohci, OHCI_INTR_MIE, &ohci->regs->intrdisable);  /*禁止中断*/
 
 	/* flush the writes, and save key bits like RWC */
-	if (ohci_readl (ohci, &ohci->regs->control) & OHCI_CTRL_RWC)
+	if (ohci_readl (ohci, &ohci->regs->control) & OHCI_CTRL_RWC)  /*检查是否是远程唤醒*/
 		ohci->hc_control |= OHCI_CTRL_RWC;
 
 	/* Read the number of ports unless overridden */
-	if (ohci->num_ports == 0)  /*获取主hub下行端口数目*/
+	if (ohci->num_ports == 0)  /*获取主hub下行端口数目，从主机控制器寄存器中读取*/
 		ohci->num_ports = roothub_a(ohci) & RH_A_NDP;
 
 	if (ohci->hcca)
 		return 0;
 
 	ohci->hcca = dma_alloc_coherent (hcd->self.controller,
-			sizeof *ohci->hcca, &ohci->hcca_dma, 0);
+			sizeof *ohci->hcca, &ohci->hcca_dma, 0);              /*为hcca分配内存*/
 	if (!ohci->hcca)
 		return -ENOMEM;
 
-	if ((ret = ohci_mem_init (ohci)) < 0)
+	if ((ret = ohci_mem_init (ohci)) < 0)                         /*为ed和td分配dma*/
 		ohci_stop (hcd);
 	else {
 		create_debug_files (ohci);
@@ -595,7 +595,7 @@ static int ohci_run (struct ohci_hcd *ohci)
 	ohci->rh_state = OHCI_RH_HALTED;
 
 	/* boot firmware should have set this up (5.1.1.3.1) */
-	if (first) {
+	if (first) {                             /*第一次需要获取一帧中的bit数*/
 
 		val = ohci_readl (ohci, &ohci->regs->fminterval);
 		ohci->fminterval = val & 0x3fff;
@@ -613,7 +613,7 @@ static int ohci_run (struct ohci_hcd *ohci)
 	 * already be enabled; if so we'll just enable it again.
 	 */
 	if ((ohci->hc_control & OHCI_CTRL_RWC) != 0)
-		device_set_wakeup_capable(hcd->self.controller, 1);
+		device_set_wakeup_capable(hcd->self.controller, 1);  /*有远程唤醒能力的化需要设置*/
 
 	switch (ohci->hc_control & OHCI_CTRL_HCFS) {
 	case OHCI_USB_OPER:
@@ -644,7 +644,7 @@ static int ohci_run (struct ohci_hcd *ohci)
 
 retry:
 	/* HC Reset requires max 10 us delay */
-	ohci_writel (ohci, OHCI_HCR,  &ohci->regs->cmdstatus);
+	ohci_writel (ohci, OHCI_HCR,  &ohci->regs->cmdstatus);            /*软件复位控制器*/
 	val = 30;	/* ... allow extra time */
 	while ((ohci_readl (ohci, &ohci->regs->cmdstatus) & OHCI_HCR) != 0) {
 		if (--val == 0) {
@@ -672,7 +672,7 @@ retry:
 
 	/* Tell the controller where the control and bulk lists are
 	 * The lists are empty now. */
-	ohci_writel (ohci, 0, &ohci->regs->ed_controlhead);
+	ohci_writel (ohci, 0, &ohci->regs->ed_controlhead);                /*初始化控制和突发指针头指向*/
 	ohci_writel (ohci, 0, &ohci->regs->ed_bulkhead);
 
 	/* a reset clears this */
@@ -698,26 +698,26 @@ retry:
 	}
 
 	/* use rhsc irqs after khubd is fully initialized */
-	set_bit(HCD_FLAG_POLL_RH, &hcd->flags);
+	set_bit(HCD_FLAG_POLL_RH, &hcd->flags);                    /*使用新的轮询方式*/
 	hcd->uses_new_polling = 1;
 
 	/* start controller operations */
 	ohci->hc_control &= OHCI_CTRL_RWC;
-	ohci->hc_control |= OHCI_CONTROL_INIT | OHCI_USB_OPER;
+	ohci->hc_control |= OHCI_CONTROL_INIT | OHCI_USB_OPER;     /*设置control ED和Bulk ED的访问比例4:1, 同时设置为USBOPERATIONAL状态 */
 	ohci_writel (ohci, ohci->hc_control, &ohci->regs->control);
 	ohci->rh_state = OHCI_RH_RUNNING;
 
 	/* wake on ConnectStatusChange, matching external hubs */
-	ohci_writel (ohci, RH_HS_DRWE, &ohci->regs->roothub.status);
+	ohci_writel (ohci, RH_HS_DRWE, &ohci->regs->roothub.status);  /*使能端口状态检测*/
 
 	/* Choose the interrupts we care about now, others later on demand */
 	mask = OHCI_INTR_INIT;
-	ohci_writel (ohci, ~0, &ohci->regs->intrstatus);
-	ohci_writel (ohci, mask, &ohci->regs->intrenable);
+	ohci_writel (ohci, ~0, &ohci->regs->intrstatus);           /*写1清零所有中断标志*/
+	ohci_writel (ohci, mask, &ohci->regs->intrenable);         /*使能多种中断*/
 
 	/* handle root hub init quirks ... */
 	val = roothub_a (ohci);
-	val &= ~(RH_A_PSM | RH_A_OCPM);
+	val &= ~(RH_A_PSM | RH_A_OCPM);                            /*所有端口同时上电，并设置过流告警方式*/
 	if (ohci->flags & OHCI_QUIRK_SUPERIO) {
 		/* NSC 87560 and maybe others */
 		val |= RH_A_NOCP;
@@ -731,7 +731,7 @@ retry:
 		val |= RH_A_NPS;
 		ohci_writel (ohci, val, &ohci->regs->roothub.a);
 	}
-	ohci_writel (ohci, RH_HS_LPSC, &ohci->regs->roothub.status);
+	ohci_writel (ohci, RH_HS_LPSC, &ohci->regs->roothub.status);   /*打开全局电源*/
 	ohci_writel (ohci, (val & RH_A_NPS) ? 0 : RH_B_PPCM,
 						&ohci->regs->roothub.b);
 	// flush those writes
@@ -743,7 +743,7 @@ retry:
 	// POTPGT delay is bits 24-31, in 2 ms units.
 	mdelay ((val >> 23) & 0x1fe);
 
-	if (quirk_zfmicro(ohci)) {
+	if (quirk_zfmicro(ohci)) {                                     /*PCI才有的*/
 		/* Create timer to watch for bad queue state on ZF Micro */
 		setup_timer(&ohci->unlink_watchdog, unlink_watchdog_func,
 				(unsigned long) ohci);
@@ -798,7 +798,7 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 	 * work on all systems (edge triggering for OHCI can be a factor).
 	 */
 	ints = ohci_readl(ohci, &regs->intrstatus);
-	pr_sea("usb_irq %d\n",ints);
+//	pr_sea("usb hard irq 0x%x ",ints);
 
 	/* Check for an all 1's result which is a typical consequence
 	 * of dead, unclocked, or unplugged (CardBus...) devices
@@ -812,6 +812,8 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 
 	/* We only care about interrupts that are enabled */
 	ints &= ohci_readl(ohci, &regs->intrenable);
+	if(ints)
+		pr_sea("interrapt able 0x%x\n",ints);
 
 	/* interrupt for some other device? */
 	if (ints == 0 || unlikely(ohci->rh_state == OHCI_RH_HALTED))
@@ -838,11 +840,11 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 		ohci_usb_reset (ohci);
 	}
 
-	if (ints & OHCI_INTR_RHSC) {
+	if (ints & OHCI_INTR_RHSC) {  /*表示端口状态发生改变*/
 		ohci_vdbg(ohci, "rhsc\n");
 		ohci->next_statechange = jiffies + STATECHANGE_DELAY;
 		ohci_writel(ohci, OHCI_INTR_RD | OHCI_INTR_RHSC,
-				&regs->intrstatus);
+				&regs->intrstatus);        /*清除中断标志*/
 
 		/* NOTE: Vendors didn't always make the same implementation
 		 * choices for RHSC.  Many followed the spec; RHSC triggers
@@ -852,7 +854,7 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 		 * always disable it here and rely on polling until khubd
 		 * re-enables it.
 		 */
-		ohci_writel(ohci, OHCI_INTR_RHSC, &regs->intrdisable);
+		ohci_writel(ohci, OHCI_INTR_RHSC, &regs->intrdisable);  /*关闭中断使能，之后由khubd再次使能*/
 		usb_hcd_poll_rh_status(hcd);
 	}
 
@@ -872,13 +874,13 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 			usb_hcd_resume_root_hub(hcd);
 	}
 
-	if (ints & OHCI_INTR_WDH) {
+	if (ints & OHCI_INTR_WDH) {      /*发送数据完毕之后会触发此中断，表示device数据也回写了。在里面会调用urb的complete*/
 		spin_lock (&ohci->lock);
 		dl_done_list (ohci);
 		spin_unlock (&ohci->lock);
 	}
 
-	if (quirk_zfmicro(ohci) && (ints & OHCI_INTR_SF)) {
+	if (quirk_zfmicro(ohci) && (ints & OHCI_INTR_SF)) {   /*PCI设备会走这*/
 		spin_lock(&ohci->lock);
 		if (ohci->ed_to_check) {
 			struct ed *ed = ohci->ed_to_check;
@@ -919,8 +921,8 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 	spin_unlock (&ohci->lock);
 
 	if (ohci->rh_state == OHCI_RH_RUNNING) {
-		ohci_writel (ohci, ints, &regs->intrstatus);
-		ohci_writel (ohci, OHCI_INTR_MIE, &regs->intrenable);
+		ohci_writel (ohci, ints, &regs->intrstatus);            /*清掉我们处理过的中断*/
+		ohci_writel (ohci, OHCI_INTR_MIE, &regs->intrenable);   /*使能总中断*/
 		// flush those writes
 		(void) ohci_readl (ohci, &ohci->regs->control);
 	}

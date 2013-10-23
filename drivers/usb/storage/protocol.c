@@ -147,7 +147,7 @@ unsigned int usb_stor_access_xfer_buf(unsigned char *buffer,
 	 * position in the kernel's virtual address space.
 	 */
 
-	if (!sg)
+	if (!sg)  /*指示是否使用离散传输*/
 		sg = scsi_sglist(srb);
 
 	/* This loop handles a single s-g list entry, which may

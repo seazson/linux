@@ -32,7 +32,7 @@ struct scsi_driver;
 struct scsi_data_buffer {
 	struct sg_table table;
 	unsigned length;
-	int resid;
+	int resid;  /*期望传输与实际传输的差值*/
 };
 
 /* embedded in scsi_cmnd */
@@ -51,7 +51,7 @@ struct scsi_pointer {
 	volatile int phase;
 };
 
-struct scsi_cmnd {
+struct scsi_cmnd {/*代表一个scsi命令*/
 	struct scsi_device *device;
 	struct list_head list;  /* scsi_cmnd participates in queue lists */
 	struct list_head eh_entry; /* entry for the host eh_cmd_q */

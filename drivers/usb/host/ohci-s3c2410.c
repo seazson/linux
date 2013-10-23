@@ -156,18 +156,14 @@ static int ohci_s3c2410_hub_control(
 	int ret = -EINVAL;
 	u32 *data = (u32 *)buf;
 
-	dev_dbg(hcd->self.controller,
-		"s3c2410_hub_control(%p,0x%04x,0x%04x,0x%04x,%p,%04x)\n",
-		hcd, typeReq, wValue, wIndex, buf, wLength);
-
-	pr_sea("s3c2410_hub_control(%p,0x%04x,0x%04x,0x%04x,%p,%04x)\n",
-		hcd, typeReq, wValue, wIndex, buf, wLength);
+//	dev_dbg(hcd->self.controller,
+//		"ohci_s3c2410_hub_control(%p,0x%04x,0x%04x,0x%04x,%p,%04x)\n",
+//		hcd, typeReq, wValue, wIndex, buf, wLength);
 
 	/* if we are only an humble host without any special capabilities
 	 * process the request straight away and exit */
 
 	if (info == NULL) {
-		pr_sea("\n");
 		ret = ohci_hub_control(hcd, typeReq, wValue,
 				       wIndex, buf, wLength);
 		goto out;
@@ -450,8 +446,8 @@ static const struct hc_driver ohci_s3c2410_hc_driver = {
 	/*
 	 * root hub support
 	 */
-	.hub_status_data =	ohci_s3c2410_hub_status_data,
-	.hub_control =		ohci_s3c2410_hub_control,
+	.hub_status_data =	ohci_s3c2410_hub_status_data,     /*获取hub的端口状态*/
+	.hub_control =		ohci_s3c2410_hub_control,         /*用于获取hub的信息*/
 #ifdef	CONFIG_PM
 	.bus_suspend =		ohci_bus_suspend,
 	.bus_resume =		ohci_bus_resume,

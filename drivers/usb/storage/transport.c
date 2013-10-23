@@ -151,7 +151,7 @@ static int usb_stor_msg_common(struct us_data *us, int timeout)
 	us->current_urb->transfer_dma = us->iobuf_dma;
 
 	/* submit the URB */
-	status = usb_submit_urb(us->current_urb, GFP_NOIO);
+	status = usb_submit_urb(us->current_urb, GFP_NOIO);   /*提交urb，不能有io操作，防止死循环*/
 	if (status) {
 		/* something went wrong */
 		return status;
@@ -173,9 +173,9 @@ static int usb_stor_msg_common(struct us_data *us, int timeout)
  
 	/* wait for the completion of the URB */
 	timeleft = wait_for_completion_interruptible_timeout(
-			&urb_done, timeout ? : MAX_SCHEDULE_TIMEOUT);
+			&urb_done, timeout ? : MAX_SCHEDULE_TIMEOUT);   /*由usb_stor_blocking_completion唤醒*/
  
-	clear_bit(US_FLIDX_URB_ACTIVE, &us->dflags);
+	clear_bit(US_FLIDX_URB_ACTIVE, &us->dflags);            /*urb已经完成，所以不再活跃*/
 
 	if (timeleft <= 0) {
 		usb_stor_dbg(us, "%s -- cancelling URB\n",
@@ -272,7 +272,7 @@ static int interpret_urb_result(struct us_data *us, unsigned int pipe,
 	case 0:
 		if (partial != length) {
 			usb_stor_dbg(us, "-- short transfer\n");
-			return USB_STOR_XFER_SHORT;
+			return USB_STOR_XFER_SHORT;  /*传输成功，但是短了*/
 		}
 
 		usb_stor_dbg(us, "-- transfer complete\n");
@@ -387,7 +387,7 @@ static int usb_stor_intr_transfer(struct us_data *us, void *buf,
  * Transfer one buffer via bulk pipe, without timeouts, but allowing early
  * termination.  Return codes are USB_STOR_XFER_xxx.  If the bulk pipe
  * stalls during the transfer, the halt is automatically cleared.
- */
+ */ /*填充并传输urb*/
 int usb_stor_bulk_transfer_buf(struct us_data *us, unsigned int pipe,
 	void *buf, unsigned int length, unsigned int *act_len)
 {
@@ -398,7 +398,7 @@ int usb_stor_bulk_transfer_buf(struct us_data *us, unsigned int pipe,
 	/* fill and submit the URB */
 	usb_fill_bulk_urb(us->current_urb, us->pusb_dev, pipe, buf, length,
 		      usb_stor_blocking_completion, NULL);
-	result = usb_stor_msg_common(us, 0);
+	result = usb_stor_msg_common(us, 0);      /*发送urb，并等待完成*/
 
 	/* store the actual length of the data transferred */
 	if (act_len)
@@ -468,7 +468,7 @@ int usb_stor_bulk_srb(struct us_data* us, unsigned int pipe,
 	unsigned int partial;
 	int result = usb_stor_bulk_transfer_sglist(us, pipe, scsi_sglist(srb),
 				      scsi_sg_count(srb), scsi_bufflen(srb),
-				      &partial);
+				      &partial);   /*离散传输*/
 
 	scsi_set_resid(srb, scsi_bufflen(srb) - partial);
 	return result;
@@ -601,7 +601,7 @@ void usb_stor_invoke_transport(struct scsi_cmnd *srb, struct us_data *us)
 
 	/* send the command to the transport layer */
 	scsi_set_resid(srb, 0);
-	result = us->transport(srb, us);
+	result = us->transport(srb, us);   /*u盘对应usb_stor_Bulk_transport*/
 
 	/* if the command gets aborted by the higher layers, we need to
 	 * short-circuit all other processing
@@ -621,7 +621,7 @@ void usb_stor_invoke_transport(struct scsi_cmnd *srb, struct us_data *us)
 
 	/* if the transport provided its own sense data, don't auto-sense */
 	if (result == USB_STOR_TRANSPORT_NO_SENSE) {
-		srb->result = SAM_STAT_CHECK_CONDITION;
+		srb->result = SAM_STAT_CHECK_CONDITION;   /*用于告知scsi核心层去读sense buffer*/
 		last_sector_hacks(us, srb);
 		return;
 	}
@@ -633,7 +633,7 @@ void usb_stor_invoke_transport(struct scsi_cmnd *srb, struct us_data *us)
 	 * I normally don't use a flag like this, but it's almost impossible
 	 * to understand what's going on here if I don't.
 	 */
-	need_auto_sense = 0;
+	need_auto_sense = 0;   /*用于表示是否需要获取sense data*/
 
 	/*
 	 * If we're running the CB transport, which is incapable
@@ -684,7 +684,7 @@ void usb_stor_invoke_transport(struct scsi_cmnd *srb, struct us_data *us)
 	      (srb->cmnd[0] == MODE_SENSE_10))) {
 		usb_stor_dbg(us, "-- unexpectedly short transfer\n");
 	}
-
+/*发送REQUEST SENSE命令*/
 	/* Now, if we need to do the auto-sense, let's do it */
 	if (need_auto_sense) {
 		int temp_result;
@@ -785,7 +785,7 @@ Retry_Sense:
 			     sshdr.response_code, sshdr.sense_key,
 			     sshdr.asc, sshdr.ascq);
 #ifdef CONFIG_USB_STORAGE_DEBUG
-		usb_stor_show_sense(us, sshdr.sense_key, sshdr.asc, sshdr.ascq);
+		usb_stor_show_sense(us, sshdr.sense_key, sshdr.asc, sshdr.ascq);   /*打印sense信息*/
 #endif
 
 		/* set the result so the higher layers expect this data */
@@ -875,12 +875,12 @@ Retry_Sense:
 	/* We must release the device lock because the pre_reset routine
 	 * will want to acquire it. */
 	mutex_unlock(&us->dev_mutex);
-	result = usb_stor_port_reset(us);
+	result = usb_stor_port_reset(us);      /*scsi总线复位，重新usb枚举*/
 	mutex_lock(&us->dev_mutex);
 
 	if (result < 0) {
 		scsi_lock(us_to_host(us));
-		usb_stor_report_device_reset(us);
+		usb_stor_report_device_reset(us);  /*scsi设备复位*/
 		scsi_unlock(us_to_host(us));
 		us->transport_reset(us);
 	}
@@ -1080,7 +1080,7 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 	/* copy the command payload */
 	memset(bcb->CDB, 0, sizeof(bcb->CDB));
 	memcpy(bcb->CDB, srb->cmnd, bcb->Length);
-
+/*阶段1:传输CBW*/
 	/* send it to out endpoint */
 	usb_stor_dbg(us, "Bulk Command S 0x%x T 0x%x L %d F %d Trg %d LUN %d CL %d\n",
 		     le32_to_cpu(bcb->Signature), bcb->Tag,
@@ -1092,7 +1092,7 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 	usb_stor_dbg(us, "Bulk command transfer result=%d\n", result);
 	if (result != USB_STOR_XFER_GOOD)
 		return USB_STOR_TRANSPORT_ERROR;
-
+/*阶段2:传输数据*/
 	/* DATA STAGE */
 	/* send/receive data payload, if there is any */
 
@@ -1100,12 +1100,12 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 	 * command phase and the data phase.  Some devices need a little
 	 * more than that, probably because of clock rate inaccuracies. */
 	if (unlikely(us->fflags & US_FL_GO_SLOW))
-		udelay(125);
+		udelay(125);                             /*有些设备传输完CBW后需要延时*/
 
 	if (transfer_length) {
 		unsigned int pipe = srb->sc_data_direction == DMA_FROM_DEVICE ? 
 				us->recv_bulk_pipe : us->send_bulk_pipe;
-		result = usb_stor_bulk_srb(us, pipe, srb);
+		result = usb_stor_bulk_srb(us, pipe, srb);  /*真正的数据传输*/
 		usb_stor_dbg(us, "Bulk data transfer result 0x%x\n", result);
 		if (result == USB_STOR_XFER_ERROR)
 			return USB_STOR_TRANSPORT_ERROR;
@@ -1123,11 +1123,11 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 	/* See flow chart on pg 15 of the Bulk Only Transport spec for
 	 * an explanation of how this code works.
 	 */
-
+/*阶段3:获取CSW*/
 	/* get CSW for device status */
 	usb_stor_dbg(us, "Attempting to get CSW...\n");
 	result = usb_stor_bulk_transfer_buf(us, us->recv_bulk_pipe,
-				bcs, US_BULK_CS_WRAP_LEN, &cswlen);
+				bcs, US_BULK_CS_WRAP_LEN, &cswlen);  /*cswlen记录了实际长度*/
 
 	/* Some broken devices add unnecessary zero-length packets to the
 	 * end of their data transfers.  Such packets show up as 0-length
@@ -1154,12 +1154,12 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 		return USB_STOR_TRANSPORT_ERROR;
 
 	/* check bulk status */
-	residue = le32_to_cpu(bcs->Residue);
+	residue = le32_to_cpu(bcs->Residue);   /*实际传输数据和期望传输数据的差值*/
 	usb_stor_dbg(us, "Bulk Status S 0x%x T 0x%x R %u Stat 0x%x\n",
 		     le32_to_cpu(bcs->Signature), bcs->Tag,
 		     residue, bcs->Status);
 	if (!(bcs->Tag == us->tag || (us->fflags & US_FL_BULK_IGNORE_TAG)) ||
-		bcs->Status > US_BULK_STAT_PHASE) {
+		bcs->Status > US_BULK_STAT_PHASE) {  /*规范中规定这个值只能是0,1,2*/
 		usb_stor_dbg(us, "Bulk logical error\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
@@ -1170,7 +1170,7 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 	 */
 	if (!us->bcs_signature) {
 		us->bcs_signature = bcs->Signature;
-		if (us->bcs_signature != cpu_to_le32(US_BULK_CS_SIGN))
+		if (us->bcs_signature != cpu_to_le32(US_BULK_CS_SIGN))   /*US_BULK_CS_SIGN标志这个数据包是CSW*/
 			usb_stor_dbg(us, "Learnt BCS signature 0x%08X\n",
 				     le32_to_cpu(us->bcs_signature));
 	} else if (bcs->Signature != us->bcs_signature) {
@@ -1182,7 +1182,7 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 
 	/* try to compute the actual residue, based on how much data
 	 * was really transferred and what the device tells us */
-	if (residue && !(us->fflags & US_FL_IGNORE_RESIDUE)) {
+	if (residue && !(us->fflags & US_FL_IGNORE_RESIDUE)) {   /*传送长度与实际不相等时的处理*/
 
 		/* Heuristically detect devices that generate bogus residues
 		 * by seeing what happens with INQUIRY and READ CAPACITY
@@ -1207,7 +1207,7 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 	switch (bcs->Status) {
 		case US_BULK_STAT_OK:
 			/* device babbled -- return fake sense data */
-			if (fake_sense) {
+			if (fake_sense) {  /*fake_sense表示sense data是由软件构造出来的*/
 				memcpy(srb->sense_buffer, 
 				       usb_stor_sense_invalidCDB, 
 				       sizeof(usb_stor_sense_invalidCDB));

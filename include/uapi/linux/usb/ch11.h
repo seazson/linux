@@ -233,7 +233,7 @@ struct usb_hub_descriptor {
 	__u8  bDescLength;
 	__u8  bDescriptorType;
 	__u8  bNbrPorts;              /*下行端口数*/
-	__le16 wHubCharacteristics;
+	__le16 wHubCharacteristics;   /*hub特性*/
 	__u8  bPwrOn2PwrGood;
 	__u8  bHubContrCurrent;       /*最大电流需求*/
 

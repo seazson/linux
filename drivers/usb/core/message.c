@@ -25,13 +25,13 @@ struct api_context {
 	struct completion	done;
 	int			status;
 };
-
+/*解除完成量*/
 static void usb_api_blocking_completion(struct urb *urb)
 {
 	struct api_context *ctx = urb->context;
 
 	ctx->status = urb->status;
-	complete(&ctx->done);
+	complete(&ctx->done); 
 }
 
 
@@ -50,12 +50,12 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 	init_completion(&ctx.done);
 	urb->context = &ctx;
 	urb->actual_length = 0;
-	retval = usb_submit_urb(urb, GFP_NOIO);
+	retval = usb_submit_urb(urb, GFP_NOIO);  /*发送之后除了root hub会直接返回，其他的需要下面等待。*/
 	if (unlikely(retval))
 		goto out;
 
 	expire = timeout ? msecs_to_jiffies(timeout) : MAX_SCHEDULE_TIMEOUT;
-	if (!wait_for_completion_timeout(&ctx.done, expire)) {
+	if (!wait_for_completion_timeout(&ctx.done, expire)) { /*发送完成之后，由urb的complete解等待*/
 		usb_kill_urb(urb);
 		retval = (ctx.status == -ENOENT ? -ETIMEDOUT : ctx.status);
 
@@ -101,6 +101,33 @@ static int usb_internal_control_msg(struct usb_device *usb_dev,
 		return length;
 }
 
+static char *request_map[]={
+	"get status",
+	"clear feature",
+	"unused",
+	"set feature",
+	"unused",
+	"set address",
+	"get descriptor",
+	"set descriptor",
+	"get configuration",
+	"set configuration",
+	"get interface",
+	"set interface",
+	"synch frame",
+	"unknow",
+};
+
+static char *value_map[]={
+	"zero",
+	"device",
+	"config",
+	"string",
+	"interface",
+	"endpoint",
+	"device_qualifier",
+};
+
 /**
  * usb_control_msg - Builds a control urb, sends it off and waits for completion
  * @dev: pointer to the usb device to send the message to
@@ -128,13 +155,19 @@ static int usb_internal_control_msg(struct usb_device *usb_dev,
  * If a thread in your driver uses this call, make sure your disconnect()
  * method can wait for it to complete.  Since you don't have a handle on the
  * URB used, you can't cancel the request.
- */ /*用于构造控制传输包*/
+ */ /*用于构造控制传输包，对于root hub调用了rh_call_control*/
 int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 		    __u8 requesttype, __u16 value, __u16 index, void *data,
 		    __u16 size, int timeout)
 {
 	struct usb_ctrlrequest *dr;
 	int ret;
+	if((request == 6 || request == 7)&& (value >> 8) < 7)
+		pr_sea("MSG: %s[%x] %s[%x] - %s[%x]\n", (requesttype&0x80)?"In":"Out", requesttype, request_map[request], request, value_map[value>>8], value);
+	else if(request < 0x0c && (value >> 8) < 7)
+		pr_sea("MSG: %s[%x] %s[%x] - %x\n", (requesttype&0x80)?"In":"Out", requesttype, request_map[request], request, value);
+	else
+		pr_sea("MSG: %s[%x] %x - %x\n", (requesttype&0x80)?"In":"Out", requesttype,request,value);
 
 	dr = kmalloc(sizeof(struct usb_ctrlrequest), GFP_NOIO);
 	if (!dr)
@@ -633,7 +666,7 @@ int usb_get_descriptor(struct usb_device *dev, unsigned char type,
 	int result;
 
 	memset(buf, 0, size);	/* Make sure we parse really received data */
-	pr_sea("Type=%d\n",type);
+
 	for (i = 0; i < 3; ++i) {
 		/* retry on length 0 or error; some devices are flakey */
 		result = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
@@ -1874,7 +1907,7 @@ free_interfaces:
 
 	if (cp->string == NULL &&
 			!(dev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
-		cp->string = usb_cache_string(dev, cp->desc.iConfiguration); /*获取控制字段的字符串*/
+		cp->string = usb_cache_string(dev, cp->desc.iConfiguration); /*获取配置字段的字符串*/
 
 	/* Now that the interfaces are installed, re-enable LPM. */
 	usb_unlocked_enable_lpm(dev);

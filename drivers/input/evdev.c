@@ -49,7 +49,7 @@ struct evdev_client {
 	struct list_head node;
 	int clkid;
 	unsigned int bufsize;
-	struct input_event buffer[];
+	struct input_event buffer[];  /*存放具体事件*/
 };
 
 /* flush queued events of type @type, caller must hold client->buffer_lock */
@@ -387,7 +387,7 @@ static int evdev_open(struct inode *inode, struct file *file)
 	unsigned int bufsize = evdev_compute_buffer_size(evdev->handle.dev);
 	struct evdev_client *client;
 	int error;
-
+/*打开的时候会分配一个evdev_client*/
 	client = kzalloc(sizeof(struct evdev_client) +
 				bufsize * sizeof(struct input_event),
 			 GFP_KERNEL);
@@ -399,7 +399,7 @@ static int evdev_open(struct inode *inode, struct file *file)
 	client->evdev = evdev;
 	evdev_attach_client(evdev, client);
 
-	error = evdev_open_device(evdev);
+	error = evdev_open_device(evdev);  /*底层打开，如果是第一次打开.则调用input device的open()函数*/
 	if (error)
 		goto err_free_client;
 
@@ -497,9 +497,9 @@ static ssize_t evdev_read(struct file *file, char __user *buffer,
 			break;
 
 		while (read + input_event_size() <= count &&
-		       evdev_fetch_next_event(client, &event)) {
+		       evdev_fetch_next_event(client, &event)) {      /*提取事件*/
 
-			if (input_event_to_user(buffer + read, &event))
+			if (input_event_to_user(buffer + read, &event))   /*拷贝到用户空间*/
 				return -EFAULT;
 
 			read += input_event_size();
@@ -1082,7 +1082,7 @@ static int evdev_connect(struct input_handler *handler, struct input_dev *dev,
 	int minor;
 	int dev_no;
 	int error;
-
+/*分配一个input次设备号*/
 	minor = input_get_new_minor(EVDEV_MINOR_BASE, EVDEV_MINORS, true);
 	if (minor < 0) {
 		error = minor;
@@ -1119,11 +1119,11 @@ static int evdev_connect(struct input_handler *handler, struct input_dev *dev,
 	evdev->dev.release = evdev_free;
 	device_initialize(&evdev->dev);
 
-	error = input_register_handle(&evdev->handle);
+	error = input_register_handle(&evdev->handle);  /*初始化handle*/
 	if (error)
 		goto err_free_evdev;
 
-	cdev_init(&evdev->cdev, &evdev_fops);
+	cdev_init(&evdev->cdev, &evdev_fops);    /*注册evdev字符设备*/
 	evdev->cdev.kobj.parent = &evdev->dev.kobj;
 	error = cdev_add(&evdev->cdev, evdev->dev.devt, 1);
 	if (error)

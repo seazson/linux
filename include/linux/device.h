@@ -1066,7 +1066,7 @@ do {						     \
 } while (0)
 #elif defined(DEBUG)
 #define dev_dbg(dev, format, arg...)		\
-	dev_printk(KERN_DEBUG, dev, format, ##arg)
+	dev_printk(KERN_ALERT, dev, format, ##arg)
 #else
 #define dev_dbg(dev, format, arg...)				\
 ({								\

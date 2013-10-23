@@ -2058,13 +2058,13 @@ int input_register_device(struct input_dev *dev)
 	/*
 	 * If delay and period are pre-set by the driver, then autorepeating
 	 * is handled by the driver itself and we don't do it in input.c.
-	 */
+	 */ /*重复按键的处理*/
 	init_timer(&dev->timer);
 	if (!dev->rep[REP_DELAY] && !dev->rep[REP_PERIOD]) {
 		dev->timer.data = (long) dev;
 		dev->timer.function = input_repeat_key;
-		dev->rep[REP_DELAY] = 250;
-		dev->rep[REP_PERIOD] = 33;
+		dev->rep[REP_DELAY] = 250;   /*第一次按下多久算一次按键*/
+		dev->rep[REP_PERIOD] = 33;   /*按下去之后多久没有抬起来算一次按键*/
 	}
 
 	if (!dev->getkeycode)
@@ -2072,7 +2072,7 @@ int input_register_device(struct input_dev *dev)
 
 	if (!dev->setkeycode)
 		dev->setkeycode = input_default_setkeycode;
-
+	/*设置input_dev中device的名字，这个名字会在/class/input中出现*/ 
 	dev_set_name(&dev->dev, "input%ld",
 		     (unsigned long) atomic_inc_return(&input_no) - 1);
 
@@ -2093,7 +2093,7 @@ int input_register_device(struct input_dev *dev)
 	list_add_tail(&dev->node, &input_dev_list);
 
 	list_for_each_entry(handler, &input_handler_list, node)
-		input_attach_handler(dev, handler);
+		input_attach_handler(dev, handler); /*遍历input_handler_list链表，配对input_dev和input_handler*/
 
 	input_wakeup_procfs_readers();
 
@@ -2165,7 +2165,7 @@ int input_register_handler(struct input_handler *handler)
 	list_add_tail(&handler->node, &input_handler_list);
 
 	list_for_each_entry(dev, &input_dev_list, node)
-		input_attach_handler(dev, handler);
+		input_attach_handler(dev, handler);  /*配对，遍历input_dev_list链表中的input_dev设备，与对应的input_handler结构配对，和注册input_dev过程一样的*/
 
 	input_wakeup_procfs_readers();
 

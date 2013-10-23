@@ -65,7 +65,7 @@ struct usb_host_endpoint {
 	struct usb_endpoint_descriptor		desc;
 	struct usb_ss_ep_comp_descriptor	ss_ep_comp;
 	struct list_head		urb_list;   /*urb队列*/
-	void				*hcpriv;        /*指向hcd*/
+	void				*hcpriv;        /*指向hcd。错，其实是指向对应的ed*/
 	struct ep_device		*ep_dev;	/* For sysfs info */
 
 	unsigned char *extra;   /* Extra descriptors */

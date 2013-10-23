@@ -126,10 +126,10 @@ struct input_dev {
 
 	unsigned long propbit[BITS_TO_LONGS(INPUT_PROP_CNT)];
 
-	unsigned long evbit[BITS_TO_LONGS(EV_CNT)];
-	unsigned long keybit[BITS_TO_LONGS(KEY_CNT)];
-	unsigned long relbit[BITS_TO_LONGS(REL_CNT)];
-	unsigned long absbit[BITS_TO_LONGS(ABS_CNT)];
+	unsigned long evbit[BITS_TO_LONGS(EV_CNT)];         /*设备支持的事件类型*/
+	unsigned long keybit[BITS_TO_LONGS(KEY_CNT)];       /*按键事件支持的子事件*/
+	unsigned long relbit[BITS_TO_LONGS(REL_CNT)];       /*相对坐标事件*/
+	unsigned long absbit[BITS_TO_LONGS(ABS_CNT)];       /*绝对坐标事件*/
 	unsigned long mscbit[BITS_TO_LONGS(MSC_CNT)];
 	unsigned long ledbit[BITS_TO_LONGS(LED_CNT)];
 	unsigned long sndbit[BITS_TO_LONGS(SND_CNT)];
@@ -144,13 +144,13 @@ struct input_dev {
 
 	int (*setkeycode)(struct input_dev *dev,
 			  const struct input_keymap_entry *ke,
-			  unsigned int *old_keycode);
+			  unsigned int *old_keycode);                /*设置按键的扫描码*/
 	int (*getkeycode)(struct input_dev *dev,
-			  struct input_keymap_entry *ke);
+			  struct input_keymap_entry *ke);            /*获得按键的扫描码*/
 
 	struct ff_device *ff;
 
-	unsigned int repeat_key;
+	unsigned int repeat_key;                             /*最近一次的按键值*/
 	struct timer_list timer;
 
 	int rep[REP_CNT];
