@@ -997,6 +997,7 @@ dm9000_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	/* Move data to DM9000 TX RAM */
 	writeb(DM9000_MWCMD, db->io_addr);
 
+#if 0
 	int i;
 	for(i = 0; i < skb->len; i++)
 	{
@@ -1005,6 +1006,7 @@ dm9000_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		printk("%x ",*(skb->data+i));
 	}
 	printk("\n");
+#endif
 	
 	(db->outblk)(db->io_data, skb->data, skb->len);
 	dev->stats.tx_bytes += skb->len;

@@ -265,7 +265,7 @@ static struct mtd_partition mini2440_default_nand_part[] __initdata = {
 	},
 	[3] = {
 		.name	= "root",
-		.offset	= SZ_256K + SZ_128K + 0x00500000,
+		.offset	= SZ_256K + SZ_128K + 0x01000000,
 		.size	= MTDPART_SIZ_FULL,
 	},
 };
