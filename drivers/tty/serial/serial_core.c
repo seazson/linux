@@ -141,7 +141,7 @@ static int uart_port_startup(struct tty_struct *tty, struct uart_state *state,
 	 * Initialise and allocate the transmit and temporary
 	 * buffer.
 	 */
-	if (!state->xmit.buf) {
+	if (!state->xmit.buf) { /*未发送分配空间*/
 		/* This is protected by the per port mutex */
 		page = get_zeroed_page(GFP_KERNEL);
 		if (!page)
@@ -2133,7 +2133,7 @@ uart_configure_port(struct uart_driver *drv, struct uart_state *state,
 	if (port->type != PORT_UNKNOWN) {
 		unsigned long flags;
 
-		uart_report_port(drv, port);
+		uart_report_port(drv, port);   /*打印端口信息*/
 
 		/* Power up port for set_mctrl() */
 		uart_change_pm(state, UART_PM_STATE_ON);
@@ -2152,7 +2152,7 @@ uart_configure_port(struct uart_driver *drv, struct uart_state *state,
 		 * successfully registered yet, try to re-register it.
 		 * It may be that the port was not available.
 		 */
-		if (port->cons && !(port->cons->flags & CON_ENABLED))
+		if (port->cons && !(port->cons->flags & CON_ENABLED)) /*如果有console，并且还为使能则重新注册*/
 			register_console(port->cons);
 
 		/*
@@ -2573,7 +2573,7 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 
 	BUG_ON(in_interrupt());
 
-	if (uport->line >= drv->nr)
+	if (uport->line >= drv->nr)    /*当前的port编号不能大于port总数*/
 		return -EINVAL;
 
 	state = drv->state + uport->line;
@@ -2589,7 +2589,7 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 	state->uart_port = uport;
 	state->pm_state = UART_PM_STATE_UNDEFINED;
 
-	uport->cons = drv->cons;
+	uport->cons = drv->cons;       /*s3c24xx_serial_console*/
 	uport->state = state;
 
 	/*
@@ -2608,7 +2608,7 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 	 * setserial to be used to alter this ports parameters.
 	 */
 	tty_dev = tty_port_register_device_attr(port, drv->tty_driver,
-			uport->line, uport->dev, port, tty_dev_attr_groups);
+			uport->line, uport->dev, port, tty_dev_attr_groups);          /*注册tty字符设备*/
 	if (likely(!IS_ERR(tty_dev))) {
 		device_set_wakeup_capable(tty_dev, 1);
 	} else {

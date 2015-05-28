@@ -2955,7 +2955,7 @@ int __init vty_init(const struct file_operations *console_fops)
 	else
 		WARN_ON(device_create_file(tty0dev, &dev_attr_active) < 0);
 
-	vcs_init();
+	vcs_init();   /*×¢²ávcs*/
 
 	console_driver = alloc_tty_driver(MAX_NR_CONSOLES);
 	if (!console_driver)
@@ -2971,7 +2971,7 @@ int __init vty_init(const struct file_operations *console_fops)
 		console_driver->init_termios.c_iflag |= IUTF8;
 	console_driver->flags = TTY_DRIVER_REAL_RAW | TTY_DRIVER_RESET_TERMIOS;
 	tty_set_operations(console_driver, &con_ops);
-	if (tty_register_driver(console_driver))
+	if (tty_register_driver(console_driver))             /*»á×¢²á×Ö·ûÉè±¸*/
 		panic("Couldn't register console driver\n");
 	kbd_init();
 	console_map_init();

@@ -40,11 +40,11 @@
 static DEFINE_RAW_SPINLOCK(tty_ldisc_lock);
 static DECLARE_WAIT_QUEUE_HEAD(tty_ldisc_wait);
 /* Line disc dispatch table */
-static struct tty_ldisc_ops *tty_ldiscs[NR_LDISCS];
+static struct tty_ldisc_ops *tty_ldiscs[NR_LDISCS];  /*每个线路规程对应一个处理函数结构体*/
 
 /**
  *	tty_register_ldisc	-	install a line discipline
- *	@disc: ldisc number
+ *	@disc: ldisc number 表示线路规程类型
  *	@new_ldisc: pointer to the ldisc object
  *
  *	Installs a new line discipline into the kernel. The discipline
@@ -955,7 +955,7 @@ void tty_ldisc_release(struct tty_struct *tty, struct tty_struct *o_tty)
 
 void tty_ldisc_init(struct tty_struct *tty)
 {
-	struct tty_ldisc *ld = tty_ldisc_get(N_TTY);
+	struct tty_ldisc *ld = tty_ldisc_get(N_TTY);  /*创建一个线路规程，默认是0，tty_ldisc_N_TTY*/
 	if (IS_ERR(ld))
 		panic("n_tty: init_tty");
 	tty->ldisc = ld;
@@ -977,5 +977,5 @@ void tty_ldisc_deinit(struct tty_struct *tty)
 void tty_ldisc_begin(void)
 {
 	/* Setup the default TTY line discipline. */
-	(void) tty_register_ldisc(N_TTY, &tty_ldisc_N_TTY);
+	(void) tty_register_ldisc(N_TTY, &tty_ldisc_N_TTY); /*注册一个线路规程，相当于添加到全局tty_ldiscs中*/
 }

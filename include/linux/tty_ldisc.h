@@ -198,7 +198,7 @@ struct tty_ldisc_ops {
 
 	struct  module *owner;
 
-	int refcount;
+	int refcount;      /*当前线路规程引用计数*/
 };
 
 struct tty_ldisc {

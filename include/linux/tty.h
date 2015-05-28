@@ -272,7 +272,7 @@ struct tty_struct {
 #define N_TTY_BUF_SIZE 4096
 
 	unsigned char closing:1;
-	unsigned char *write_buf;
+	unsigned char *write_buf;   /*Ð´Êý¾Ý»º³åÇø*/
 	int write_cnt;
 	/* If the tty has a pending do_SAK, queue it here - akpm */
 	struct work_struct SAK_work;

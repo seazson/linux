@@ -1209,7 +1209,7 @@ static ssize_t tty_write(struct file *file, const char __user *buf,
 	if (!ld->ops->write)
 		ret = -EIO;
 	else
-		ret = do_tty_write(ld->ops->write, tty, file, buf, count);
+		ret = do_tty_write(ld->ops->write, tty, file, buf, count);  /*默认使用tty_ldisc_N_TTY*/
 	tty_ldisc_deref(ld);
 	return ret;
 }
@@ -1455,10 +1455,10 @@ struct tty_struct *tty_init_dev(struct tty_driver *driver, int idx)
 		retval = -ENOMEM;
 		goto err_module_put;
 	}
-	initialize_tty_struct(tty, driver, idx);
+	initialize_tty_struct(tty, driver, idx);       /*初始化tty_struct各成员，分配线路规程*/
 
 	tty_lock(tty);
-	retval = tty_driver_install_tty(driver, tty);
+	retval = tty_driver_install_tty(driver, tty);  /*将这个tty_struct与tty_driver->tty[n]*/
 	if (retval < 0)
 		goto err_deinit_tty;
 
@@ -1476,7 +1476,7 @@ struct tty_struct *tty_init_dev(struct tty_driver *driver, int idx)
 	 * If we fail here just call release_tty to clean up.  No need
 	 * to decrement the use counts, as release_tty doesn't care.
 	 */
-	retval = tty_ldisc_setup(tty, tty->link);
+	retval = tty_ldisc_setup(tty, tty->link);  /*调用线路规程层的open*/
 	if (retval)
 		goto err_release_tty;
 	/* Return the tty locked so that it cannot vanish under the caller */
@@ -1938,7 +1938,7 @@ static struct tty_driver *tty_lookup_driver(dev_t device, struct file *filp,
 	}
 #endif
 	case MKDEV(TTYAUX_MAJOR, 1): {
-		struct tty_driver *console_driver = console_device(index);
+		struct tty_driver *console_driver = console_device(index);  /*返回当前在用的console的tty_driver*/
 		if (console_driver) {
 			driver = tty_driver_kref_get(console_driver);
 			if (driver) {
@@ -1995,7 +1995,7 @@ static int tty_open(struct inode *inode, struct file *filp)
 	nonseekable_open(inode, filp);
 
 retry_open:
-	retval = tty_alloc_file(filp);
+	retval = tty_alloc_file(filp);              /*申请一个私有结构*/
 	if (retval)
 		return -ENOMEM;
 
@@ -2005,19 +2005,19 @@ retry_open:
 
 	mutex_lock(&tty_mutex);
 	/* This is protected by the tty_mutex */
-	tty = tty_open_current_tty(device, filp);
+	tty = tty_open_current_tty(device, filp);   /*如果是5:0,返回当前使用的tty。否则返回NULL*/
 	if (IS_ERR(tty)) {
 		retval = PTR_ERR(tty);
 		goto err_unlock;
 	} else if (!tty) {
-		driver = tty_lookup_driver(device, filp, &noctty, &index);
+		driver = tty_lookup_driver(device, filp, &noctty, &index); /*返回要打开设备的tty_driver*/
 		if (IS_ERR(driver)) {
 			retval = PTR_ERR(driver);
 			goto err_unlock;
 		}
 
 		/* check whether we're reopening an existing tty */
-		tty = tty_driver_lookup_tty(driver, inode, index);
+		tty = tty_driver_lookup_tty(driver, inode, index);         /*获取tty_struct如果之前分配过*/
 		if (IS_ERR(tty)) {
 			retval = PTR_ERR(tty);
 			goto err_unlock;
@@ -2032,7 +2032,7 @@ retry_open:
 			tty = ERR_PTR(retval);
 		}
 	} else	/* Returns with the tty_lock held for now */
-		tty = tty_init_dev(driver, index);
+		tty = tty_init_dev(driver, index);                         /*如果之前没有创建过，这分配一个tty_struct实体并初始化它*/
 
 	mutex_unlock(&tty_mutex);
 	if (driver)
@@ -2042,7 +2042,7 @@ retry_open:
 		goto err_file;
 	}
 
-	tty_add_file(tty, filp);
+	tty_add_file(tty, filp);                                       /*将tty_struct添加到filep私有数据中*/
 
 	check_tty_count(tty, __func__);
 	if (tty->driver->type == TTY_DRIVER_TYPE_PTY &&
@@ -2052,7 +2052,7 @@ retry_open:
 	printk(KERN_DEBUG "%s: opening %s...\n", __func__, tty->name);
 #endif
 	if (tty->ops->open)
-		retval = tty->ops->open(tty, filp);
+		retval = tty->ops->open(tty, filp);                        /*调用tty_driver的open*/
 	else
 		retval = -ENODEV;
 	filp->f_flags = saved_flags;
@@ -3012,7 +3012,7 @@ void initialize_tty_struct(struct tty_struct *tty,
 	memset(tty, 0, sizeof(struct tty_struct));
 	kref_init(&tty->kref);
 	tty->magic = TTY_MAGIC;
-	tty_ldisc_init(tty);
+	tty_ldisc_init(tty);            /*在这里初始化线路规程*/
 	tty->session = NULL;
 	tty->pgrp = NULL;
 	mutex_init(&tty->legacy_mutex);
@@ -3150,10 +3150,10 @@ struct device *tty_register_device_attr(struct tty_driver *driver,
 	if (driver->type == TTY_DRIVER_TYPE_PTY)
 		pty_line_name(driver, index, name);
 	else
-		tty_line_name(driver, index, name);
+		tty_line_name(driver, index, name);                /*命名这个tty设备，带序号*/
 
 	if (!(driver->flags & TTY_DRIVER_DYNAMIC_ALLOC)) {
-		retval = tty_cdev_add(driver, devt, index, 1);
+		retval = tty_cdev_add(driver, devt, index, 1);     /*创建字符设备，并关联描述符tty_fops*/
 		if (retval)
 			goto error;
 		cdev = true;
@@ -3173,7 +3173,7 @@ struct device *tty_register_device_attr(struct tty_driver *driver,
 	dev->groups = attr_grp;
 	dev_set_drvdata(dev, drvdata);
 
-	retval = device_register(dev);
+	retval = device_register(dev);                        /*注册在sys/class/tty/ttySACn下*/
 	if (retval)
 		goto error;
 
@@ -3561,6 +3561,7 @@ void console_sysfs_notify(void)
  */
 int __init tty_init(void)
 {
+	pr_sea("\n");
 	cdev_init(&tty_cdev, &tty_fops);
 	if (cdev_add(&tty_cdev, MKDEV(TTYAUX_MAJOR, 0), 1) ||
 	    register_chrdev_region(MKDEV(TTYAUX_MAJOR, 0), 1, "/dev/tty") < 0)
@@ -3579,7 +3580,7 @@ int __init tty_init(void)
 		WARN_ON(device_create_file(consdev, &dev_attr_active) < 0);
 
 #ifdef CONFIG_VT
-	vty_init(&console_fops);
+	vty_init(&console_fops);    /*虚拟控制台初始化*/
 #endif
 	return 0;
 }

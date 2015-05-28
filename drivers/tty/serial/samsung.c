@@ -1237,7 +1237,7 @@ static int s3c24xx_serial_probe(struct platform_device *pdev)
 {
 	struct s3c24xx_uart_port *ourport;
 	int ret;
-
+	pr_sea("---------------------------\n");
 	dbg("s3c24xx_serial_probe(%p) %d\n", pdev, probe_index);
 
 	ourport = &s3c24xx_serial_ports[probe_index];
@@ -1262,7 +1262,7 @@ static int s3c24xx_serial_probe(struct platform_device *pdev)
 
 	dbg("%s: initialising port %p...\n", __func__, ourport);
 
-	ret = s3c24xx_serial_init_port(ourport, pdev);
+	ret = s3c24xx_serial_init_port(ourport, pdev);     /*初始化uart_port:映射寄存器，获取中断号*/
 	if (ret < 0)
 		goto probe_err;
 
@@ -1553,11 +1553,11 @@ s3c24xx_serial_console_setup(struct console *co, char *options)
 	if (options)
 		uart_parse_options(options, &baud, &parity, &bits, &flow);
 	else
-		s3c24xx_serial_get_options(port, &baud, &parity, &bits);
+		s3c24xx_serial_get_options(port, &baud, &parity, &bits);  /*获取当前的串口波特率配置*/
 
 	dbg("s3c24xx_serial_console_setup: baud %d\n", baud);
 
-	return uart_set_options(port, co, baud, parity, bits, flow);
+	return uart_set_options(port, co, baud, parity, bits, flow);  /*设置波特率*/
 }
 
 static struct console s3c24xx_serial_console = {
@@ -1809,7 +1809,7 @@ static int __init s3c24xx_serial_modinit(void)
 		return ret;
 	}
 
-	ret = platform_driver_register(&samsung_serial_driver);
+	ret = platform_driver_register(&samsung_serial_driver);  
 	if (ret < 0) {
 		pr_err("Failed to register platform driver\n");
 		uart_unregister_driver(&s3c24xx_uart_drv);

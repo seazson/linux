@@ -81,7 +81,7 @@ EXPORT_SYMBOL(oops_in_progress);
  * driver system.
  */
 static DEFINE_SEMAPHORE(console_sem);
-struct console *console_drivers;
+struct console *console_drivers;   /*指向所有可用的console链表*/
 EXPORT_SYMBOL_GPL(console_drivers);
 
 #ifdef CONFIG_LOCKDEP
@@ -1260,7 +1260,7 @@ SYSCALL_DEFINE3(syslog, int, type, char __user *, buf, int, len)
  * Call the console drivers, asking them to write out
  * log_buf[start] to log_buf[end - 1].
  * The console_lock must be held.
- */
+ */ /*真正的输出函数，轮询所有可输出的console进行输出*/
 static void call_console_drivers(int level, const char *text, size_t len)
 {
 	struct console *con;
@@ -1621,7 +1621,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 	 * regardless of whether it actually gets the console semaphore or not.
 	 */
 	if (console_trylock_for_printk(this_cpu))
-		console_unlock();
+		console_unlock();   /*解锁的时候会输出打印*/
 
 	lockdep_on();
 out_restore_irqs:
@@ -1768,7 +1768,7 @@ static int __add_preferred_console(char *name, int idx, char *options,
 	if (i == MAX_CMDLINECONSOLES)
 		return -E2BIG;
 	if (!brl_options)
-		selected_console = i;
+		selected_console = i;        /*选择当前的序号为console*/
 	strlcpy(c->name, name, sizeof(c->name));
 	c->options = options;
 	braille_set_options(c, brl_options);
@@ -1799,7 +1799,7 @@ static int __init console_setup(char *str)
 	}
 	buf[sizeof(buf) - 1] = 0;
 	if ((options = strchr(str, ',')) != NULL)
-		*(options++) = 0;
+		*(options++) = 0;   /*确保buf中只包含tty的名字*/
 #ifdef __sparc__
 	if (!strcmp(str, "ttya"))
 		strcpy(buf, "ttyS0");
@@ -1809,10 +1809,10 @@ static int __init console_setup(char *str)
 	for (s = buf; *s; s++)
 		if ((*s >= '0' && *s <= '9') || *s == ',')
 			break;
-	idx = simple_strtoul(s, NULL, 10);
-	*s = 0;
+	idx = simple_strtoul(s, NULL, 10);  /*获取tty的序号*/
+	*s = 0;                             /*将buf中的序号归零*/
 
-	__add_preferred_console(buf, idx, options, brl_options);
+	__add_preferred_console(buf, idx, options, brl_options);   /*用传入的参数初始化全局变量console_cmdline*/
 	console_set_on_cmdline = 1;
 	return 1;
 }
@@ -2009,7 +2009,7 @@ out:
  * If there is output waiting, we wake /dev/kmsg and syslog() users.
  *
  * console_unlock(); may be called from any context.
- */
+ */ /*解锁的时候会输出*/
 void console_unlock(void)
 {
 	static char text[LOG_LINE_MAX + PREFIX_MAX];
@@ -2225,7 +2225,7 @@ void register_console(struct console *newcon)
 	unsigned long flags;
 	struct console *bcon = NULL;
 	struct console_cmdline *c;
-
+	pr_sea("%s\n",newcon->name);
 	/*
 	 * before we register a new CON_BOOT console, make sure we don't
 	 * already have a valid console
@@ -2245,7 +2245,7 @@ void register_console(struct console *newcon)
 		bcon = console_drivers;
 
 	if (preferred_console < 0 || bcon || !console_drivers)
-		preferred_console = selected_console;
+		preferred_console = selected_console;  /*由console=决定，如果命令行没有指定的话默认使用第一个注册的console*/
 
 	if (newcon->early_setup)
 		newcon->early_setup();
@@ -2254,14 +2254,14 @@ void register_console(struct console *newcon)
 	 *	See if we want to use this console driver. If we
 	 *	didn't select a console we take the first one
 	 *	that registers here.
-	 */
+	 */ /*命令行没有指定console，默认使用第一个注册的。分配序号0，使能*/
 	if (preferred_console < 0) {
 		if (newcon->index < 0)
-			newcon->index = 0;
+			newcon->index = 0;          
 		if (newcon->setup == NULL ||
-		    newcon->setup(newcon, NULL) == 0) {
+		    newcon->setup(newcon, NULL) == 0) {  /* s3c24xx_serial_console_setup 设置默认波特率*/
 			newcon->flags |= CON_ENABLED;
-			if (newcon->device) {
+			if (newcon->device) {                /* 保证有tty_driver获取接口 */
 				newcon->flags |= CON_CONSDEV;
 				preferred_console = 0;
 			}
@@ -2271,8 +2271,8 @@ void register_console(struct console *newcon)
 	/*
 	 *	See if this console matches one we selected on
 	 *	the command line.
-	 */
-	for (i = 0, c = console_cmdline;
+	 */ /*看看当前注册的console是不是我们命令行指定的那个*/
+	for (i = 0, c = console_cmdline;        /*由console_setup来初始化console_cmdline*/
 	     i < MAX_CMDLINECONSOLES && c->name[0];
 	     i++, c++) {
 		if (strcmp(c->name, newcon->name) != 0)
@@ -2287,11 +2287,11 @@ void register_console(struct console *newcon)
 			return;
 
 		if (newcon->setup &&
-		    newcon->setup(newcon, console_cmdline[i].options) != 0)
+		    newcon->setup(newcon, console_cmdline[i].options) != 0)  /*设置为命令行传下的波特率*/
 			break;
 		newcon->flags |= CON_ENABLED;
 		newcon->index = c->index;
-		if (i == selected_console) {
+		if (i == selected_console) {             /*selected_console是在console_setup解析命令行console=赋值的*/
 			newcon->flags |= CON_CONSDEV;
 			preferred_console = selected_console;
 		}
@@ -2315,13 +2315,13 @@ void register_console(struct console *newcon)
 	 *	preferred driver at the head of the list.
 	 */
 	console_lock();
-	if ((newcon->flags & CON_CONSDEV) || console_drivers == NULL) {
+	if ((newcon->flags & CON_CONSDEV) || console_drivers == NULL) {/*第一次选择console，或者注册的是默认console，把他作为主console_drivers*/
 		newcon->next = console_drivers;
 		console_drivers = newcon;
 		if (newcon->next)
 			newcon->next->flags &= ~CON_CONSDEV;
 	} else {
-		newcon->next = console_drivers->next;
+		newcon->next = console_drivers->next;                       /*否则只是链接到console_drivers后面*/
 		console_drivers->next = newcon;
 	}
 	if (newcon->flags & CON_PRINTBUFFER) {
@@ -2341,7 +2341,7 @@ void register_console(struct console *newcon)
 		 */
 		exclusive_console = newcon;
 	}
-	console_unlock();
+	console_unlock();                       /*这里就会输出了*/
 	console_sysfs_notify();
 
 	/*
