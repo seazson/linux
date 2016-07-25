@@ -165,9 +165,9 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 	 * Allocate the bootmem bitmap page.  This must be in a region
 	 * of memory which has already been mapped.
 	 */
-	boot_pages = bootmem_bootmap_pages(end_pfn - start_pfn);
+	boot_pages = bootmem_bootmap_pages(end_pfn - start_pfn);     /*计算需要为位图分配的页大小*/
 	bitmap = memblock_alloc_base(boot_pages << PAGE_SHIFT, L1_CACHE_BYTES,
-				__pfn_to_phys(end_pfn));
+				__pfn_to_phys(end_pfn));                         /*从后分配空间*/
 
 	/*
 	 * Initialise the bootmem allocator, handing the
@@ -175,9 +175,9 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 	 */
 	node_set_online(0);
 	pgdat = NODE_DATA(0);
-	init_bootmem_node(pgdat, __phys_to_pfn(bitmap), start_pfn, end_pfn);
+	init_bootmem_node(pgdat, __phys_to_pfn(bitmap), start_pfn, end_pfn);   /*初始化与bootmem相关pgdat->bdata结构，标记所有页为已使用*/
 
-	/* Free the lowmem regions from memblock into bootmem. */
+	/* Free the lowmem regions from memblock into bootmem. */  /*遍历已用memblock，在bootmem位图中标记为已用*/
 	for_each_memblock(memory, reg) {
 		unsigned long start = memblock_region_memory_base_pfn(reg);
 		unsigned long end = memblock_region_memory_end_pfn(reg);
@@ -190,7 +190,7 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 		free_bootmem(__pfn_to_phys(start), (end - start) << PAGE_SHIFT);
 	}
 
-	/* Reserve the lowmem memblock reserved regions in bootmem. */
+	/* Reserve the lowmem memblock reserved regions in bootmem. */ /*遍历未用memblock，在bootmem位图中标记为未用*/
 	for_each_memblock(reserved, reg) {
 		unsigned long start = memblock_region_reserved_base_pfn(reg);
 		unsigned long end = memblock_region_reserved_end_pfn(reg);
@@ -258,7 +258,7 @@ static void __init arm_bootmem_free(unsigned long min, unsigned long max_low,
 	 * to do anything fancy with the allocation of this memory
 	 * to the zones, now is the time to do it.
 	 */
-	zone_size[0] = max_low - min;
+	zone_size[0] = max_low - min;                 /*全部页帧数量*/
 #ifdef CONFIG_HIGHMEM
 	zone_size[ZONE_HIGHMEM] = max_high - max_low;
 #endif
@@ -274,7 +274,7 @@ static void __init arm_bootmem_free(unsigned long min, unsigned long max_low,
 
 		if (start < max_low) {
 			unsigned long low_end = min(end, max_low);
-			zhole_size[0] -= low_end - start;
+			zhole_size[0] -= low_end - start;      /*计算空洞所占页帧数量*/
 		}
 #ifdef CONFIG_HIGHMEM
 		if (end > max_low) {
@@ -294,7 +294,7 @@ static void __init arm_bootmem_free(unsigned long min, unsigned long max_low,
 			arm_dma_zone_size >> PAGE_SHIFT);
 #endif
 
-	free_area_init_node(0, zone_size, min, zhole_size);
+	free_area_init_node(0, zone_size, min, zhole_size);  /*初始化内存结点，内存域*/
 }
 
 #ifdef CONFIG_HAVE_ARCH_PFN_VALID
@@ -390,19 +390,19 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 
 void __init bootmem_init(void)
 {
-	unsigned long min, max_low, max_high;
+	unsigned long min, max_low, max_high;  
 
 	max_low = max_high = 0;
 
-	find_limits(&min, &max_low, &max_high);
-
-	arm_bootmem_init(min, max_low);
+	find_limits(&min, &max_low, &max_high);   /*获取物理页帧的起始，结束，结束(0x30000 0x34000 0x34000)*/
+	
+	arm_bootmem_init(min, max_low);           /*初始化bootmem相关结构体，标记位图*/
 
 	/*
 	 * Sparsemem tries to allocate bootmem in memory_present(),
 	 * so must be done after the fixed reservations
 	 */
-	arm_memory_present();
+	arm_memory_present();                     /*稀疏内存模型会使用*/
 
 	/*
 	 * sparse_init() needs the bootmem allocator up and running.
@@ -424,7 +424,7 @@ void __init bootmem_init(void)
 	 * Note: max_low_pfn and max_pfn reflect the number of _pages_ in
 	 * the system, not the maximum PFN.
 	 */
-	max_low_pfn = max_low - PHYS_PFN_OFFSET;
+	max_low_pfn = max_low - PHYS_PFN_OFFSET;   /*PHYS_PFN_OFFSET是内存起始地址页帧号*/
 	max_pfn = max_high - PHYS_PFN_OFFSET;
 }
 
@@ -593,7 +593,7 @@ void __init mem_init(void)
 
 	/* this will put all unused low memory onto the freelists */
 	free_unused_memmap(&meminfo);
-	free_all_bootmem();
+	free_all_bootmem();                 /*停用自举分配器*/
 
 #ifdef CONFIG_SA1111
 	/* now that our DMA memory is actually so designated, we can free it */

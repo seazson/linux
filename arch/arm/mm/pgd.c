@@ -28,7 +28,7 @@
 #endif
 
 /*
- * need to get a 16k page for level 1
+ * need to get a 16k page for level 1  arm一级页表有2048个表项，二级页表有512个表项
  */
 pgd_t *pgd_alloc(struct mm_struct *mm)
 {
@@ -41,12 +41,12 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
 	if (!new_pgd)
 		goto no_pgd;
 
-	memset(new_pgd, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));
-
+	memset(new_pgd, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));  /*整个用户空间需要多少个pgd指针，也就是一级页表大小*/
+												/* (c000000-16M)/2^21 = 1536 个pgd，占用内存大小需要x4=6144,所以前面分配两页空间*/
 	/*
 	 * Copy over the kernel and IO PGD entries
 	 */
-	init_pgd = pgd_offset_k(0);
+	init_pgd = pgd_offset_k(0);               /*将内核部分的页表项拷贝给当前进程*/
 	memcpy(new_pgd + USER_PTRS_PER_PGD, init_pgd + USER_PTRS_PER_PGD,
 		       (PTRS_PER_PGD - USER_PTRS_PER_PGD) * sizeof(pgd_t));
 
@@ -72,11 +72,11 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
 		 * contains the machine vectors. The vectors are always high
 		 * with LPAE.
 		 */
-		new_pud = pud_alloc(mm, new_pgd, 0);
+		new_pud = pud_alloc(mm, new_pgd, 0);     /*实际返回的还是pgd的指针*/
 		if (!new_pud)
 			goto no_pud;
 
-		new_pmd = pmd_alloc(mm, new_pud, 0);
+		new_pmd = pmd_alloc(mm, new_pud, 0);     /*实际返回的还是pgd的指针*/
 		if (!new_pmd)
 			goto no_pmd;
 
@@ -84,7 +84,7 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
 		if (!new_pte)
 			goto no_pte;
 
-		init_pud = pud_offset(init_pgd, 0);
+		init_pud = pud_offset(init_pgd, 0);    /*返回地址0对应的pud*/
 		init_pmd = pmd_offset(init_pud, 0);
 		init_pte = pte_offset_map(init_pmd, 0);
 		set_pte_ext(new_pte, *init_pte, 0);

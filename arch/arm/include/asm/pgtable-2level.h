@@ -1,4 +1,4 @@
-/*
+ /*
  *  arch/arm/include/asm/pgtable-2level.h
  *
  *  Copyright (C) 1995-2002 Russell King
@@ -70,7 +70,7 @@
  */
 #define PTRS_PER_PTE		512
 #define PTRS_PER_PMD		1
-#define PTRS_PER_PGD		2048
+#define PTRS_PER_PGD		2048         /*页表表项数*/
 
 #define PTE_HWTABLE_PTRS	(PTRS_PER_PTE)
 #define PTE_HWTABLE_OFF		(PTE_HWTABLE_PTRS * sizeof(pte_t))
@@ -102,7 +102,7 @@
 #define SUPERSECTION_SIZE	(1UL << SUPERSECTION_SHIFT)
 #define SUPERSECTION_MASK	(~(SUPERSECTION_SIZE-1))
 
-#define USER_PTRS_PER_PGD	(TASK_SIZE / PGDIR_SIZE)
+#define USER_PTRS_PER_PGD	(TASK_SIZE / PGDIR_SIZE)    /*PGDIR_SIZE是每个pgd负责的大小。这个宏表示用户空间需要多少个pgd指针*/
 
 /*
  * "Linux" PTE definitions.

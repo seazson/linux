@@ -881,7 +881,7 @@ void __init setup_arch(char **cmdline_p)
 	sanity_check_meminfo();
 	arm_memblock_init(&meminfo, mdesc);
 
-	paging_init(mdesc);
+	paging_init(mdesc);   /*建立只能用于内核的页表，用户空间无法访问*/
 	request_standard_resources(mdesc);
 
 	if (mdesc->restart)

@@ -249,7 +249,7 @@ static inline int allocflags_to_migratetype(gfp_t gfp_flags)
 	| 1 << (___GFP_MOVABLE | ___GFP_DMA32 | ___GFP_DMA | ___GFP_HIGHMEM)  \
 )
 
-static inline enum zone_type gfp_zone(gfp_t flags)
+static inline enum zone_type gfp_zone(gfp_t flags)    /*根据flags返回内存域*/
 {
 	enum zone_type z;
 	int bit = (__force int) (flags & GFP_ZONEMASK);

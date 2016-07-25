@@ -25,9 +25,9 @@ extern unsigned long max_pfn;
  * memory pages (including holes) on the node.
  */
 typedef struct bootmem_data {
-	unsigned long node_min_pfn;
-	unsigned long node_low_pfn;
-	void *node_bootmem_map;
+	unsigned long node_min_pfn;        /*第一个物理页帧*/
+	unsigned long node_low_pfn;        /*最后一个物理页帧*/
+	void *node_bootmem_map;            /*管理页的位图*/
 	unsigned long last_end_off;
 	unsigned long hint_idx;
 	struct list_head list;

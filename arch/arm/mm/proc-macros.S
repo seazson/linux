@@ -197,18 +197,18 @@
  *  1111  0xff	r/w	r/w
  */
 	.macro	armv3_set_pte_ext wc_disable=1
-	str	r1, [r0], #2048			@ linux version
+	str	r1, [r0], #2048			@ linux version /*将r1中物理地址及属性写入L2对应软件页表项,之后r0=r0+2048,r0指向硬件页表项*/
 
-	eor	r3, r1, #L_PTE_PRESENT | L_PTE_YOUNG | L_PTE_DIRTY
+	eor	r3, r1, #L_PTE_PRESENT | L_PTE_YOUNG | L_PTE_DIRTY  /*异或后存入r3*/
 
-	bic	r2, r1, #PTE_SMALL_AP_MASK	@ keep C, B bits
+	bic	r2, r1, #PTE_SMALL_AP_MASK	@ keep C, B bits        /*清除这俩位*/
 	bic	r2, r2, #PTE_TYPE_MASK
-	orr	r2, r2, #PTE_TYPE_SMALL
+	orr	r2, r2, #PTE_TYPE_SMALL                             /*置上这一位*/
 
 	tst	r3, #L_PTE_USER			@ user?
 	orrne	r2, r2, #PTE_SMALL_AP_URO_SRW
 
-	tst	r3, #L_PTE_RDONLY | L_PTE_DIRTY	@ write and dirty?
+	tst	r3, #L_PTE_RDONLY | L_PTE_DIRTY	@ write and dirty?   /*是否dirty*/
 	orreq	r2, r2, #PTE_SMALL_AP_UNO_SRW
 
 	tst	r3, #L_PTE_PRESENT | L_PTE_YOUNG	@ present and young?
@@ -220,7 +220,7 @@
 	bicne	r2, r2, #PTE_BUFFERABLE
 #endif
 	.endif
-	str	r2, [r0]		@ hardware version
+	str	r2, [r0]		@ hardware version      /*将处理完页属性之后的值写入L2硬件页表项*/
 	.endm
 
 

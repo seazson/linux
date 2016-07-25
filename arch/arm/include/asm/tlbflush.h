@@ -487,7 +487,7 @@ static inline void dummy_flush_tlb_a15_erratum(void)
  *	these operations.  This is typically used when we are removing
  *	PMD entries.
  */
-static inline void flush_pmd_entry(void *pmd)
+static inline void flush_pmd_entry(void *pmd)               /*清理cache:将cache中的内容写入内存*/
 {
 	const unsigned int __tlb_flag = __cpu_tlb_flags;
 
@@ -498,7 +498,7 @@ static inline void flush_pmd_entry(void *pmd)
 		dsb();
 }
 
-static inline void clean_pmd_entry(void *pmd)
+static inline void clean_pmd_entry(void *pmd)               /*清除cache:将cache里的内容清除*/
 {
 	const unsigned int __tlb_flag = __cpu_tlb_flags;
 

@@ -1224,7 +1224,7 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 		addr = round_hint_to_min(addr);
 
 	/* Careful about overflows.. */
-	len = PAGE_ALIGN(len);
+	len = PAGE_ALIGN(len);    /*长度按页对齐分配*/
 	if (!len)
 		return -ENOMEM;
 

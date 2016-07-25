@@ -1481,7 +1481,7 @@ static int do_execve_common(const char *filename,
 	/* We're below the limit (still or again), so we don't want to make
 	 * further execve() calls fail. */
 	current->flags &= ~PF_NPROC_EXCEEDED;
-
+	/*复制一份fd，执行成功后会将原始的删除掉*/
 	retval = unshare_files(&displaced);
 	if (retval)
 		goto out_ret;
@@ -1505,7 +1505,7 @@ static int do_execve_common(const char *filename,
 	retval = PTR_ERR(file);
 	if (IS_ERR(file))
 		goto out_unmark;
-
+	/*smp上可以发配到合适的cpu上继续处理*/
 	sched_exec();
 
 	bprm->file = file;
@@ -1523,11 +1523,11 @@ static int do_execve_common(const char *filename,
 	bprm->envc = count(envp, MAX_ARG_STRINGS);
 	if ((retval = bprm->envc) < 0)
 		goto out;
-
+	/*权限检查，并读取elf头128字节*/
 	retval = prepare_binprm(bprm);
 	if (retval < 0)
 		goto out;
-
+	/*将文件名，argv，envp拷贝给bprm*/
 	retval = copy_strings_kernel(1, &bprm->filename, bprm);
 	if (retval < 0)
 		goto out;
@@ -1540,7 +1540,7 @@ static int do_execve_common(const char *filename,
 	retval = copy_strings(bprm->argc, argv, bprm);
 	if (retval < 0)
 		goto out;
-
+	/*根据可执行文件类型调用相应的处理函数*/
 	retval = search_binary_handler(bprm);
 	if (retval < 0)
 		goto out;

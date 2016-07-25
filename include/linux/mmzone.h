@@ -36,11 +36,11 @@
 #define PAGE_ALLOC_COSTLY_ORDER 3
 
 enum {
-	MIGRATE_UNMOVABLE,
-	MIGRATE_RECLAIMABLE,
-	MIGRATE_MOVABLE,
+	MIGRATE_UNMOVABLE,         /*不可移动页*/
+	MIGRATE_RECLAIMABLE,       /*不可移动，但可删除页*/
+	MIGRATE_MOVABLE,           /*可移动页*/
 	MIGRATE_PCPTYPES,	/* the number of types on the pcp lists */
-	MIGRATE_RESERVE = MIGRATE_PCPTYPES,
+	MIGRATE_RESERVE = MIGRATE_PCPTYPES,   /*保留用于紧急分配的页*/
 #ifdef CONFIG_CMA
 	/*
 	 * MIGRATE_CMA migration type is designed to mimic the way
@@ -331,7 +331,7 @@ struct zone {
 	 * on the higher zones). This array is recalculated at runtime if the
 	 * sysctl_lowmem_reserve_ratio sysctl changes.
 	 */
-	unsigned long		lowmem_reserve[MAX_NR_ZONES];
+	unsigned long		lowmem_reserve[MAX_NR_ZONES];   /*关键预留页，不会分配失败的页*/
 
 	/*
 	 * This is a per-zone reserve of pages that should not be
@@ -347,7 +347,7 @@ struct zone {
 	unsigned long		min_unmapped_pages;
 	unsigned long		min_slab_pages;
 #endif
-	struct per_cpu_pageset __percpu *pageset;
+	struct per_cpu_pageset __percpu *pageset;     /*用于实现冷热页，分配一页的时候用*/
 	/*
 	 * free areas of different sizes
 	 */
@@ -365,7 +365,7 @@ struct zone {
 	/* see spanned/present_pages for more description */
 	seqlock_t		span_seqlock;
 #endif
-	struct free_area	free_area[MAX_ORDER];
+	struct free_area	free_area[MAX_ORDER];      /*伙伴系统*/
 
 #ifndef CONFIG_SPARSEMEM
 	/*
@@ -386,7 +386,7 @@ struct zone {
 	int			compact_order_failed;
 #endif
 
-	ZONE_PADDING(_pad1_)
+	ZONE_PADDING(_pad1_)   /*填充字段，确保lock、lru_lock处于自身的高速缓存行中*/
 
 	/* Fields commonly accessed by the page reclaim scanner */
 	spinlock_t		lru_lock;
@@ -396,7 +396,7 @@ struct zone {
 	unsigned long		flags;		   /* zone flags, see below */
 
 	/* Zone statistics */
-	atomic_long_t		vm_stat[NR_VM_ZONE_STAT_ITEMS];
+	atomic_long_t		vm_stat[NR_VM_ZONE_STAT_ITEMS];   /*内存状态统计信息*/
 
 	/*
 	 * The target ratio of ACTIVE_ANON to INACTIVE_ANON pages on
@@ -432,16 +432,16 @@ struct zone {
 	 * primary users of these fields, and in mm/page_alloc.c
 	 * free_area_init_core() performs the initialization of them.
 	 */
-	wait_queue_head_t	* wait_table;
-	unsigned long		wait_table_hash_nr_entries;
+	wait_queue_head_t	* wait_table;                /*这一部分实现了一个等待队列，用于*/
+	unsigned long		wait_table_hash_nr_entries;  /*用于进程等待某一页变为可用的应用*/
 	unsigned long		wait_table_bits;
 
 	/*
 	 * Discontig memory support fields.
 	 */
-	struct pglist_data	*zone_pgdat;
-	/* zone_start_pfn == zone_start_paddr >> PAGE_SHIFT */
-	unsigned long		zone_start_pfn;
+	struct pglist_data	*zone_pgdat;                 /*指向内存域对应的父结点*/
+	/* zone_start_pfn == zone_start_paddr >> PAGE_SHIFT */ 
+	unsigned long		zone_start_pfn;              /*内存域第一个页帧索引*/
 
 	/*
 	 * spanned_pages is the total pages spanned by the zone, including
@@ -721,17 +721,17 @@ extern struct page *mem_map;
  */
 struct bootmem_data;
 typedef struct pglist_data {
-	struct zone node_zones[MAX_NR_ZONES];
-	struct zonelist node_zonelists[MAX_ZONELISTS];
-	int nr_zones;
+	struct zone node_zones[MAX_NR_ZONES];            /*当前结点及其内存域(一个结点下有多种内存域)*/
+	struct zonelist node_zonelists[MAX_ZONELISTS];   /*备用结点及其内存域列表*/
+	int nr_zones;                                    /*指明本结点有多少个内存域*/
 #ifdef CONFIG_FLAT_NODE_MEM_MAP	/* means !SPARSEMEM */
-	struct page *node_mem_map;
+	struct page *node_mem_map;                       /*指向page实例数组。是由bootmem分配的，只给内存地址空间分配，而不是整个4G空间*/
 #ifdef CONFIG_MEMCG
 	struct page_cgroup *node_page_cgroup;
 #endif
 #endif
 #ifndef CONFIG_NO_BOOTMEM
-	struct bootmem_data *bdata;
+	struct bootmem_data *bdata;                      /*指向自举内存分配器，用于内存管理子系统初始化之前*/
 #endif
 #ifdef CONFIG_MEMORY_HOTPLUG
 	/*
@@ -746,13 +746,13 @@ typedef struct pglist_data {
 	 */
 	spinlock_t node_size_lock;
 #endif
-	unsigned long node_start_pfn;
-	unsigned long node_present_pages; /* total number of physical pages */
-	unsigned long node_spanned_pages; /* total size of physical page
+	unsigned long node_start_pfn;     /*本结点第一个页帧逻辑编号(页帧编号是全局唯一而不是结点唯一)*/
+	unsigned long node_present_pages; /* total number of physical pages 本结点实际页帧的数目*/
+	unsigned long node_spanned_pages; /* total size of physical page   本结点包含空洞的总页帧的数目
 					     range, including holes */
-	int node_id;
+	int node_id;                      /*本结点全局唯一编号*/
 	nodemask_t reclaim_nodes;	/* Nodes allowed to reclaim from */
-	wait_queue_head_t kswapd_wait;
+	wait_queue_head_t kswapd_wait;    /*后面的结构页交换的时候用*/
 	wait_queue_head_t pfmemalloc_wait;
 	struct task_struct *kswapd;	/* Protected by lock_memory_hotplug() */
 	int kswapd_max_order;

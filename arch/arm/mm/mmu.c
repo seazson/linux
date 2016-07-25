@@ -590,29 +590,32 @@ static void __init *early_alloc_aligned(unsigned long sz, unsigned long align)
 	return ptr;
 }
 
-static void __init *early_alloc(unsigned long sz)
+static void __init *early_alloc(unsigned long sz)    /*分配的是虚拟地址，从物理地址末端开始分配*/
 {
 	return early_alloc_aligned(sz, sz);
 }
 
 static pte_t * __init early_pte_alloc(pmd_t *pmd, unsigned long addr, unsigned long prot)
 {
-	if (pmd_none(*pmd)) {
-		pte_t *pte = early_alloc(PTE_HWTABLE_OFF + PTE_HWTABLE_SIZE);
-		__pmd_populate(pmd, __pa(pte), prot);
+	if (pmd_none(*pmd)) {/*实际上一次处理了两个pmd*/
+		pte_t *pte = early_alloc(PTE_HWTABLE_OFF + PTE_HWTABLE_SIZE);  /*分配二级页表空间，总共分配的大小是(512*4)*2=4096*/
+//		printk("alloc pte=0x%x ",pte);
+		__pmd_populate(pmd, __pa(pte), prot);           /*关联一，二级页表*/
 	}
 	BUG_ON(pmd_bad(*pmd));
-	return pte_offset_kernel(pmd, addr);
+//	printk(" pmd=0x%x 0x%x 0x%x index=0x%x\n",pmd,*pmd,pmd_page_vaddr(*(pmd)),pte_index(addr));
+	return pte_offset_kernel(pmd, addr);     /*返回二级页表的软件页表项虚拟地址*/
 }
 
 static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 				  unsigned long end, unsigned long pfn,
 				  const struct mem_type *type)
 {
-	pte_t *pte = early_pte_alloc(pmd, addr, type->prot_l1);
+	pte_t *pte = early_pte_alloc(pmd, addr, type->prot_l1);   /*分配二级页表空间，关联一二级页表，返回二级硬件页表项虚拟地址*/
 	do {
-		set_pte_ext(pte, pfn_pte(pfn, __pgprot(type->prot_pte)), 0);
+		set_pte_ext(pte, pfn_pte(pfn, __pgprot(type->prot_pte)), 0);  /*设置二级页表项，pte指向二级硬件页表项地址，第二个参数是要写进二级页表的内容，包括物理地址及页属性*/
 		pfn++;
+//		printk("pte:0x%x 0x%x 0x%x 0x%x\n",pte,*(long *)pte,((long *)pte+512),*((long *)pte+512));
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 }
 
@@ -632,11 +635,11 @@ static void __init __map_init_section(pmd_t *pmd, unsigned long addr,
 	 * offset for odd 1MB sections.
 	 * (See arch/arm/include/asm/pgtable-2level.h)
 	 */
-	if (addr & SECTION_SIZE)
+	if (addr & SECTION_SIZE)                    /*SECTION_SIZE是1M,所以下面的循环会处理两次*/
 		pmd++;
 #endif
 	do {
-		*pmd = __pmd(phys | type->prot_sect);
+		*pmd = __pmd(phys | type->prot_sect);   /*将物理地址及页属性填入一级页表项中*/
 		phys += SECTION_SIZE;
 	} while (pmd++, addr += SECTION_SIZE, addr != end);
 
@@ -663,10 +666,10 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 		 */
 		if (type->prot_sect &&
 				((addr | next | phys) & ~SECTION_MASK) == 0) {
-			__map_init_section(pmd, addr, next, phys, type);
+			__map_init_section(pmd, addr, next, phys, type);      /*建立只有一级的段映射*/
 		} else {
 			alloc_init_pte(pmd, addr, next,
-						__phys_to_pfn(phys), type);
+						__phys_to_pfn(phys), type);               /*建立有两级的页表*/
 		}
 
 		phys += next - addr;
@@ -757,14 +760,14 @@ static void __init create_36bit_mapping(struct map_desc *md,
  * offsets, and we take full advantage of sections and
  * supersections.
  */
-static void __init create_mapping(struct map_desc *md)
+static void __init create_mapping(struct map_desc *md)      /*根据类型创建一级或者二级页表*/
 {
 	unsigned long addr, length, end;
 	phys_addr_t phys;
 	const struct mem_type *type;
 	pgd_t *pgd;
 
-	if (md->virtual != vectors_base() && md->virtual < TASK_SIZE) {
+	if (md->virtual != vectors_base() && md->virtual < TASK_SIZE) {   /*不能为用户空间建立页表*/
 		printk(KERN_WARNING "BUG: not creating mapping for 0x%08llx"
 		       " at 0x%08lx in user region\n",
 		       (long long)__pfn_to_phys((u64)md->pfn), md->virtual);
@@ -779,7 +782,7 @@ static void __init create_mapping(struct map_desc *md)
 		       (long long)__pfn_to_phys((u64)md->pfn), md->virtual);
 	}
 
-	type = &mem_types[md->type];
+	type = &mem_types[md->type];            /*mem_types里保存着页类型所对应的属性*/
 
 #ifndef CONFIG_ARM_LPAE
 	/*
@@ -802,10 +805,11 @@ static void __init create_mapping(struct map_desc *md)
 		return;
 	}
 
-	pgd = pgd_offset_k(addr);
+	pgd = pgd_offset_k(addr);                        /*pgd是虚拟地址，init的pgd位置是0xc0007000,能映射1G空间*/
 	end = addr + length;
+	printk("create_mapping 0x%x to 0x%x - 0x%x pgd 0x%x\n",phys, addr, end, pgd_offset_k(addr));
 	do {
-		unsigned long next = pgd_addr_end(addr, end);
+		unsigned long next = pgd_addr_end(addr, end);  /*每一个PGD大小处理一次(2M)*/
 
 		alloc_init_pud(pgd, addr, next, phys, type);
 
@@ -1126,13 +1130,13 @@ static inline void prepare_page_table(void)
 	 * Clear out all the mappings below the kernel image.
 	 */
 	for (addr = 0; addr < MODULES_VADDR; addr += PMD_SIZE)
-		pmd_clear(pmd_off_k(addr));
+		pmd_clear(pmd_off_k(addr));             /*清除用户地址空间一级页表，内核地址C0000000下还预留了16M给模块用*/
 
 #ifdef CONFIG_XIP_KERNEL
 	/* The XIP kernel is mapped in the module area -- skip over it */
 	addr = ((unsigned long)_etext + PMD_SIZE - 1) & PMD_MASK;
 #endif
-	for ( ; addr < PAGE_OFFSET; addr += PMD_SIZE)
+	for ( ; addr < PAGE_OFFSET; addr += PMD_SIZE)  /*清除模块空间一级页表(C0000000-16M ~ C0000000)*/
 		pmd_clear(pmd_off_k(addr));
 
 	/*
@@ -1141,12 +1145,13 @@ static inline void prepare_page_table(void)
 	end = memblock.memory.regions[0].base + memblock.memory.regions[0].size;
 	if (end >= arm_lowmem_limit)
 		end = arm_lowmem_limit;
-
+	printk("arm_lowmem_limit:0x%x 0x%x 0x%x\n",memblock.memory.regions[0].base,memblock.memory.regions[0].size,arm_lowmem_limit);
+	printk("high_memory: 0x%x\n",high_memory);
 	/*
 	 * Clear out all the kernel space mappings, except for the first
 	 * memory bank, up to the vmalloc region.
 	 */
-	for (addr = __phys_to_virt(end);
+	for (addr = __phys_to_virt(end);               /*清除kernel地址到vmalloc地址的页表，vmalloc与内核虚拟地址有8M空洞，用于捕获非法访问*/
 	     addr < VMALLOC_START; addr += PMD_SIZE)
 		pmd_clear(pmd_off_k(addr));
 }
@@ -1197,9 +1202,9 @@ static void __init devicemaps_init(struct machine_desc *mdesc)
 	 */
 	vectors = early_alloc(PAGE_SIZE * 2);
 
-	early_trap_init(vectors);
+	early_trap_init(vectors);   /*为向量分配空间，并拷贝向量过去*/
 
-	for (addr = VMALLOC_START; addr; addr += PMD_SIZE)
+	for (addr = VMALLOC_START; addr; addr += PMD_SIZE)   /*清除vmalloc开始之后的页表项*/
 		pmd_clear(pmd_off_k(addr));
 
 	/*
@@ -1237,7 +1242,7 @@ static void __init devicemaps_init(struct machine_desc *mdesc)
 	 * location (0xffff0000).  If we aren't using high-vectors, also
 	 * create a mapping at the low-vectors virtual address.
 	 */
-	map.pfn = __phys_to_pfn(virt_to_phys(vectors));
+	map.pfn = __phys_to_pfn(virt_to_phys(vectors));   /*将向量表映射到0xFFFF0000*/
 	map.virtual = 0xffff0000;
 	map.length = PAGE_SIZE;
 #ifdef CONFIG_KUSER_HELPERS
@@ -1254,7 +1259,7 @@ static void __init devicemaps_init(struct machine_desc *mdesc)
 		create_mapping(&map);
 	}
 
-	/* Now create a kernel read-only mapping */
+	/* Now create a kernel read-only mapping */      /*多映射一个0xFFFF1000*/
 	map.pfn += 1;
 	map.virtual = 0xffff0000 + PAGE_SIZE;
 	map.length = PAGE_SIZE;
@@ -1324,10 +1329,10 @@ void __init paging_init(struct machine_desc *mdesc)
 	void *zero_page;
 
 	build_mem_type_table();
-	prepare_page_table();
-	map_lowmem();
-	dma_contiguous_remap();
-	devicemaps_init(mdesc);
+	prepare_page_table();        /*清除整个地址空间pmd一级页表*/
+	map_lowmem();                /*段映射整个物理地址空间phys -> 0xC0000000*/
+	dma_contiguous_remap();      /*映射DMA空间*/
+	devicemaps_init(mdesc);      /*映射向量表到0xFFFF0000(如果是高模式)，machine相关map_io()*/
 	kmap_init();
 	tcm_init();
 
@@ -1336,7 +1341,7 @@ void __init paging_init(struct machine_desc *mdesc)
 	/* allocate the zero page. */
 	zero_page = early_alloc(PAGE_SIZE);
 
-	bootmem_init();
+	bootmem_init();              /*自举分配器初始化*/
 
 	empty_zero_page = virt_to_page(zero_page);
 	__flush_dcache_page(NULL, empty_zero_page);

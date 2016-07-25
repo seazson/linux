@@ -101,14 +101,14 @@ static unsigned long __init init_bootmem_core(bootmem_data_t *bdata,
 	bdata->node_bootmem_map = phys_to_virt(PFN_PHYS(mapstart));
 	bdata->node_min_pfn = start;
 	bdata->node_low_pfn = end;
-	link_bootmem(bdata);
+	link_bootmem(bdata);             /*排序bdata链*/
 
 	/*
 	 * Initially all pages are reserved - setup_arch() has to
 	 * register free RAM areas explicitly.
 	 */
 	mapsize = bootmap_bytes(end - start);
-	memset(bdata->node_bootmem_map, 0xff, mapsize);
+	memset(bdata->node_bootmem_map, 0xff, mapsize);           /*标记所有页为已用*/
 
 	bdebug("nid=%td start=%lx map=%lx end=%lx mapsize=%lx\n",
 		bdata - bootmem_node_data, start, mapstart, end, mapsize);

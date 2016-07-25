@@ -40,9 +40,9 @@ struct address_space;
  */
 struct page {
 	/* First double word block */
-	unsigned long flags;		/* Atomic flags, some possibly
+	unsigned long flags;		/* Atomic flags, some possibly 页属性
 					 * updated asynchronously */
-	struct address_space *mapping;	/* If low bit clear, points to
+	struct address_space *mapping;	/* If low bit clear, points to 指定页帧所在地址空间
 					 * inode address_space, or NULL.
 					 * If page mapped as anonymous
 					 * memory, low bit is set, and
@@ -52,7 +52,7 @@ struct page {
 	/* Second double word */
 	struct {
 		union {
-			pgoff_t index;		/* Our offset within mapping. */
+			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量*/
 			void *freelist;		/* slub/slob first free object */
 			bool pfmemalloc;	/* If set by the page allocator,
 						 * ALLOC_NO_WATERMARKS was set
@@ -98,7 +98,7 @@ struct page {
 					 * never succeed on tail
 					 * pages.
 					 */
-					atomic_t _mapcount;
+					atomic_t _mapcount;  /*表示有多少项指向该页，也用于逆向映射搜索*/
 
 					struct { /* SLUB */
 						unsigned inuse:16;
@@ -107,14 +107,14 @@ struct page {
 					};
 					int units;	/* SLOB */
 				};
-				atomic_t _count;		/* Usage count, see below. */
+				atomic_t _count;		/* Usage count, see below. 引用计数*/
 			};
 		};
 	};
 
 	/* Third double word block */
 	union {
-		struct list_head lru;	/* Pageout list, eg. active_list
+		struct list_head lru;	/* Pageout list, eg. active_list  用于冷热页
 					 * protected by zone->lru_lock !
 					 */
 		struct {		/* slub per cpu partial pages */
@@ -145,7 +145,7 @@ struct page {
 		spinlock_t ptl;
 #endif
 		struct kmem_cache *slab_cache;	/* SL[AU]B: Pointer to slab */
-		struct page *first_page;	/* Compound tail pages */
+		struct page *first_page;	/* Compound tail pages */ /*复合页中指向第一个页*/
 	};
 
 	/*

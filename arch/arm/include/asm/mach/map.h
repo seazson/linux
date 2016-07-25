@@ -15,10 +15,10 @@
 #include <asm/io.h>
 
 struct map_desc {
-	unsigned long virtual;
-	unsigned long pfn;
-	unsigned long length;
-	unsigned int type;
+	unsigned long virtual;         /*要映射到的虚拟地址*/
+	unsigned long pfn;             /*被映射的物理页帧逻辑编号，左移PAGE就能得到物理地址*/
+	unsigned long length;          /*要映射的长度*/
+	unsigned int type;             /*被映射的空间的类型*/
 };
 
 /* types 0-3 are defined in asm/io.h */

@@ -70,9 +70,9 @@ static int elf_core_dump(struct coredump_params *cprm);
 #define ELF_CORE_EFLAGS	0
 #endif
 
-#define ELF_PAGESTART(_v) ((_v) & ~(unsigned long)(ELF_MIN_ALIGN-1))
-#define ELF_PAGEOFFSET(_v) ((_v) & (ELF_MIN_ALIGN-1))
-#define ELF_PAGEALIGN(_v) (((_v) + ELF_MIN_ALIGN - 1) & ~(ELF_MIN_ALIGN - 1))
+#define ELF_PAGESTART(_v) ((_v) & ~(unsigned long)(ELF_MIN_ALIGN-1))            /*向前对齐*/
+#define ELF_PAGEOFFSET(_v) ((_v) & (ELF_MIN_ALIGN-1))                           /*偏移量*/
+#define ELF_PAGEALIGN(_v) (((_v) + ELF_MIN_ALIGN - 1) & ~(ELF_MIN_ALIGN - 1))   /*向后对齐*/
 
 static struct linux_binfmt elf_format = {
 	.module		= THIS_MODULE,
@@ -169,7 +169,7 @@ create_elf_tables(struct linux_binprm *bprm, struct elfhdr *exec,
 	 */
 
 	p = arch_align_stack(p);
-
+	printk("bprm->p = %x\n",bprm->p);
 	/*
 	 * If this architecture has a platform capability string, copy it
 	 * to userspace.  In some cases (Sparc), this info is impossible
@@ -332,10 +332,10 @@ static unsigned long elf_map(struct file *filep, unsigned long addr,
 		unsigned long total_size)
 {
 	unsigned long map_addr;
-	unsigned long size = eppnt->p_filesz + ELF_PAGEOFFSET(eppnt->p_vaddr);
-	unsigned long off = eppnt->p_offset - ELF_PAGEOFFSET(eppnt->p_vaddr);
-	addr = ELF_PAGESTART(addr);
-	size = ELF_PAGEALIGN(size);
+	unsigned long size = eppnt->p_filesz + ELF_PAGEOFFSET(eppnt->p_vaddr);/*文件内存分配大小需要加上偏移，因为我们分配的时候需要加上前面对齐造成的空白*/
+	unsigned long off = eppnt->p_offset - ELF_PAGEOFFSET(eppnt->p_vaddr);/*因为虚拟地址往前对齐了，在文件的偏移也得向前*/
+	addr = ELF_PAGESTART(addr); /*虚拟起始地址需要向前页对齐*/
+	size = ELF_PAGEALIGN(size); /*总长度也必须是向后页对齐*/
 
 	/* mmap() will return -EINVAL if given a zero size, but a
 	 * segment with zero filesize is perfectly valid */
@@ -566,6 +566,58 @@ static unsigned long randomize_stack_top(unsigned long stack_top)
 #endif
 }
 
+#define DUMPELF
+static void dump_elfhdr(struct elfhdr *elf_ex)
+{
+#ifdef DUMPELF
+	int i;
+	char *p = (char *)elf_ex;
+	for(i=0 ; i<sizeof(struct elfhdr); i++)
+	{
+		if(i%32 == 0)
+			printk("\n");
+		printk("%02x ", *(p+i));
+	}
+	printk("\n");
+	printk("e_type  \t: 0x%x (1:rel 2:exe 3:dyn 4:core)\n",elf_ex->e_type);
+	printk("e_machine \t: 0x%x (0x28:arm)\n",elf_ex->e_machine);
+	printk("e_version \t: 0x%x\n",elf_ex->e_version);
+	printk("e_entry \t: 0x%x\n",elf_ex->e_entry);
+	printk("e_phoff \t: 0x%x\n",elf_ex->e_phoff);
+	printk("e_shoff \t: 0x%x\n",elf_ex->e_shoff);
+	printk("e_flags \t: 0x%x (31~24:eabi)\n",elf_ex->e_flags);
+	printk("e_ehsize \t: 0x%x\n",elf_ex->e_ehsize);
+	printk("e_phentsize \t: 0x%x\n",elf_ex->e_phentsize);
+	printk("e_phnum \t: 0x%x\n",elf_ex->e_phnum);
+	printk("e_shentsize \t: 0x%x\n",elf_ex->e_shentsize);
+	printk("e_shnum \t: 0x%x\n",elf_ex->e_shnum);
+	printk("e_shstrndx \t: 0x%x\n",elf_ex->e_shstrndx);
+#endif
+}
+
+static void dump_elfphdr(struct elf_phdr *elf_ex)
+{
+#ifdef DUMPELF	
+	int i;
+	char *p = (char *)elf_ex;
+	for(i=0 ; i<sizeof(struct elf_phdr); i++)
+	{
+		if(i%32 == 0)
+			printk("\n");
+		printk("%02x ", *(p+i));
+	}
+	printk("\n");
+	printk("p_type  \t: 0x%x\n",elf_ex->p_type);
+	printk("p_offset \t: 0x%x\n",elf_ex->p_offset);
+	printk("p_vaddr \t: 0x%x\n",elf_ex->p_vaddr);
+	printk("p_paddr \t: 0x%x\n",elf_ex->p_paddr);
+	printk("p_filesz \t: 0x%x\n",elf_ex->p_filesz);
+	printk("p_memsz \t: 0x%x\n",elf_ex->p_memsz);
+	printk("p_flags \t: 0x%x\n",elf_ex->p_flags);
+	printk("p_align \t: 0x%x\n",elf_ex->p_align);
+#endif
+}
+
 static int load_elf_binary(struct linux_binprm *bprm)
 {
 	struct file *interpreter = NULL; /* to shut gcc up */
@@ -598,22 +650,23 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	/* Get the exec-header */
 	loc->elf_ex = *((struct elfhdr *)bprm->buf);
 
+	dump_elfhdr(&loc->elf_ex);
 	retval = -ENOEXEC;
 	/* First of all, some simple consistency checks */
-	if (memcmp(loc->elf_ex.e_ident, ELFMAG, SELFMAG) != 0)
+	if (memcmp(loc->elf_ex.e_ident, ELFMAG, SELFMAG) != 0)   /*头是否是ELF*/
 		goto out;
 
-	if (loc->elf_ex.e_type != ET_EXEC && loc->elf_ex.e_type != ET_DYN)
+	if (loc->elf_ex.e_type != ET_EXEC && loc->elf_ex.e_type != ET_DYN) /*必须是elf或者动态链接格式*/
 		goto out;
-	if (!elf_check_arch(&loc->elf_ex))
+	if (!elf_check_arch(&loc->elf_ex))   /*检测平台指令兼容性*/
 		goto out;
 	if (!bprm->file->f_op || !bprm->file->f_op->mmap)
 		goto out;
 
 	/* Now read in all of the header information */
-	if (loc->elf_ex.e_phentsize != sizeof(struct elf_phdr))
+	if (loc->elf_ex.e_phentsize != sizeof(struct elf_phdr)) /*程序头的大小是否规范*/
 		goto out;
-	if (loc->elf_ex.e_phnum < 1 ||
+	if (loc->elf_ex.e_phnum < 1 ||                          /*程序头的个数是否符合要求*/
 	 	loc->elf_ex.e_phnum > 65536U / sizeof(struct elf_phdr))
 		goto out;
 	size = loc->elf_ex.e_phnum * sizeof(struct elf_phdr);
@@ -623,7 +676,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 		goto out;
 
 	retval = kernel_read(bprm->file, loc->elf_ex.e_phoff,
-			     (char *)elf_phdata, size);
+			     (char *)elf_phdata, size);                 /*读取所有的程序头*/
 	if (retval != size) {
 		if (retval >= 0)
 			retval = -EIO;
@@ -638,8 +691,9 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	end_code = 0;
 	start_data = 0;
 	end_data = 0;
-
+	/*需要动态链接的处理*/
 	for (i = 0; i < loc->elf_ex.e_phnum; i++) {
+		dump_elfphdr(elf_ppnt);
 		if (elf_ppnt->p_type == PT_INTERP) {
 			/* This is the program interpreter used for
 			 * shared libraries - for now assume that this
@@ -746,7 +800,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	}
 	
 	current->mm->start_stack = bprm->p;
-
+	printk("bprm->p = %x\n", bprm->p);
 	/* Now we do a little grungy work by mmapping the ELF image into
 	   the correct location in memory. */
 	for(i = 0, elf_ppnt = elf_phdata;
@@ -757,14 +811,15 @@ static int load_elf_binary(struct linux_binprm *bprm)
 		if (elf_ppnt->p_type != PT_LOAD)
 			continue;
 
-		if (unlikely (elf_brk > elf_bss)) {
+		if (unlikely (elf_brk > elf_bss)) {              /*前一个段中有bss，起始这里不应该叫bss，应该叫匿名空间，bss在循环结束后分配*/
 			unsigned long nbyte;
-	            
+	            /*p_memsz > p_filesz说明段中有bss*/
 			/* There was a PT_LOAD segment with p_memsz > p_filesz
 			   before this one. Map anonymous pages, if needed,
 			   and clear the area.  */
 			retval = set_brk(elf_bss + load_bias,
-					 elf_brk + load_bias);
+					 elf_brk + load_bias);                /*为匿名分配空间，需要对齐*/
+			printk("anuy = %x\n", retval);
 			if (retval) {
 				send_sig(SIGKILL, current, 0);
 				goto out_free_dentry;
@@ -774,7 +829,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 				nbyte = ELF_MIN_ALIGN - nbyte;
 				if (nbyte > elf_brk - elf_bss)
 					nbyte = elf_brk - elf_bss;
-				if (clear_user((void __user *)elf_bss +
+				if (clear_user((void __user *)elf_bss +    /*初始化bss段内容为0，只初始化了实际使用的部分*/
 							load_bias, nbyte)) {
 					/*
 					 * This bss-zeroing can fail if the ELF
@@ -784,7 +839,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 				}
 			}
 		}
-
+		/*处理段的权限属性*/
 		if (elf_ppnt->p_flags & PF_R)
 			elf_prot |= PROT_READ;
 		if (elf_ppnt->p_flags & PF_W)
@@ -818,7 +873,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			load_bias = ELF_PAGESTART(ELF_ET_DYN_BASE - vaddr);
 #endif
 		}
-
+		/*映射可加载段p_type==1*/
 		error = elf_map(bprm->file, load_bias + vaddr, elf_ppnt,
 				elf_prot, elf_flags, 0);
 		if (BAD_ADDR(error)) {
@@ -830,7 +885,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 
 		if (!load_addr_set) {
 			load_addr_set = 1;
-			load_addr = (elf_ppnt->p_vaddr - elf_ppnt->p_offset);
+			load_addr = (elf_ppnt->p_vaddr - elf_ppnt->p_offset); /*加载地址前移，保证运行地址=p_vaddr*/
 			if (loc->elf_ex.e_type == ET_DYN) {
 				load_bias += error -
 				             ELF_PAGESTART(load_bias + vaddr);
@@ -838,7 +893,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 				reloc_func_desc = load_bias;
 			}
 		}
-		k = elf_ppnt->p_vaddr;
+		k = elf_ppnt->p_vaddr;    /*段头地址处理*/
 		if (k < start_code)
 			start_code = k;
 		if (start_data < k)
@@ -848,7 +903,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 		 * Check to see if the section's size will overflow the
 		 * allowed task size. Note that p_filesz must always be
 		 * <= p_memsz so it is only necessary to check p_memsz.
-		 */
+		 */ /*检查段大小是否超标*/
 		if (BAD_ADDR(k) || elf_ppnt->p_filesz > elf_ppnt->p_memsz ||
 		    elf_ppnt->p_memsz > TASK_SIZE ||
 		    TASK_SIZE - elf_ppnt->p_memsz < k) {
@@ -857,8 +912,8 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			retval = -EINVAL;
 			goto out_free_dentry;
 		}
-
-		k = elf_ppnt->p_vaddr + elf_ppnt->p_filesz;
+		/*段尾地址处理*/
+		k = elf_ppnt->p_vaddr + elf_ppnt->p_filesz; /*注意此处没有算bss大小*/
 
 		if (k > elf_bss)
 			elf_bss = k;
@@ -866,11 +921,11 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			end_code = k;
 		if (end_data < k)
 			end_data = k;
-		k = elf_ppnt->p_vaddr + elf_ppnt->p_memsz;
+		k = elf_ppnt->p_vaddr + elf_ppnt->p_memsz;  /*此处算了bss大小*/
 		if (k > elf_brk)
 			elf_brk = k;
 	}
-
+	/*经过上面的过程，可加载段都建立了映射关系，并且确定了代码段起始，数据段起始，bss段开始地址(紧贴数据段尾)，堆开始地址(与数据段之间留有bss空隙)*/
 	loc->elf_ex.e_entry += load_bias;
 	elf_bss += load_bias;
 	elf_brk += load_bias;
@@ -878,18 +933,19 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	end_code += load_bias;
 	start_data += load_bias;
 	end_data += load_bias;
-
+	printk("start_code=%x end_code=%x,start_data=%x,end_data=%x,elf_bss=%x,elf_brk=%x\n",start_code,end_code,start_data,end_data,elf_bss,elf_brk);
 	/* Calling set_brk effectively mmaps the pages that we need
 	 * for the bss and break sections.  We must do this before
 	 * mapping in the interpreter, to make sure it doesn't wind
 	 * up getting placed where the bss needs to go.
 	 */
-	retval = set_brk(elf_bss, elf_brk);
+	retval = set_brk(elf_bss, elf_brk); /*映射bss段*/
+	printk("bss = %x\n", retval);
 	if (retval) {
 		send_sig(SIGKILL, current, 0);
 		goto out_free_dentry;
 	}
-	if (likely(elf_bss != elf_brk) && unlikely(padzero(elf_bss))) {
+	if (likely(elf_bss != elf_brk) && unlikely(padzero(elf_bss))) {/*清零bss部分*/
 		send_sig(SIGSEGV, current, 0);
 		retval = -EFAULT; /* Nobody gets to see this, but.. */
 		goto out_free_dentry;
@@ -935,7 +991,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	set_binfmt(&elf_format);
 
 #ifdef ARCH_HAS_SETUP_ADDITIONAL_PAGES
-	retval = arch_setup_additional_pages(bprm, !!elf_interpreter);
+	retval = arch_setup_additional_pages(bprm, !!elf_interpreter); /*建立信号需要的空间*/
 	if (retval < 0) {
 		send_sig(SIGKILL, current, 0);
 		goto out;
@@ -943,7 +999,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 #endif /* ARCH_HAS_SETUP_ADDITIONAL_PAGES */
 
 	install_exec_creds(bprm);
-	retval = create_elf_tables(bprm, &loc->elf_ex,
+	retval = create_elf_tables(bprm, &loc->elf_ex,      /*分配栈空间，建立arg和环境变量*/
 			  load_addr, interp_load_addr);
 	if (retval < 0) {
 		send_sig(SIGKILL, current, 0);
@@ -959,7 +1015,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 #ifdef arch_randomize_brk
 	if ((current->flags & PF_RANDOMIZE) && (randomize_va_space > 1)) {
 		current->mm->brk = current->mm->start_brk =
-			arch_randomize_brk(current->mm);
+			arch_randomize_brk(current->mm);            /*随机化分配堆空间，mm->brk之前指向elf_brk向后对齐后的地址*/
 #ifdef CONFIG_COMPAT_BRK
 		current->brk_randomized = 1;
 #endif

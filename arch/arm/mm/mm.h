@@ -37,9 +37,9 @@ static inline pmd_t *pmd_off_k(unsigned long virt)
 }
 
 struct mem_type {
-	pteval_t prot_pte;
-	pmdval_t prot_l1;
-	pmdval_t prot_sect;
+	pteval_t prot_pte;   /*建立二级页表时，二级页表参数*/
+	pmdval_t prot_l1;    /*建立二级页表时，一级页表参数*/
+	pmdval_t prot_sect;  /*只建立段映射的参数*/
 	unsigned int domain;
 };
 

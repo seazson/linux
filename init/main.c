@@ -507,7 +507,7 @@ asmlinkage void __init start_kernel(void)
 	setup_per_cpu_areas();
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
 
-	build_all_zonelists(NULL, NULL);
+	build_all_zonelists(NULL, NULL);    /*初始化内存结点优先次序链表*/
 	page_alloc_init();
 
 	pr_notice("Kernel command line: %s\n", boot_command_line);
@@ -521,13 +521,13 @@ asmlinkage void __init start_kernel(void)
 	/*
 	 * These use large bootmem allocations and must precede
 	 * kmem_cache_init()
-	 */
+	 */                         /*后面的还需要自举分配器分配空间(例如hash表)，所以还不能停用*/
 	setup_log_buf(0);
 	pidhash_init();
 	vfs_caches_init_early();
 	sort_main_extable();
 	trap_init();
-	mm_init();
+	mm_init();                  /*初始化slab，停用自举分配器bootmem*/
 
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the

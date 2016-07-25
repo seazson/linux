@@ -104,10 +104,10 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 
 	/* pump up @end */
 	if (end == MEMBLOCK_ALLOC_ACCESSIBLE)
-		end = memblock.current_limit;
+		end = memblock.current_limit;       /*从最后开始分配*/
 
 	/* avoid allocating the first page */
-	start = max_t(phys_addr_t, start, PAGE_SIZE);
+	start = max_t(phys_addr_t, start, PAGE_SIZE); 
 	end = max(start, end);
 
 	for_each_free_mem_range_reverse(i, nid, &this_start, &this_end, NULL) {
@@ -117,7 +117,7 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 		if (this_end < size)
 			continue;
 
-		cand = round_down(this_end - size, align);
+		cand = round_down(this_end - size, align);   /*获取分配的地址*/
 		if (cand >= this_start)
 			return cand;
 	}

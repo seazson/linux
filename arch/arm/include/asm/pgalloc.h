@@ -129,12 +129,12 @@ static inline void pte_free(struct mm_struct *mm, pgtable_t pte)
 static inline void __pmd_populate(pmd_t *pmdp, phys_addr_t pte,
 				  pmdval_t prot)
 {
-	pmdval_t pmdval = (pte + PTE_HWTABLE_OFF) | prot;
-	pmdp[0] = __pmd(pmdval);
+	pmdval_t pmdval = (pte + PTE_HWTABLE_OFF) | prot;   /*pte代表二级页表物理地址,硬件页表项偏移2048*/
+	pmdp[0] = __pmd(pmdval);                            /*2048~3072*/ /*建立页表项，这样一级页表就指向了二级页表*/
 #ifndef CONFIG_ARM_LPAE
-	pmdp[1] = __pmd(pmdval + 256 * sizeof(pte_t));
+	pmdp[1] = __pmd(pmdval + 256 * sizeof(pte_t));      /*3072~4096*/
 #endif
-	flush_pmd_entry(pmdp);
+	flush_pmd_entry(pmdp);    /*同步到内存*/
 }
 
 /*
