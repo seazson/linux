@@ -308,12 +308,12 @@ void __init create_boot_cache(struct kmem_cache *s, const char *name, size_t siz
 struct kmem_cache *__init create_kmalloc_cache(const char *name, size_t size,
 				unsigned long flags)
 {
-	struct kmem_cache *s = kmem_cache_zalloc(kmem_cache, GFP_NOWAIT);
+	struct kmem_cache *s = kmem_cache_zalloc(kmem_cache, GFP_NOWAIT);   /*从kmem_cache的slab中，分配一个kmem_cache*/
 
 	if (!s)
 		panic("Out of memory when creating slab %s\n", name);
 
-	create_boot_cache(s, name, size, flags);
+	create_boot_cache(s, name, size, flags);                            /*创建一个新的cache*/
 	list_add(&s->list, &slab_caches);
 	s->refcount = 1;
 	return s;
@@ -417,7 +417,7 @@ void __init create_kmalloc_caches(unsigned long flags)
 	BUILD_BUG_ON(KMALLOC_MIN_SIZE > 256 ||
 		(KMALLOC_MIN_SIZE & (KMALLOC_MIN_SIZE - 1)));
 
-	for (i = 8; i < KMALLOC_MIN_SIZE; i += 8) {
+	for (i = 8; i < KMALLOC_MIN_SIZE; i += 8) {    /*将小于最小分配的替换成最小分配值*/
 		int elem = size_index_elem(i);
 
 		if (elem >= ARRAY_SIZE(size_index))
@@ -444,7 +444,7 @@ void __init create_kmalloc_caches(unsigned long flags)
 		for (i = 128 + 8; i <= 192; i += 8)
 			size_index[size_index_elem(i)] = 8;
 	}
-	for (i = KMALLOC_SHIFT_LOW; i <= KMALLOC_SHIFT_HIGH; i++) {
+	for (i = KMALLOC_SHIFT_LOW; i <= KMALLOC_SHIFT_HIGH; i++) {   /*遍历整个大小数组创建cache*/
 		if (!kmalloc_caches[i]) {
 			kmalloc_caches[i] = create_kmalloc_cache(NULL,
 							1 << i, flags);

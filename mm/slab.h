@@ -248,16 +248,16 @@ struct kmem_cache_node {
 	spinlock_t list_lock;
 
 #ifdef CONFIG_SLAB
-	struct list_head slabs_partial;	/* partial list first, better asm code */
-	struct list_head slabs_full;
-	struct list_head slabs_free;
-	unsigned long free_objects;
-	unsigned int free_limit;
-	unsigned int colour_next;	/* Per-node cache coloring */
+	struct list_head slabs_partial;	/*部分空链表*//* partial list first, better asm code */
+	struct list_head slabs_full; /*全满链表*/
+	struct list_head slabs_free; /*全空链表*/
+	unsigned long free_objects; /*当前可用的obj数量*/
+	unsigned int free_limit;    /*超过这个数值会释放slab，返还给伙伴系统*/
+	unsigned int colour_next;	/* Per-node cache coloring */ /*建立下一个slab的颜色,加到kmem_cache->colour后重0再开始*/
 	struct array_cache *shared;	/* shared per node */
 	struct array_cache **alien;	/* on other nodes */
-	unsigned long next_reap;	/* updated without locking */
-	int free_touched;		/* updated without locking */
+	unsigned long next_reap;	/* updated without locking */  /*下一次收缩时间*/
+	int free_touched;		/* updated without locking */ /*从缓存获取时置1，表明此时不适合收缩。收缩时置0*/
 #endif
 
 #ifdef CONFIG_SLUB

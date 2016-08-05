@@ -21,31 +21,31 @@
 
 struct kmem_cache {
 /* 1) Cache tunables. Protected by cache_chain_mutex */
-	unsigned int batchcount;
-	unsigned int limit;
+	unsigned int batchcount;            /*如果per-CPU为空，一次从slab中获取到per-CPU中的数量*/
+	unsigned int limit;                 /*超过这个值一次从per-CPU中写入batchcount个到slab*/
 	unsigned int shared;
 
-	unsigned int size;
+	unsigned int size;                  /*管理的对象的长度*/
 	u32 reciprocal_buffer_size;
 /* 2) touched by every alloc & free from the backend */
 
 	unsigned int flags;		/* constant flags */
-	unsigned int num;		/* # of objs per slab */
+	unsigned int num;		/* # of objs per slab */  /*一个slab中包含obj的数量*/
 
 /* 3) cache_grow/shrink */
 	/* order of pgs per slab (2^n) */
-	unsigned int gfporder;
+	unsigned int gfporder;              /*一次分配给一个slab的页阶数*/
 
 	/* force GFP flags, e.g. GFP_DMA */
 	gfp_t allocflags;
 
-	size_t colour;			/* cache colouring range */
-	unsigned int colour_off;	/* colour offset */
+	size_t colour;			/* cache colouring range */ /*缓存着色范围*/ /*最多可取多少个L1偏移，与剩余空间有关*/
+	unsigned int colour_off;	/* colour offset */     /*着色偏移*/ /*就是一个对齐需要的偏移量，通常与L1长度一致*/
 	struct kmem_cache *slabp_cache;
-	unsigned int slab_size;
+	unsigned int slab_size;             /*slab头的大小，包括kmem_bufctl_t。分离头不包含对齐，不分离头包含对齐*/
 
 	/* constructor func */
-	void (*ctor)(void *obj);
+	void (*ctor)(void *obj);     /*构造函数*/
 
 /* 4) cache creation/removal */
 	const char *name;

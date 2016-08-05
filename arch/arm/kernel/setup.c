@@ -879,9 +879,9 @@ void __init setup_arch(char **cmdline_p)
 
 	sort(&meminfo.bank, meminfo.nr_banks, sizeof(meminfo.bank[0]), meminfo_cmp, NULL);
 	sanity_check_meminfo();
-	arm_memblock_init(&meminfo, mdesc);
+	arm_memblock_init(&meminfo, mdesc); /*memblock初始化*/
 
-	paging_init(mdesc);   /*建立只能用于内核的页表，用户空间无法访问*/
+	paging_init(mdesc);   /*建立只能用于内核的页表，用户空间无法访问，同时会初始化自举分配器和伙伴系统*/
 	request_standard_resources(mdesc);
 
 	if (mdesc->restart)

@@ -28,16 +28,16 @@ struct memblock_region {
 };
 
 struct memblock_type {
-	unsigned long cnt;	/* number of regions */
-	unsigned long max;	/* size of the allocated array */
-	phys_addr_t total_size;	/* size of all regions */
+	unsigned long cnt;	/* number of regions */  /*已经使用的区间*/
+	unsigned long max;	/* size of the allocated array */  /*总区间128*/
+	phys_addr_t total_size;	/* size of all regions */      /*所有区间加起来的大小*/
 	struct memblock_region *regions;
 };
 
 struct memblock {
 	phys_addr_t current_limit;
-	struct memblock_type memory;
-	struct memblock_type reserved;
+	struct memblock_type memory;       /*整个内存的空间*/
+	struct memblock_type reserved;     /*已经使用的空间*/
 };
 
 extern struct memblock memblock;

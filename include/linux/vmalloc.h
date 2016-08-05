@@ -26,18 +26,18 @@ struct vm_area_struct;		/* vma defining user mapping in mm_types.h */
 #define IOREMAP_MAX_ORDER	(7 + PAGE_SHIFT)	/* 128 pages */
 #endif
 
-struct vm_struct {
+struct vm_struct {   /*用来建立虚拟地址和物理地址的关系*/
 	struct vm_struct	*next;
-	void			*addr;
-	unsigned long		size;
+	void			*addr;           /*虚拟地址*/
+	unsigned long		size;        /*大小*/
 	unsigned long		flags;
-	struct page		**pages;
-	unsigned int		nr_pages;
-	phys_addr_t		phys_addr;
+	struct page		**pages;         /*pages链表*/
+	unsigned int		nr_pages;    /*总共占用多少个page*/
+	phys_addr_t		phys_addr;       /*保存物理地址，调用ioremap会设置此值*/
 	const void		*caller;
 };
 
-struct vmap_area {
+struct vmap_area {    /*用来维护vmalloc区域的分配信息*/
 	unsigned long va_start;
 	unsigned long va_end;
 	unsigned long flags;

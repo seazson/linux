@@ -25,7 +25,7 @@ extern unsigned long max_pfn;
  * memory pages (including holes) on the node.
  */
 typedef struct bootmem_data {
-	unsigned long node_min_pfn;        /*第一个物理页帧*/
+	unsigned long node_min_pfn;        /*第一个物理页帧,帧号是按照物理绝对地址来的。不是内存相对地址*/
 	unsigned long node_low_pfn;        /*最后一个物理页帧*/
 	void *node_bootmem_map;            /*管理页的位图*/
 	unsigned long last_end_off;

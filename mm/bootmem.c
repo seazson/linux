@@ -38,7 +38,7 @@ bootmem_data_t bootmem_node_data[MAX_NUMNODES] __initdata;
 
 static struct list_head bdata_list __initdata = LIST_HEAD_INIT(bdata_list);
 
-static int bootmem_debug;
+static int bootmem_debug = 0;
 
 static int __init bootmem_debug_setup(char *buf)
 {
@@ -91,7 +91,7 @@ static void __init link_bootmem(bootmem_data_t *bdata)
 
 /*
  * Called once to set up the allocator itself.
- */
+ */ /*初始化bootmem结构*/
 static unsigned long __init init_bootmem_core(bootmem_data_t *bdata,
 	unsigned long mapstart, unsigned long start, unsigned long end)
 {
@@ -99,21 +99,21 @@ static unsigned long __init init_bootmem_core(bootmem_data_t *bdata,
 
 	mminit_validate_memmodel_limits(&start, &end);
 	bdata->node_bootmem_map = phys_to_virt(PFN_PHYS(mapstart));
-	bdata->node_min_pfn = start;
-	bdata->node_low_pfn = end;
+	bdata->node_min_pfn = start;     /*0x30000*/
+	bdata->node_low_pfn = end;       /*0x34000*/
 	link_bootmem(bdata);             /*排序bdata链*/
 
 	/*
 	 * Initially all pages are reserved - setup_arch() has to
 	 * register free RAM areas explicitly.
 	 */
-	mapsize = bootmap_bytes(end - start);
+	mapsize = bootmap_bytes(end - start);   /*0x800*/
 	memset(bdata->node_bootmem_map, 0xff, mapsize);           /*标记所有页为已用*/
 
 	bdebug("nid=%td start=%lx map=%lx end=%lx mapsize=%lx\n",
 		bdata - bootmem_node_data, start, mapstart, end, mapsize);
 
-	return mapsize;
+	return mapsize;  /*位图占用多少个bytes*/
 }
 
 /**
@@ -177,8 +177,8 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 	if (!bdata->node_bootmem_map)
 		return 0;
 
-	start = bdata->node_min_pfn;
-	end = bdata->node_low_pfn;
+	start = bdata->node_min_pfn;    //0x30000
+	end = bdata->node_low_pfn;      //0x34000
 
 	bdebug("nid=%td start=%lx end=%lx\n",
 		bdata - bootmem_node_data, start, end);
@@ -210,7 +210,7 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 		if (IS_ALIGNED(start, BITS_PER_LONG) && vec == ~0UL) {
 			int order = ilog2(BITS_PER_LONG);
 
-			__free_pages_bootmem(pfn_to_page(start), order);
+			__free_pages_bootmem(pfn_to_page(start), order);   /*以order=5阶数加入伙伴系统*/
 			count += BITS_PER_LONG;
 			start += BITS_PER_LONG;
 		} else {
@@ -220,7 +220,7 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 			while (vec && cur != start) {
 				if (vec & 1) {
 					page = pfn_to_page(cur);
-					__free_pages_bootmem(page, 0);
+					__free_pages_bootmem(page, 0);             /*添加一页到伙伴系统*/
 					count++;
 				}
 				vec >>= 1;
@@ -228,8 +228,8 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 			}
 		}
 	}
-
-	page = virt_to_page(bdata->node_bootmem_map);
+/*释放bootmem中的bitmap所占空间*/
+	page = virt_to_page(bdata->node_bootmem_map);         
 	pages = bdata->node_low_pfn - bdata->node_min_pfn;
 	pages = bootmem_bootmap_pages(pages);
 	count += pages;
@@ -267,13 +267,13 @@ void __init reset_all_zones_managed_pages(void)
  * free_all_bootmem - release free pages to the buddy allocator
  *
  * Returns the number of pages actually released.
- */
+ */ /*将未使用的页释放给伙伴系统*/
 unsigned long __init free_all_bootmem(void)
 {
 	unsigned long total_pages = 0;
 	bootmem_data_t *bdata;
 
-	reset_all_zones_managed_pages();
+	reset_all_zones_managed_pages();   /*将zone中managed_page变量设为0*/
 
 	list_for_each_entry(bdata, &bdata_list, list)
 		total_pages += free_all_bootmem_core(bdata);
@@ -659,7 +659,7 @@ void * __init __alloc_bootmem_nopanic(unsigned long size, unsigned long align,
 
 	return ___alloc_bootmem_nopanic(size, align, goal, limit);
 }
-
+/*只是分配空间，用的是一一映射的部分，不会处理page，也不会建立页表*/
 static void * __init ___alloc_bootmem(unsigned long size, unsigned long align,
 					unsigned long goal, unsigned long limit)
 {

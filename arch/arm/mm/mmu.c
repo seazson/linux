@@ -1328,7 +1328,7 @@ void __init paging_init(struct machine_desc *mdesc)
 {
 	void *zero_page;
 
-	build_mem_type_table();
+	build_mem_type_table();      /*根据体系结构来设置mem_types的属性*/
 	prepare_page_table();        /*清除整个地址空间pmd一级页表*/
 	map_lowmem();                /*段映射整个物理地址空间phys -> 0xC0000000*/
 	dma_contiguous_remap();      /*映射DMA空间*/
@@ -1341,7 +1341,7 @@ void __init paging_init(struct machine_desc *mdesc)
 	/* allocate the zero page. */
 	zero_page = early_alloc(PAGE_SIZE);
 
-	bootmem_init();              /*自举分配器初始化*/
+	bootmem_init();              /*自举分配器初始化,初始化伙伴系统*/
 
 	empty_zero_page = virt_to_page(zero_page);
 	__flush_dcache_page(NULL, empty_zero_page);

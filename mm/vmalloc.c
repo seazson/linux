@@ -1315,16 +1315,16 @@ static struct vm_struct *__get_vm_area_node(unsigned long size,
 	if (unlikely(!size))
 		return NULL;
 
-	area = kzalloc_node(sizeof(*area), gfp_mask & GFP_RECLAIM_MASK, node);
+	area = kzalloc_node(sizeof(*area), gfp_mask & GFP_RECLAIM_MASK, node);   /*分配一个vm_struct结构体*/
 	if (unlikely(!area))
 		return NULL;
 
 	/*
 	 * We always allocate a guard page.
 	 */
-	size += PAGE_SIZE;
+	size += PAGE_SIZE;          /*多分一个页作为分隔*/
 
-	va = alloc_vmap_area(size, align, start, end, node, gfp_mask);
+	va = alloc_vmap_area(size, align, start, end, node, gfp_mask);   /*分配空间*/
 	if (IS_ERR(va)) {
 		kfree(area);
 		return NULL;
@@ -1415,7 +1415,7 @@ struct vm_struct *remove_vm_area(const void *addr)
 		spin_unlock(&vmap_area_lock);
 
 		vmap_debug_free_range(va->va_start, va->va_end);
-		free_unmap_vmap_area(va);
+		free_unmap_vmap_area(va);    /*清除页表*/
 		vm->size -= PAGE_SIZE;
 
 		return vm;
@@ -1444,7 +1444,7 @@ static void __vunmap(const void *addr, int deallocate_pages)
 	debug_check_no_locks_freed(addr, area->size);
 	debug_check_no_obj_freed(addr, area->size);
 
-	if (deallocate_pages) {
+	if (deallocate_pages) {  /*vmalloc分配的需要释放page给伙伴系统*/
 		int i;
 
 		for (i = 0; i < area->nr_pages; i++) {
@@ -1562,7 +1562,7 @@ static void *__vmalloc_area_node(struct vm_struct *area, gfp_t gfp_mask,
 	array_size = (nr_pages * sizeof(struct page *));
 
 	area->nr_pages = nr_pages;
-	/* Please note that the recursion is strictly bounded. */
+	/* Please note that the recursion is strictly bounded. */  /*动态分配page指针结构体的空间*/
 	if (array_size > PAGE_SIZE) {
 		pages = __vmalloc_node(array_size, 1, nested_gfp|__GFP_HIGHMEM,
 				PAGE_KERNEL, node, caller);
@@ -1578,14 +1578,14 @@ static void *__vmalloc_area_node(struct vm_struct *area, gfp_t gfp_mask,
 		return NULL;
 	}
 
-	for (i = 0; i < area->nr_pages; i++) {
+	for (i = 0; i < area->nr_pages; i++) {  /*一页页的分配page，并与area的page指针关联*/
 		struct page *page;
 		gfp_t tmp_mask = gfp_mask | __GFP_NOWARN;
 
 		if (node < 0)
 			page = alloc_page(tmp_mask);
 		else
-			page = alloc_pages_node(node, tmp_mask, order);
+			page = alloc_pages_node(node, tmp_mask, order);  
 
 		if (unlikely(!page)) {
 			/* Successfully allocated i pages, free them in __vunmap() */
@@ -1595,7 +1595,7 @@ static void *__vmalloc_area_node(struct vm_struct *area, gfp_t gfp_mask,
 		area->pages[i] = page;
 	}
 
-	if (map_vm_area(area, prot, &pages))
+	if (map_vm_area(area, prot, &pages))         /*建立页表*/
 		goto fail;
 	return area->addr;
 
@@ -1635,11 +1635,11 @@ void *__vmalloc_node_range(unsigned long size, unsigned long align,
 		goto fail;
 
 	area = __get_vm_area_node(size, align, VM_ALLOC | VM_UNINITIALIZED,
-				  start, end, node, gfp_mask, caller);
+				  start, end, node, gfp_mask, caller);                /*在vm区域寻找一个空闲空间*/
 	if (!area)
 		goto fail;
 
-	addr = __vmalloc_area_node(area, gfp_mask, prot, node, caller);
+	addr = __vmalloc_area_node(area, gfp_mask, prot, node, caller);   /*分配page，建立页表*/
 	if (!addr)
 		goto fail;
 

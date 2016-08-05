@@ -462,11 +462,11 @@ static void __init mm_init(void)
 	 * bigger than MAX_ORDER unless SPARSEMEM.
 	 */
 	page_cgroup_init_flatmem();
-	mem_init();
-	kmem_cache_init();
-	percpu_init_late();
+	mem_init();         /*停用自举分配器，启用伙伴系统*/
+	kmem_cache_init();  /*slab初始化*/
+	percpu_init_late(); /*perCPU初始化后部分*/
 	pgtable_cache_init();
-	vmalloc_init();
+	vmalloc_init();     /*vmalloc初始化*/
 }
 void __init early_print(const char *str, ...);
 asmlinkage void __init start_kernel(void)
@@ -504,7 +504,7 @@ asmlinkage void __init start_kernel(void)
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
-	setup_per_cpu_areas();
+	setup_per_cpu_areas();              /*建立per_cpu的空间*/
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
 
 	build_all_zonelists(NULL, NULL);    /*初始化内存结点优先次序链表*/
@@ -563,7 +563,7 @@ asmlinkage void __init start_kernel(void)
 	early_boot_irqs_disabled = false;
 	local_irq_enable();         /*使能中断的时候定时器已经开始工作了，这个时候中断系统和定时系统都应该初始化完成*/
 
-	kmem_cache_init_late();
+	kmem_cache_init_late();     /*slab后期初始化,设置为FULL,同时替换ac*/
 
 	/*
 	 * HACK ALERT! This is early. We're enabling the console before
@@ -595,7 +595,7 @@ asmlinkage void __init start_kernel(void)
 	page_cgroup_init();
 	debug_objects_mem_init();
 	kmemleak_init();
-	setup_per_cpu_pageset();
+	setup_per_cpu_pageset();              /*设置zone里的pageset*/
 	numa_policy_init();
 	if (late_time_init)
 		late_time_init();

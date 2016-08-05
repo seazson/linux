@@ -238,7 +238,7 @@ enum zone_watermarks {
 struct per_cpu_pages {
 	int count;		/* number of pages in the list */
 	int high;		/* high watermark, emptying needed */
-	int batch;		/* chunk size for buddy add/remove */
+	int batch;		/* chunk size for buddy add/remove */ /*跟cpu的高速缓存大小有关系，表示一次添加进高速缓存的页数*/
 
 	/* Lists of pages, one per migrate type stored on the pcp-lists */
 	struct list_head lists[MIGRATE_PCPTYPES];
@@ -347,7 +347,7 @@ struct zone {
 	unsigned long		min_unmapped_pages;
 	unsigned long		min_slab_pages;
 #endif
-	struct per_cpu_pageset __percpu *pageset;     /*用于实现冷热页，分配一页的时候用*/
+	struct per_cpu_pageset __percpu *pageset;     /*用于实现冷热页，分配一页的时候用。2.6.25后冷热页在一个链表中*/
 	/*
 	 * free areas of different sizes
 	 */
@@ -372,8 +372,8 @@ struct zone {
 	 * Flags for a pageblock_nr_pages block. See pageblock-flags.h.
 	 * In SPARSEMEM, this map is stored in struct mem_section
 	 */
-	unsigned long		*pageblock_flags;
-#endif /* CONFIG_SPARSEMEM */
+	unsigned long		*pageblock_flags;      /*按照大块页划分的bitmap，用来存储大块的迁移信息。例如有16384个页，大页按1024算，*/
+#endif /* CONFIG_SPARSEMEM */                  /*则总共有16个大块，每个占用4bit，总共是64bit。这里就指向64bit*/
 
 #ifdef CONFIG_COMPACTION
 	/*
@@ -392,7 +392,7 @@ struct zone {
 	spinlock_t		lru_lock;
 	struct lruvec		lruvec;
 
-	unsigned long		pages_scanned;	   /* since last reclaim */
+	unsigned long		pages_scanned;	   /* since last reclaim */ /*上一次换出一页以来，有多少页未能成功扫描*/
 	unsigned long		flags;		   /* zone flags, see below */
 
 	/* Zone statistics */
@@ -485,9 +485,9 @@ struct zone {
 	 * adjust_managed_page_count() should be used instead of directly
 	 * touching zone->managed_pages and totalram_pages.
 	 */
-	unsigned long		spanned_pages;
-	unsigned long		present_pages;
-	unsigned long		managed_pages;
+	unsigned long		spanned_pages;     /*包含空洞的page数*/
+	unsigned long		present_pages;     /*实际总共page数*/
+	unsigned long		managed_pages;     /*可以管理的page数，需要减去page本身占的空间*/
 
 	/*
 	 * rarely used fields:

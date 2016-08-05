@@ -168,7 +168,7 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 	boot_pages = bootmem_bootmap_pages(end_pfn - start_pfn);     /*计算需要为位图分配的页大小*/
 	bitmap = memblock_alloc_base(boot_pages << PAGE_SHIFT, L1_CACHE_BYTES,
 				__pfn_to_phys(end_pfn));                         /*从后分配空间*/
-
+	printk("arm_bootmem_init bitmap[0x%x] size 0x%x\n",bitmap,boot_pages << PAGE_SHIFT);
 	/*
 	 * Initialise the bootmem allocator, handing the
 	 * memory banks over to bootmem.
@@ -177,7 +177,7 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 	pgdat = NODE_DATA(0);
 	init_bootmem_node(pgdat, __phys_to_pfn(bitmap), start_pfn, end_pfn);   /*初始化与bootmem相关pgdat->bdata结构，标记所有页为已使用*/
 
-	/* Free the lowmem regions from memblock into bootmem. */  /*遍历已用memblock，在bootmem位图中标记为已用*/
+	/* Free the lowmem regions from memblock into bootmem. */  /*遍历所有内存memblock，在bootmem位图中标记为可用*/
 	for_each_memblock(memory, reg) {
 		unsigned long start = memblock_region_memory_base_pfn(reg);
 		unsigned long end = memblock_region_memory_end_pfn(reg);
@@ -190,7 +190,7 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 		free_bootmem(__pfn_to_phys(start), (end - start) << PAGE_SHIFT);
 	}
 
-	/* Reserve the lowmem memblock reserved regions in bootmem. */ /*遍历未用memblock，在bootmem位图中标记为未用*/
+	/* Reserve the lowmem memblock reserved regions in bootmem. */ /*遍历已使用memblock，在bootmem位图中标记为已用*/
 	for_each_memblock(reserved, reg) {
 		unsigned long start = memblock_region_reserved_base_pfn(reg);
 		unsigned long end = memblock_region_reserved_end_pfn(reg);
@@ -294,7 +294,7 @@ static void __init arm_bootmem_free(unsigned long min, unsigned long max_low,
 			arm_dma_zone_size >> PAGE_SHIFT);
 #endif
 
-	free_area_init_node(0, zone_size, min, zhole_size);  /*初始化内存结点，内存域*/
+	free_area_init_node(0, zone_size, min, zhole_size);  /*初始化内存结点，内存域，page*/
 }
 
 #ifdef CONFIG_HAVE_ARCH_PFN_VALID
@@ -340,13 +340,13 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 	int i;
 
 	for (i = 0; i < mi->nr_banks; i++)
-		memblock_add(mi->bank[i].start, mi->bank[i].size);
+		memblock_add(mi->bank[i].start, mi->bank[i].size);   /*将内存信息添加到memblock中*/
 
 	/* Register the kernel text, kernel data and initrd with memblock. */
 #ifdef CONFIG_XIP_KERNEL
 	memblock_reserve(__pa(_sdata), _end - _sdata);
 #else
-	memblock_reserve(__pa(_stext), _end - _stext);
+	memblock_reserve(__pa(_stext), _end - _stext);           /*将内核代码添加到保留区*/
 #endif
 #ifdef CONFIG_BLK_DEV_INITRD
 	if (phys_initrd_size &&
@@ -370,7 +370,7 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 	}
 #endif
 
-	arm_mm_memblock_reserve();
+	arm_mm_memblock_reserve();                 /*保留内核页表空间0x30004000-0x30008000*/
 	arm_dt_memblock_reserve();
 
 	/* reserve any platform specific memblock areas */
@@ -381,22 +381,22 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 	 * reserve memory for DMA contigouos allocations,
 	 * must come from DMA area inside low memory
 	 */
-	dma_contiguous_reserve(min(arm_dma_limit, arm_lowmem_limit));
+	dma_contiguous_reserve(min(arm_dma_limit, arm_lowmem_limit));  /*保留dma区间*/
 
 	arm_memblock_steal_permitted = false;
 	memblock_allow_resize();
-	memblock_dump_all();
+	memblock_dump_all();                       /*dump目前的memblock信息*/
 }
 
 void __init bootmem_init(void)
 {
-	unsigned long min, max_low, max_high;  
+	unsigned long min, max_low, max_high;     /*max_high是高端内存地址，没有高端内存的情况下max_high = max_low*/
 
 	max_low = max_high = 0;
 
 	find_limits(&min, &max_low, &max_high);   /*获取物理页帧的起始，结束，结束(0x30000 0x34000 0x34000)*/
 	
-	arm_bootmem_init(min, max_low);           /*初始化bootmem相关结构体，标记位图*/
+	arm_bootmem_init(min, max_low);           /*初始化bootmem相关结构体，分配并标记位图*/
 
 	/*
 	 * Sparsemem tries to allocate bootmem in memory_present(),
@@ -414,7 +414,7 @@ void __init bootmem_init(void)
 	 * the sparse mem_map arrays initialized by sparse_init()
 	 * for memmap_init_zone(), otherwise all PFNs are invalid.
 	 */
-	arm_bootmem_free(min, max_low, max_high);
+	arm_bootmem_free(min, max_low, max_high); /*初始化内存域和内存结点*/
 
 	/*
 	 * This doesn't seem to be used by the Linux memory manager any
@@ -424,7 +424,7 @@ void __init bootmem_init(void)
 	 * Note: max_low_pfn and max_pfn reflect the number of _pages_ in
 	 * the system, not the maximum PFN.
 	 */
-	max_low_pfn = max_low - PHYS_PFN_OFFSET;   /*PHYS_PFN_OFFSET是内存起始地址页帧号*/
+	max_low_pfn = max_low - PHYS_PFN_OFFSET;   /*PHYS_PFN_OFFSET是内存起始地址页帧号，这里得出的就是相对地址了*/
 	max_pfn = max_high - PHYS_PFN_OFFSET;
 }
 
@@ -592,7 +592,7 @@ void __init mem_init(void)
 	max_mapnr   = pfn_to_page(max_pfn + PHYS_PFN_OFFSET) - mem_map;
 
 	/* this will put all unused low memory onto the freelists */
-	free_unused_memmap(&meminfo);
+	free_unused_memmap(&meminfo);       /*实际没做什么,释放空洞*/
 	free_all_bootmem();                 /*停用自举分配器*/
 
 #ifdef CONFIG_SA1111
