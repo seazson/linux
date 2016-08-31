@@ -42,14 +42,14 @@ typedef void (elevator_exit_fn) (struct elevator_queue *);
 
 struct elevator_ops
 {
-	elevator_merge_fn *elevator_merge_fn;
-	elevator_merged_fn *elevator_merged_fn;
-	elevator_merge_req_fn *elevator_merge_req_fn;
+	elevator_merge_fn *elevator_merge_fn;    /*检查一个新的请求是否可以与现存的请求合并，还指定了插入的位置*/
+	elevator_merged_fn *elevator_merged_fn;  /*合并之后调用，用于清理不在需要的那部分*/
+	elevator_merge_req_fn *elevator_merge_req_fn;  /*合并两个请求*/
 	elevator_allow_merge_fn *elevator_allow_merge_fn;
 	elevator_bio_merged_fn *elevator_bio_merged_fn;
 
-	elevator_dispatch_fn *elevator_dispatch_fn;
-	elevator_add_req_fn *elevator_add_req_fn;
+	elevator_dispatch_fn *elevator_dispatch_fn;   /*选择下一步应该调度执行的请求*/
+	elevator_add_req_fn *elevator_add_req_fn;     /*向请求队列添加请求*/
 	elevator_activate_req_fn *elevator_activate_req_fn;
 	elevator_deactivate_req_fn *elevator_deactivate_req_fn;
 
@@ -61,8 +61,8 @@ struct elevator_ops
 	elevator_init_icq_fn *elevator_init_icq_fn;	/* see iocontext.h */
 	elevator_exit_icq_fn *elevator_exit_icq_fn;	/* ditto */
 
-	elevator_set_req_fn *elevator_set_req_fn;
-	elevator_put_req_fn *elevator_put_req_fn;
+	elevator_set_req_fn *elevator_set_req_fn;    /*创建新请求内存管理*/
+	elevator_put_req_fn *elevator_put_req_fn;    /*释放回内存管理*/
 
 	elevator_may_queue_fn *elevator_may_queue_fn;
 

@@ -646,7 +646,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
 	unsigned long ret;
 	unsigned long stack_shift;
 	struct mm_struct *mm = current->mm;
-	struct vm_area_struct *vma = bprm->vma;
+	struct vm_area_struct *vma = bprm->vma;   /*当前栈的wma*/
 	struct vm_area_struct *prev = NULL;
 	unsigned long vm_flags;
 	unsigned long stack_base;
@@ -680,7 +680,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
 	stack_shift = vma->vm_end - stack_top;
 
 	bprm->p -= stack_shift;
-	mm->arg_start = bprm->p;
+	mm->arg_start = bprm->p;      /*修正栈顶值*/
 #endif
 
 	if (bprm->loader)
@@ -710,7 +710,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
 
 	/* Move stack pages down in memory. */
 	if (stack_shift) {
-		ret = shift_arg_pages(vma, stack_shift);
+		ret = shift_arg_pages(vma, stack_shift);    /*因为栈引入了偏移，计算新的vma值*/
 		if (ret)
 			goto out_unlock;
 	}
@@ -737,7 +737,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
 		stack_base = vma->vm_start - stack_expand;
 #endif
 	current->mm->start_stack = bprm->p;
-	ret = expand_stack(vma, stack_base);
+	ret = expand_stack(vma, stack_base);          /*扩展栈空间*/
 	if (ret)
 		ret = -EFAULT;
 
@@ -843,13 +843,13 @@ static int exec_mmap(struct mm_struct *mm)
 	tsk->active_mm = mm;
 	activate_mm(active_mm, mm);
 	task_unlock(tsk);
-	arch_pick_mmap_layout(mm);
+	arch_pick_mmap_layout(mm);             /*设置mmap的布局格式*/
 	if (old_mm) {
 		up_read(&old_mm->mmap_sem);
 		BUG_ON(active_mm != old_mm);
 		setmax_mm_hiwater_rss(&tsk->signal->maxrss, old_mm);
 		mm_update_next_owner(old_mm);
-		mmput(old_mm);
+		mmput(old_mm);                     /*释放之前map的空间*/
 		return 0;
 	}
 	mmdrop(active_mm);
@@ -1070,18 +1070,18 @@ int flush_old_exec(struct linux_binprm * bprm)
 	 * Make sure we have a private signal table and that
 	 * we are unassociated from the previous thread group.
 	 */
-	retval = de_thread(current);
+	retval = de_thread(current);             /*建立独有的信号表*/
 	if (retval)
 		goto out;
 
-	set_mm_exe_file(bprm->mm, bprm->file);
+	set_mm_exe_file(bprm->mm, bprm->file);   /*设置对应的可执行文件*/
 
-	filename_to_taskname(bprm->tcomm, bprm->filename, sizeof(bprm->tcomm));
+	filename_to_taskname(bprm->tcomm, bprm->filename, sizeof(bprm->tcomm));  /*用文件名当进程名*/
 	/*
 	 * Release all of the old mmap stuff
 	 */
 	acct_arg_size(bprm, 0);
-	retval = exec_mmap(bprm->mm);
+	retval = exec_mmap(bprm->mm);            /*释放之前mmap的空间*/
 	if (retval)
 		goto out;
 
@@ -1090,7 +1090,7 @@ int flush_old_exec(struct linux_binprm * bprm)
 	set_fs(USER_DS);
 	current->flags &=
 		~(PF_RANDOMIZE | PF_FORKNOEXEC | PF_KTHREAD | PF_NOFREEZE);
-	flush_thread();
+	flush_thread();                          /*通知进程flush过*/
 	current->personality &= ~bprm->per_clear;
 
 	return 0;
@@ -1109,7 +1109,7 @@ EXPORT_SYMBOL(would_dump);
 
 void setup_new_exec(struct linux_binprm * bprm)
 {
-	arch_pick_mmap_layout(current->mm);
+	arch_pick_mmap_layout(current->mm);              /*设置mmap布局*/
 
 	/* This is the point of no return */
 	current->sas_ss_sp = current->sas_ss_size = 0;
@@ -1119,7 +1119,7 @@ void setup_new_exec(struct linux_binprm * bprm)
 	else
 		set_dumpable(current->mm, suid_dumpable);
 
-	set_task_comm(current, bprm->tcomm);
+	set_task_comm(current, bprm->tcomm);             /*设置进程名称*/
 
 	/* Set the new mm task size. We have to do that late because it may
 	 * depend on TIF_32BIT which is only updated in flush_thread() on
@@ -1142,8 +1142,8 @@ void setup_new_exec(struct linux_binprm * bprm)
 
 	current->self_exec_id++;
 			
-	flush_signal_handlers(current, 0);
-	do_close_on_exec(current->files);
+	flush_signal_handlers(current, 0);               /*恢复默认信号表*/
+	do_close_on_exec(current->files);                /*关闭所有打开的文件*/
 }
 EXPORT_SYMBOL(setup_new_exec);
 

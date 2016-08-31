@@ -135,7 +135,7 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 	/*
 	 * Are we prepared to handle this kernel fault?
 	 */
-	if (fixup_exception(regs))
+	if (fixup_exception(regs))      /*对特定的指令寻找有没有特定的处理方式*/
 		return;
 
 	/*
@@ -227,7 +227,7 @@ __do_page_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 	struct vm_area_struct *vma;
 	int fault;
 
-	vma = find_vma(mm, addr);
+	vma = find_vma(mm, addr);                                    /*现在当前进程空间中查找是否是有效的地址*/
 	fault = VM_FAULT_BADMAP;
 	if (unlikely(!vma))
 		goto out;
@@ -239,22 +239,22 @@ __do_page_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 	 * memory access, so we can handle it.
 	 */
 good_area:
-	if (access_error(fsr, vma)) {
+	if (access_error(fsr, vma)) {                                /*当前的访问权限与vma的访问权限是否允许*/
 		fault = VM_FAULT_BADACCESS;
 		goto out;
 	}
 
-	return handle_mm_fault(mm, vma, addr & PAGE_MASK, flags);
+	return handle_mm_fault(mm, vma, addr & PAGE_MASK, flags);     /*进入这个函数表明vma有此地址了。这个函数是体系结构无关的!*/
 
 check_stack:
 	/* Don't allow expansion below FIRST_USER_ADDRESS */
 	if (vma->vm_flags & VM_GROWSDOWN &&
-	    addr >= FIRST_USER_ADDRESS && !expand_stack(vma, addr))
+	    addr >= FIRST_USER_ADDRESS && !expand_stack(vma, addr))   /*如果找到的wma是栈，则可以扩展栈地址*/
 		goto good_area;
 out:
 	return fault;
 }
-
+/*arm的缺页异常处理函数*/
 static int __kprobes
 do_page_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 {
@@ -267,19 +267,19 @@ do_page_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 
 	if (notify_page_fault(regs, fsr))
 		return 0;
-
+	printk("page fault at %x\n",addr);
 	tsk = current;
 	mm  = tsk->mm;
 
 	/* Enable interrupts if they were enabled in the parent context. */
-	if (interrupts_enabled(regs))
+	if (interrupts_enabled(regs))     /*缺页之前中断是使能的就使能中断*/
 		local_irq_enable();
 
 	/*
 	 * If we're in an interrupt or have no user
 	 * context, we must not take the fault..
 	 */
-	if (in_atomic() || !mm)
+	if (in_atomic() || !mm)          /*如果处于中断上下文，原子操作，或者mm没有，跳转到内核缺页处理*/
 		goto no_context;
 
 	/*
@@ -306,7 +306,7 @@ retry:
 #endif
 	}
 
-	fault = __do_page_fault(mm, addr, fsr, flags, tsk);
+	fault = __do_page_fault(mm, addr, fsr, flags, tsk);          /*用户态缺页处理*/
 
 	/* If we need to retry but a fatal signal is pending, handle the
 	 * signal first. We do not need to release the mmap_sem because
@@ -346,10 +346,10 @@ retry:
 	/*
 	 * Handle the "normal" case first - VM_FAULT_MAJOR / VM_FAULT_MINOR
 	 */
-	if (likely(!(fault & (VM_FAULT_ERROR | VM_FAULT_BADMAP | VM_FAULT_BADACCESS))))
+	if (likely(!(fault & (VM_FAULT_ERROR | VM_FAULT_BADMAP | VM_FAULT_BADACCESS))))  /*没有错误就返回了*/
 		return 0;
 
-	if (fault & VM_FAULT_OOM) {
+	if (fault & VM_FAULT_OOM) {                          /*内存不够*/
 		/*
 		 * We ran out of memory, call the OOM killer, and return to
 		 * userspace (which will retry the fault, or kill us if we
@@ -371,23 +371,23 @@ retry:
 		 * We had some memory, but were unable to
 		 * successfully fix up this page fault.
 		 */
-		sig = SIGBUS;
+		sig = SIGBUS;                                    /*bus error可能该映射被另一个进程收缩了，已经不存在了*/
 		code = BUS_ADRERR;
 	} else {
 		/*
 		 * Something tried to access memory that
 		 * isn't in our memory map..
 		 */
-		sig = SIGSEGV;
+		sig = SIGSEGV;                                   /*非法访问，权限或者地址不对*/
 		code = fault == VM_FAULT_BADACCESS ?
 			SEGV_ACCERR : SEGV_MAPERR;
 	}
 
-	__do_user_fault(tsk, addr, fsr, sig, code, regs);
+	__do_user_fault(tsk, addr, fsr, sig, code, regs);    /*用户态缺页处理失败，发送信号*/
 	return 0;
 
 no_context:
-	__do_kernel_fault(mm, addr, fsr, regs);
+	__do_kernel_fault(mm, addr, fsr, regs);              /*内核态缺页处理*/
 	return 0;
 }
 #else					/* CONFIG_MMU */

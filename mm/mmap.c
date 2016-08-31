@@ -1239,14 +1239,14 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 	/* Obtain the address to map to. we verify (or select) it and ensure
 	 * that it represents a valid section of the address space.
 	 */
-	addr = get_unmapped_area(file, addr, len, pgoff, flags);
+	addr = get_unmapped_area(file, addr, len, pgoff, flags);   /*获取一个大小满足要求的未用地址空间*/
 	if (addr & ~PAGE_MASK)
 		return addr;
 
 	/* Do simple checking here so the lower-level routines won't have
 	 * to. we assume access permissions have been handled by the open
 	 * of the memory object, so we don't do any here.
-	 */
+	 */                                        /*整合标志到一个变量里*/
 	vm_flags = calc_vm_prot_bits(prot) | calc_vm_flag_bits(flags) |
 			mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC;
 
@@ -1470,7 +1470,7 @@ static inline int accountable_mapping(struct file *file, vm_flags_t vm_flags)
 
 	return (vm_flags & (VM_NORESERVE | VM_SHARED | VM_WRITE)) == VM_WRITE;
 }
-
+/*创建一个虚拟区域，添加到进程的虚拟地址空间*/
 unsigned long mmap_region(struct file *file, unsigned long addr,
 		unsigned long len, vm_flags_t vm_flags, unsigned long pgoff)
 {
@@ -1634,7 +1634,7 @@ unacct_error:
 		vm_unacct_memory(charged);
 	return error;
 }
-
+/*获取一个大小满足要求的未用区域*/
 unsigned long unmapped_area(struct vm_unmapped_area_info *info)
 {
 	/*
@@ -1933,7 +1933,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
 	return addr;
 }
 #endif
-
+/*获取一个未使用的区域，如果没有设置FIX标志，addr被用了会分配其他地址，返回可用的地址*/
 unsigned long
 get_unmapped_area(struct file *file, unsigned long addr, unsigned long len,
 		unsigned long pgoff, unsigned long flags)
@@ -1963,20 +1963,21 @@ get_unmapped_area(struct file *file, unsigned long addr, unsigned long len,
 
 	addr = arch_rebalance_pgtables(addr, len);
 	error = security_mmap_addr(addr);
+	printk("get_unmapped_area %x\n",addr);
 	return error ? error : addr;
 }
 
 EXPORT_SYMBOL(get_unmapped_area);
 
 /* Look up the first VMA which satisfies  addr < vm_end,  NULL if none. */
-struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
+struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr) /*查找第一个满足addr < vm_end的区域，addr有可能不在这个区域内，返回离他最近的*/
 {
 	struct vm_area_struct *vma = NULL;
 
 	/* Check the cache first. */
 	/* (Cache hit rate is typically around 35%.) */
-	vma = ACCESS_ONCE(mm->mmap_cache);
-	if (!(vma && vma->vm_end > addr && vma->vm_start <= addr)) {
+	vma = ACCESS_ONCE(mm->mmap_cache);                        /*首先检查上次处理的区域*/
+	if (!(vma && vma->vm_end > addr && vma->vm_start <= addr)) { /*满足这三个条件的一个都进来*/
 		struct rb_node *rb_node;
 
 		rb_node = mm->mm_rb.rb_node;
@@ -1989,15 +1990,15 @@ struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
 					   struct vm_area_struct, vm_rb);
 
 			if (vma_tmp->vm_end > addr) {
-				vma = vma_tmp;
-				if (vma_tmp->vm_start <= addr)
+				vma = vma_tmp;                               /*addr有可能不在这个区域内，最后就返回最近的那个区域*/
+				if (vma_tmp->vm_start <= addr)               /*在这个区间内，说明找到了*/
 					break;
 				rb_node = rb_node->rb_left;
 			} else
 				rb_node = rb_node->rb_right;
 		}
 		if (vma)
-			mm->mmap_cache = vma;
+			mm->mmap_cache = vma;                           /*每次找到都会更新缓存*/
 	}
 	return vma;
 }

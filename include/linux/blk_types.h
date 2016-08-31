@@ -23,9 +23,9 @@ typedef void (bio_destructor_t) (struct bio *);
  * was unsigned short, but we might as well be ready for > 64kB I/O pages
  */
 struct bio_vec {
-	struct page	*bv_page;
-	unsigned int	bv_len;
-	unsigned int	bv_offset;
+	struct page	*bv_page;       /*数据传输对应的page*/
+	unsigned int	bv_len;     /*数据长度*/
+	unsigned int	bv_offset;  /*页内偏移，通常为0*/
 };
 
 /*
@@ -33,24 +33,24 @@ struct bio_vec {
  * stacking drivers)
  */
 struct bio {
-	sector_t		bi_sector;	/* device address in 512 byte
+	sector_t		bi_sector;	/* device address in 512 byte 传输开始的扇区号
 						   sectors */
-	struct bio		*bi_next;	/* request queue link */
+	struct bio		*bi_next;	/* request queue link */  
 	struct block_device	*bi_bdev;
 	unsigned long		bi_flags;	/* status, command, etc */
 	unsigned long		bi_rw;		/* bottom bits READ/WRITE,
 						 * top bits priority
 						 */
 
-	unsigned short		bi_vcnt;	/* how many bio_vec's */
-	unsigned short		bi_idx;		/* current index into bvl_vec */
+	unsigned short		bi_vcnt;	/* how many bio_vec's */  /*数组项的数目*/
+	unsigned short		bi_idx;		/* current index into bvl_vec */ /*当前处理数组项索引*/
 
 	/* Number of segments in this BIO after
 	 * physical address coalescing is performed.
 	 */
-	unsigned int		bi_phys_segments;
+	unsigned int		bi_phys_segments;   /*传输中段的数目*/
 
-	unsigned int		bi_size;	/* residual I/O count */
+	unsigned int		bi_size;	/* residual I/O count */ /*传输长度，单位是字节*/
 
 	/*
 	 * To keep track of the max segment size, we account for the
@@ -59,7 +59,7 @@ struct bio {
 	unsigned int		bi_seg_front_size;
 	unsigned int		bi_seg_back_size;
 
-	bio_end_io_t		*bi_end_io;
+	bio_end_io_t		*bi_end_io;  /*硬件传输完成时，设备驱动必须调用这个*/
 
 	void			*bi_private;
 #ifdef CONFIG_BLK_CGROUP

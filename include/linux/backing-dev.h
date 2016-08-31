@@ -63,9 +63,9 @@ struct bdi_writeback {
 
 struct backing_dev_info {
 	struct list_head bdi_list;
-	unsigned long ra_pages;	/* max readahead in PAGE_CACHE_SIZE units */
+	unsigned long ra_pages;	/* max readahead in PAGE_CACHE_SIZE units */ /*预读取页的最大数目*/
 	unsigned long state;	/* Always use atomic bitops on this */
-	unsigned int capabilities; /* Device capabilities */
+	unsigned int capabilities; /* Device capabilities */                 /*设备能力，例如是否可以写回*/
 	congested_fn *congested_fn; /* Function pointer if device is md/dm */
 	void *congested_data;	/* Pointer to aux data for congested func */
 

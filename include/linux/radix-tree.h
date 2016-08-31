@@ -62,8 +62,8 @@ static inline int radix_tree_is_indirect_ptr(void *ptr)
 
 /* root tags are stored in gfp_mask, shifted by __GFP_BITS_SHIFT */
 struct radix_tree_root {
-	unsigned int		height;
-	gfp_t			gfp_mask;
+	unsigned int		height;              /*树当前的高度*/
+	gfp_t			gfp_mask;                /*指明从哪个内存域分配*/
 	struct radix_tree_node	__rcu *rnode;
 };
 

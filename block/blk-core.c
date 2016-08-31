@@ -735,12 +735,12 @@ blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
 	/*
 	 * This also sets hw/phys segments, boundary and size
 	 */
-	blk_queue_make_request(q, blk_queue_bio);
+	blk_queue_make_request(q, blk_queue_bio);   /*注册块设备对应make_request_fn*/
 
 	q->sg_reserved_size = INT_MAX;
 
 	/* init elevator */
-	if (elevator_init(q, NULL))
+	if (elevator_init(q, NULL))      /*选择一种IO调度器,默认为cfs*/
 		return NULL;
 	return q;
 }
@@ -1497,16 +1497,16 @@ void blk_queue_bio(struct request_queue *q, struct bio *bio)
 
 	spin_lock_irq(q->queue_lock);
 
-	el_ret = elv_merge(q, &req, bio);
+	el_ret = elv_merge(q, &req, bio);     /*检查请求能否合并*/
 	if (el_ret == ELEVATOR_BACK_MERGE) {
-		if (bio_attempt_back_merge(q, req, bio)) {
+		if (bio_attempt_back_merge(q, req, bio)) {  /*向后合并*/
 			elv_bio_merged(q, req, bio);
 			if (!attempt_back_merge(q, req))
 				elv_merged_request(q, req, el_ret);
 			goto out_unlock;
 		}
 	} else if (el_ret == ELEVATOR_FRONT_MERGE) {
-		if (bio_attempt_front_merge(q, req, bio)) {
+		if (bio_attempt_front_merge(q, req, bio)) { /*向前合并*/
 			elv_bio_merged(q, req, bio);
 			if (!attempt_front_merge(q, req))
 				elv_merged_request(q, req, el_ret);
@@ -1528,7 +1528,7 @@ get_rq:
 	 * Grab a free request. This is might sleep but can not fail.
 	 * Returns with the queue unlocked.
 	 */
-	req = get_request(q, rw_flags, bio, GFP_NOIO);
+	req = get_request(q, rw_flags, bio, GFP_NOIO);    /*获取一个请求*/
 	if (unlikely(!req)) {
 		bio_endio(bio, -ENODEV);	/* @q is dead */
 		goto out_unlock;
@@ -1540,7 +1540,7 @@ get_rq:
 	 * We don't worry about that case for efficiency. It won't happen
 	 * often, and the elevators are able to handle it.
 	 */
-	init_request_from_bio(req, bio);
+	init_request_from_bio(req, bio);   /*根据bio的内容来初始化这个请求*/
 
 	if (test_bit(QUEUE_FLAG_SAME_COMP, &q->queue_flags))
 		req->cpu = raw_smp_processor_id();
@@ -1565,8 +1565,8 @@ get_rq:
 		drive_stat_acct(req, 1);
 	} else {
 		spin_lock_irq(q->queue_lock);
-		add_acct_request(q, req, where);
-		__blk_run_queue(q);
+		add_acct_request(q, req, where); /*将请求添加到请求队列*/
+		__blk_run_queue(q);              /*调用请求队列的request_fn函数。mtd设备注册为mtd_blktrans_request*/
 out_unlock:
 		spin_unlock_irq(q->queue_lock);
 	}
@@ -1826,9 +1826,9 @@ void generic_make_request(struct bio *bio)
 	bio_list_init(&bio_list_on_stack);
 	current->bio_list = &bio_list_on_stack;
 	do {
-		struct request_queue *q = bdev_get_queue(bio->bi_bdev);
+		struct request_queue *q = bdev_get_queue(bio->bi_bdev);   /*块设备所属磁盘的请求队列*/
 
-		q->make_request_fn(q, bio);
+		q->make_request_fn(q, bio);    /*通常调用内核标准函数blk_queue_bio*/
 
 		bio = bio_list_pop(current->bio_list);
 	} while (bio);
@@ -1845,7 +1845,7 @@ EXPORT_SYMBOL(generic_make_request);
  * uses that function to do most of the work. Both are fairly rough
  * interfaces; @bio must be presetup and ready for I/O.
  *
- */
+ */  /*提交一个bio*/
 void submit_bio(int rw, struct bio *bio)
 {
 	bio->bi_rw |= rw;
@@ -2252,9 +2252,9 @@ struct request *blk_fetch_request(struct request_queue *q)
 {
 	struct request *rq;
 
-	rq = blk_peek_request(q);
+	rq = blk_peek_request(q);    /*取出请求*/
 	if (rq)
-		blk_start_request(rq);
+		blk_start_request(rq);   /*执行请求*/
 	return rq;
 }
 EXPORT_SYMBOL(blk_fetch_request);

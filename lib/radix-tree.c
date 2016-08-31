@@ -48,13 +48,13 @@
 
 struct radix_tree_node {
 	unsigned int	height;		/* Height from the bottom */
-	unsigned int	count;
+	unsigned int	count;         /*节点中已经使用的数组项的数目*/
 	union {
 		struct radix_tree_node *parent;	/* Used when ascending tree */
 		struct rcu_head	rcu_head;	/* Used when freeing node */
 	};
-	void __rcu	*slots[RADIX_TREE_MAP_SIZE];
-	unsigned long	tags[RADIX_TREE_MAX_TAGS][RADIX_TREE_TAG_LONGS];
+	void __rcu	*slots[RADIX_TREE_MAP_SIZE];   /*数组项。指针数组，用来指向其他节点或数据元素*/
+	unsigned long	tags[RADIX_TREE_MAX_TAGS][RADIX_TREE_TAG_LONGS];  /*用来存标记，每个数组项对应三个bit位*/
 };
 
 #define RADIX_TREE_INDEX_BITS  (8 /* CHAR_BIT */ * sizeof(unsigned long))
@@ -293,7 +293,7 @@ EXPORT_SYMBOL(radix_tree_preload);
 /*
  *	Return the maximum key which can be store into a
  *	radix tree with height HEIGHT.
- */
+ */ /*树可以容纳的最大节点数目*/
 static inline unsigned long radix_tree_maxindex(unsigned int height)
 {
 	return height_to_maxindex[height];
@@ -301,7 +301,7 @@ static inline unsigned long radix_tree_maxindex(unsigned int height)
 
 /*
  *	Extend a radix tree so it can store key @index.
- */
+ */ /*增加树高度*/
 static int radix_tree_extend(struct radix_tree_root *root, unsigned long index)
 {
 	struct radix_tree_node *node;
@@ -356,7 +356,7 @@ out:
  *	@item:		item to insert
  *
  *	Insert an item into the radix tree at position @index.
- */
+ */ /*根据键值选择要插入的位置，每次迭代只匹配键值的一部分*/
 int radix_tree_insert(struct radix_tree_root *root,
 			unsigned long index, void *item)
 {
@@ -510,7 +510,7 @@ EXPORT_SYMBOL(radix_tree_lookup);
  *
  *	Returns the address of the tagged item.   Setting a tag on a not-present
  *	item is a bug.
- */
+ */ /*设置标志的时候会设置该结点的整个路径所经过的每一个结点*/
 void *radix_tree_tag_set(struct radix_tree_root *root,
 			unsigned long index, unsigned int tag)
 {
@@ -1403,7 +1403,7 @@ radix_tree_node_ctor(void *node)
 {
 	memset(node, 0, sizeof(struct radix_tree_node));
 }
-
+/*根据树高度计算结点数2^width*/
 static __init unsigned long __maxindex(unsigned int height)
 {
 	unsigned int width = height * RADIX_TREE_MAP_SHIFT;

@@ -492,7 +492,7 @@ static int bdev_set(struct inode *inode, void *data)
 }
 
 static LIST_HEAD(all_bdevs);
-
+/*根据设备号找到块设备*/
 struct block_device *bdget(dev_t dev)
 {
 	struct block_device *bdev;
@@ -1067,18 +1067,18 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
  restart:
 
 	ret = -ENXIO;
-	disk = get_gendisk(bdev->bd_dev, &partno);
+	disk = get_gendisk(bdev->bd_dev, &partno);   /*获取块设备对应的磁盘信息*/
 	if (!disk)
 		goto out;
 	owner = disk->fops->owner;
 
 	disk_block_events(disk);
 	mutex_lock_nested(&bdev->bd_mutex, for_part);
-	if (!bdev->bd_openers) {
+	if (!bdev->bd_openers) {/*块设备之前未打开过*/
 		bdev->bd_disk = disk;
 		bdev->bd_queue = disk->queue;
 		bdev->bd_contains = bdev;
-		if (!partno) {
+		if (!partno) {     /*没有分区信息，代表打开的是主设备*/
 			struct backing_dev_info *bdi;
 
 			ret = -ENXIO;
@@ -1128,7 +1128,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 			}
 			if (ret)
 				goto out_clear;
-		} else {
+		} else {  /*如果打开的是之前没有打开过的分区，则需要关联打开分区的block_device和包含该分区的block_device*/
 			struct block_device *whole;
 			whole = bdget_disk(disk, 0);
 			ret = -ENOMEM;
@@ -1149,13 +1149,13 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 			}
 			bd_set_size(bdev, (loff_t)bdev->bd_part->nr_sects << 9);
 		}
-	} else {
-		if (bdev->bd_contains == bdev) {
+	} else {/*块设备之前已打开过*/
+		if (bdev->bd_contains == bdev) {  /*是主设备*/
 			ret = 0;
 			if (bdev->bd_disk->fops->open)
-				ret = bdev->bd_disk->fops->open(bdev, mode);
+				ret = bdev->bd_disk->fops->open(bdev, mode);   /*调用主设备的open函数*/
 			/* the same as first opener case, read comment there */
-			if (bdev->bd_invalidated) {
+			if (bdev->bd_invalidated) {  /*分区信息无效，需要重新扫描*/
 				if (!ret)
 					rescan_partitions(bdev->bd_disk, bdev);
 				else if (ret == -ENOMEDIUM)
@@ -1374,7 +1374,7 @@ static int blkdev_open(struct inode * inode, struct file * filp)
 	if (filp->f_flags & O_NDELAY)
 		filp->f_mode |= FMODE_NDELAY;
 	if (filp->f_flags & O_EXCL)
-		filp->f_mode |= FMODE_EXCL;
+		filp->f_mode |= FMODE_EXCL;      /*代表独占持有块设备*/
 	if ((filp->f_flags & O_ACCMODE) == 3)
 		filp->f_mode |= FMODE_WRITE_IOCTL;
 

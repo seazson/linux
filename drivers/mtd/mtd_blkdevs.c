@@ -184,7 +184,7 @@ static void mtd_blktrans_request(struct request_queue *rq)
 	dev = rq->queuedata;
 
 	if (!dev)
-		while ((req = blk_fetch_request(rq)) != NULL)
+		while ((req = blk_fetch_request(rq)) != NULL)  /*取出请求，并执行这个请求*/
 			__blk_end_request_all(req, -ENODEV);
 	else
 		queue_work(dev->wq, &dev->work);
@@ -404,7 +404,7 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 
 	/* Create the request queue */
 	spin_lock_init(&new->queue_lock);
-	new->rq = blk_init_queue(mtd_blktrans_request, &new->queue_lock);
+	new->rq = blk_init_queue(mtd_blktrans_request, &new->queue_lock);   /*注册一个块设备*/
 
 	if (!new->rq)
 		goto error3;

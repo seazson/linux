@@ -1,4 +1,4 @@
-static struct fsr_info fsr_info[] = {
+static struct fsr_info fsr_info[] = {   /*数据访问错误*/
 	/*
 	 * The following are the standard ARMv3 and ARMv4 aborts.  ARMv5
 	 * defines these to be "precise" aborts.
@@ -42,7 +42,7 @@ static struct fsr_info fsr_info[] = {
 	{ do_bad,		SIGBUS,  0,		"unknown 31"			   },
 };
 
-static struct fsr_info ifsr_info[] = {
+static struct fsr_info ifsr_info[] = {   /*指令预取错误*/
 	{ do_bad,		SIGBUS,  0,		"unknown 0"			   },
 	{ do_bad,		SIGBUS,  0,		"unknown 1"			   },
 	{ do_bad,		SIGBUS,  0,		"debug event"			   },

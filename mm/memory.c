@@ -3311,7 +3311,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	 * If we do COW later, allocate page befor taking lock_page()
 	 * on the file cache page. This will reduce lock holding time.
 	 */
-	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED)) {
+	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED)) {    /*如果有写的请求处于性能考虑立即分配页*/
 
 		if (unlikely(anon_vma_prepare(vma)))
 			return VM_FAULT_OOM;
@@ -3332,7 +3332,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	vmf.flags = flags;
 	vmf.page = NULL;
 
-	ret = vma->vm_ops->fault(vma, &vmf);
+	ret = vma->vm_ops->fault(vma, &vmf);                  /*大多数情况下调用filemap_fault*/
 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE |
 			    VM_FAULT_RETRY)))
 		goto uncharge_out;
@@ -3358,7 +3358,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	 */
 	page = vmf.page;
 	if (flags & FAULT_FLAG_WRITE) {
-		if (!(vma->vm_flags & VM_SHARED)) {
+		if (!(vma->vm_flags & VM_SHARED)) {    /*写时复制的话需要将之间映射的page拷贝给新分配的page*/
 			page = cow_page;
 			anon = 1;
 			copy_user_highpage(page, vmf.page, address, vma);
@@ -3707,21 +3707,21 @@ int handle_pte_fault(struct mm_struct *mm,
 	pte_t entry;
 	spinlock_t *ptl;
 
-	entry = *pte;
-	if (!pte_present(entry)) {
-		if (pte_none(entry)) {
+	entry = *pte;  /*addr对应二级页表项内容*/
+	if (!pte_present(entry)) {    /*页不在物理内存中*/
+		if (pte_none(entry)) {    /*页表项还没创建*/
 			if (vma->vm_ops) {
 				if (likely(vma->vm_ops->fault))
-					return do_linear_fault(mm, vma, address,
+					return do_linear_fault(mm, vma, address,  /*按需分配页*/
 						pte, pmd, flags, entry);
 			}
-			return do_anonymous_page(mm, vma, address,
+			return do_anonymous_page(mm, vma, address,     /*创建匿名页*/
 						 pte, pmd, flags);
 		}
 		if (pte_file(entry))
-			return do_nonlinear_fault(mm, vma, address,
+			return do_nonlinear_fault(mm, vma, address,    /*非线性换出的处理*/
 					pte, pmd, flags, entry);
-		return do_swap_page(mm, vma, address,
+		return do_swap_page(mm, vma, address,              /*页被换出了，需要按需调页*/
 					pte, pmd, flags, entry);
 	}
 
@@ -3732,13 +3732,13 @@ int handle_pte_fault(struct mm_struct *mm,
 	spin_lock(ptl);
 	if (unlikely(!pte_same(*pte, entry)))
 		goto unlock;
-	if (flags & FAULT_FLAG_WRITE) {
-		if (!pte_write(entry))
-			return do_wp_page(mm, vma, address,
+	if (flags & FAULT_FLAG_WRITE) {                        /*软件上有写的权限*/
+		if (!pte_write(entry))                             /*但是硬件上没有写的权限，发生这种情况是因为写时复制机制*/
+			return do_wp_page(mm, vma, address,            /*写时复制*/
 					pte, pmd, ptl, entry);
 		entry = pte_mkdirty(entry);
 	}
-	entry = pte_mkyoung(entry);
+	entry = pte_mkyoung(entry);                            /*置上access软件标志*/
 	if (ptep_set_access_flags(vma, address, pte, entry, flags & FAULT_FLAG_WRITE)) {
 		update_mmu_cache(vma, address, pte);
 	} else {
@@ -3839,7 +3839,7 @@ retry:
 	 * materialize from under us from a different thread.
 	 */
 	if (unlikely(pmd_none(*pmd)) &&
-	    unlikely(__pte_alloc(mm, vma, pmd, address)))
+	    unlikely(__pte_alloc(mm, vma, pmd, address)))         /*如果二级页表为空，分配二级页表*/
 		return VM_FAULT_OOM;
 	/* if an huge pmd materialized from under us just retry later */
 	if (unlikely(pmd_trans_huge(*pmd)))
@@ -3850,9 +3850,9 @@ retry:
 	 * read mode and khugepaged takes it in write mode. So now it's
 	 * safe to run pte_offset_map().
 	 */
-	pte = pte_offset_map(pmd, address);
+	pte = pte_offset_map(pmd, address);                      /*pte对应addr在二级页表的实际地址*/
 
-	return handle_pte_fault(mm, vma, address, pte, pmd, flags);
+	return handle_pte_fault(mm, vma, address, pte, pmd, flags);    /*缺页异常校正*/
 }
 
 #ifndef __PAGETABLE_PUD_FOLDED

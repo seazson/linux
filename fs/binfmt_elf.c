@@ -660,7 +660,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 		goto out;
 	if (!elf_check_arch(&loc->elf_ex))   /*检测平台指令兼容性*/
 		goto out;
-	if (!bprm->file->f_op || !bprm->file->f_op->mmap)
+	if (!bprm->file->f_op || !bprm->file->f_op->mmap)   /*此文件必须有对应的映射函数*/
 		goto out;
 
 	/* Now read in all of the header information */
@@ -751,7 +751,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	}
 
 	elf_ppnt = elf_phdata;
-	for (i = 0; i < loc->elf_ex.e_phnum; i++, elf_ppnt++)
+	for (i = 0; i < loc->elf_ex.e_phnum; i++, elf_ppnt++)     /*设置栈的可执行性*/
 		if (elf_ppnt->p_type == PT_GNU_STACK) {
 			if (elf_ppnt->p_flags & PF_X)
 				executable_stack = EXSTACK_ENABLE_X;
@@ -772,7 +772,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	}
 
 	/* Flush all traces of the currently running executable */
-	retval = flush_old_exec(bprm);
+	retval = flush_old_exec(bprm);                     /*清除旧的进程mmap，创建独有信号表*/
 	if (retval)
 		goto out_free_dentry;
 
@@ -788,12 +788,12 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
 		current->flags |= PF_RANDOMIZE;
 
-	setup_new_exec(bprm);
+	setup_new_exec(bprm);                            /*设置mmap的布局方式，修改进程名，恢复默认信号处理方式，关闭打开的文件*/
 
 	/* Do this so that we can load the interpreter, if need be.  We will
 	   change some of these later */
 	retval = setup_arg_pages(bprm, randomize_stack_top(STACK_TOP),
-				 executable_stack);
+				 executable_stack);                       /*建立栈空间*/
 	if (retval < 0) {
 		send_sig(SIGKILL, current, 0);
 		goto out_free_dentry;
@@ -939,7 +939,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	 * mapping in the interpreter, to make sure it doesn't wind
 	 * up getting placed where the bss needs to go.
 	 */
-	retval = set_brk(elf_bss, elf_brk); /*映射bss段*/
+	retval = set_brk(elf_bss, elf_brk); /*映射bss段，设置堆的起始地址为bss尾*/
 	printk("bss = %x\n", retval);
 	if (retval) {
 		send_sig(SIGKILL, current, 0);
@@ -999,7 +999,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 #endif /* ARCH_HAS_SETUP_ADDITIONAL_PAGES */
 
 	install_exec_creds(bprm);
-	retval = create_elf_tables(bprm, &loc->elf_ex,      /*分配栈空间，建立arg和环境变量*/
+	retval = create_elf_tables(bprm, &loc->elf_ex,      /*填充栈空间，建立arg和环境变量*/
 			  load_addr, interp_load_addr);
 	if (retval < 0) {
 		send_sig(SIGKILL, current, 0);

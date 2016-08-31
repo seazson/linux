@@ -94,7 +94,7 @@ enum rq_cmd_type_bits {
  * as well!
  */
 struct request {
-	struct list_head queuelist;
+	struct list_head queuelist;   /*请求队列双向链表*/
 	struct call_single_data csd;
 
 	struct request_queue *q;
@@ -109,8 +109,8 @@ struct request {
 	unsigned int __data_len;	/* total data len */
 	sector_t __sector;		/* sector cursor */
 
-	struct bio *bio;
-	struct bio *biotail;
+	struct bio *bio;             /*标示传输尚未完成的当前BIO实例*/
+	struct bio *biotail;         /*最后一个BIO实例，一个请求中可以使用多个BIO*/
 
 	struct hlist_node hash;	/* merge hash */
 	/*
@@ -289,7 +289,7 @@ struct request_queue {
 	/*
 	 * Together with queue_head for cacheline sharing
 	 */
-	struct list_head	queue_head;
+	struct list_head	queue_head;       /*IO请求双向链表*/
 	struct request		*last_merge;
 	struct elevator_queue	*elevator;
 	int			nr_rqs[2];	/* # allocated [a]sync rqs */
@@ -303,12 +303,12 @@ struct request_queue {
 	 */
 	struct request_list	root_rl;
 
-	request_fn_proc		*request_fn;
-	make_request_fn		*make_request_fn;
-	prep_rq_fn		*prep_rq_fn;
+	request_fn_proc		*request_fn;       /*通常需要驱动程序自己实现，用于向队列添加新请求。例如mtd_blktrans_request*/
+	make_request_fn		*make_request_fn;  /*创建新请求，默认为blk_queue_bio*/
+	prep_rq_fn		*prep_rq_fn;           /*请求预备函数，用于发送请求之前向硬件发送特定命令*/
 	unprep_rq_fn		*unprep_rq_fn;
-	merge_bvec_fn		*merge_bvec_fn;
-	softirq_done_fn		*softirq_done_fn;
+	merge_bvec_fn		*merge_bvec_fn;    /*确定是否向一个现存的请求增加更多数据*/
+	softirq_done_fn		*softirq_done_fn;  /*使用软中断的回调函数，通知应用程序请求已完成*/
 	rq_timed_out_fn		*rq_timed_out_fn;
 	dma_drain_needed_fn	*dma_drain_needed;
 	lld_busy_fn		*lld_busy_fn;

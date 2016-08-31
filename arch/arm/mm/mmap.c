@@ -71,7 +71,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 	/*
 	 * We enforce the MAP_FIXED case.
 	 */
-	if (flags & MAP_FIXED) {
+	if (flags & MAP_FIXED) {                   /*固定映射，直接就返回地址*/
 		if (aliasing && flags & MAP_SHARED &&
 		    (addr - (pgoff << PAGE_SHIFT)) & (SHMLBA - 1))
 			return -EINVAL;
@@ -81,7 +81,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 	if (len > TASK_SIZE)
 		return -ENOMEM;
 
-	if (addr) {
+	if (addr) {                                /*传入的地址，首先看看这个地址能否分配*/
 		if (do_align)
 			addr = COLOUR_ALIGN(addr, pgoff);
 		else
@@ -89,17 +89,17 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 
 		vma = find_vma(mm, addr);
 		if (TASK_SIZE - len >= addr &&
-		    (!vma || addr + len <= vma->vm_start))
+		    (!vma || addr + len <= vma->vm_start))   /*说明addr在目前分配的最大区域的上面，或者目前区域前面有空间*/
 			return addr;
 	}
 
-	info.flags = 0;
+	info.flags = 0;                           
 	info.length = len;
 	info.low_limit = mm->mmap_base;
 	info.high_limit = TASK_SIZE;
 	info.align_mask = do_align ? (PAGE_MASK & (SHMLBA - 1)) : 0;
 	info.align_offset = pgoff << PAGE_SHIFT;
-	return vm_unmapped_area(&info);
+	return vm_unmapped_area(&info);           /*所申请的地址不能分配，再从其他地址上找*/
 }
 
 unsigned long
@@ -168,7 +168,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
 
 	return addr;
 }
-
+/*设置mmap的布局格式*/
 void arch_pick_mmap_layout(struct mm_struct *mm)
 {
 	unsigned long random_factor = 0UL;
@@ -178,10 +178,10 @@ void arch_pick_mmap_layout(struct mm_struct *mm)
 	    !(current->personality & ADDR_NO_RANDOMIZE))
 		random_factor = (get_random_int() % (1 << 8)) << PAGE_SHIFT;
 
-	if (mmap_is_legacy()) {
+	if (mmap_is_legacy()) {    /*经典格式，堆往上涨,MMAP往上涨*/
 		mm->mmap_base = TASK_UNMAPPED_BASE + random_factor;
 		mm->get_unmapped_area = arch_get_unmapped_area;
-	} else {
+	} else {                  /*堆往上涨，MMAP往下涨*/
 		mm->mmap_base = mmap_base(random_factor);
 		mm->get_unmapped_area = arch_get_unmapped_area_topdown;
 	}

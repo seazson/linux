@@ -1242,7 +1242,7 @@ dev_t blk_lookup_devt(const char *name, int partno)
 }
 EXPORT_SYMBOL(blk_lookup_devt);
 
-struct gendisk *alloc_disk(int minors)
+struct gendisk *alloc_disk(int minors)  /*∑÷≈‰“ª∏ˆ¥≈≈Ã*/
 {
 	return alloc_disk_node(minors, NUMA_NO_NODE);
 }

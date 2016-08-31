@@ -1604,7 +1604,7 @@ static void do_async_mmap_readahead(struct vm_area_struct *vma,
  * The goto's are kind of ugly, but this streamlines the normal case of having
  * it in the page cache, and handles the special cases reasonably without
  * having a lot of duplicated code.
- */
+ */ /*从页缓存中读入一页*/
 int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	int error;
@@ -1624,16 +1624,16 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	/*
 	 * Do we have something in the page cache already?
 	 */
-	page = find_get_page(mapping, offset);
+	page = find_get_page(mapping, offset);           /*在页缓存中获取一个页*/
 	if (likely(page) && !(vmf->flags & FAULT_FLAG_TRIED)) {
 		/*
 		 * We found the page, so try async readahead before
 		 * waiting for the lock.
 		 */
-		do_async_mmap_readahead(vma, ra, file, page, offset);
+		do_async_mmap_readahead(vma, ra, file, page, offset);  /*发起异步读操作，从后备存储器读到页缓存中*/
 	} else if (!page) {
 		/* No page in the page cache at all */
-		do_sync_mmap_readahead(vma, ra, file, offset);
+		do_sync_mmap_readahead(vma, ra, file, offset);         /*发起同步读操作*/
 		count_vm_event(PGMAJFAULT);
 		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
 		ret = VM_FAULT_MAJOR;
@@ -1682,7 +1682,7 @@ no_cached_page:
 	 * We're only likely to ever get here if MADV_RANDOM is in
 	 * effect.
 	 */
-	error = page_cache_read(file, offset);
+	error = page_cache_read(file, offset);     /*从伙伴系统中获取一页添加到页缓存中，并读取*/
 
 	/*
 	 * The page we want has now been added to the page cache.
@@ -1709,7 +1709,7 @@ page_not_uptodate:
 	 * and we need to check for errors.
 	 */
 	ClearPageError(page);
-	error = mapping->a_ops->readpage(file, page);
+	error = mapping->a_ops->readpage(file, page);               /*将数据读到page中，更新内存*/
 	if (!error) {
 		wait_on_page_locked(page);
 		if (!PageUptodate(page))

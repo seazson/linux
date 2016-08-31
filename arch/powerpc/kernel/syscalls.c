@@ -48,7 +48,7 @@ static inline unsigned long do_mmap2(unsigned long addr, size_t len,
 {
 	unsigned long ret = -EINVAL;
 
-	if (!arch_validate_prot(prot))
+	if (!arch_validate_prot(prot))    /*检查是否有不可用的权限*/
 		goto out;
 
 	if (shift) {

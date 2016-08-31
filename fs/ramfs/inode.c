@@ -54,7 +54,7 @@ static struct backing_dev_info ramfs_backing_dev_info = {
 struct inode *ramfs_get_inode(struct super_block *sb,
 				const struct inode *dir, umode_t mode, dev_t dev)
 {
-	struct inode * inode = new_inode(sb);
+	struct inode * inode = new_inode(sb);     /*分配一个inode*/
 
 	if (inode) {
 		inode->i_ino = get_next_ino();
@@ -64,7 +64,7 @@ struct inode *ramfs_get_inode(struct super_block *sb,
 		mapping_set_gfp_mask(inode->i_mapping, GFP_HIGHUSER);
 		mapping_set_unevictable(inode->i_mapping);
 		inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-		switch (mode & S_IFMT) {
+		switch (mode & S_IFMT) {              /*根据目录，文件，设备节点，软连接来选择不同的操作函数*/
 		default:
 			init_special_inode(inode, mode, dev);
 			break;
@@ -231,7 +231,7 @@ int ramfs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_time_gran		= 1;
 
 	inode = ramfs_get_inode(sb, NULL, S_IFDIR | fsi->mount_opts.mode, 0);
-	sb->s_root = d_make_root(inode);
+	sb->s_root = d_make_root(inode);    /*分配sb inode的dentry*/
 	if (!sb->s_root)
 		return -ENOMEM;
 

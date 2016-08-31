@@ -99,14 +99,14 @@ struct partition_meta_info {
 	u8 volname[PARTITION_META_INFO_VOLNAMELTH];
 };
 
-struct hd_struct {
-	sector_t start_sect;
+struct hd_struct {/*表示一个分区*/
+	sector_t start_sect;   /*分区在块设备上的起始扇区*/
 	/*
 	 * nr_sects is protected by sequence counter. One might extend a
 	 * partition while IO is happening to it and update of nr_sects
 	 * can be non-atomic on 32bit machines with 64bit sector_t.
 	 */
-	sector_t nr_sects;
+	sector_t nr_sects;     /*分区包含多少个扇区*/
 	seqcount_t nr_sects_seq;
 	sector_t alignment_offset;
 	unsigned int discard_alignment;
@@ -162,7 +162,7 @@ struct disk_part_tbl {
 
 struct disk_events;
 
-struct gendisk {
+struct gendisk {/*表示一个磁盘*/
 	/* major, first_minor and minors are input parameters only,
 	 * don't use directly.  Use disk_devt() and disk_max_parts().
 	 */
@@ -171,7 +171,7 @@ struct gendisk {
 	int minors;                     /* maximum number of minors, =1 for
                                          * disks that can't be partitioned. */
 
-	char disk_name[DISK_NAME_LEN];	/* name of major driver */
+	char disk_name[DISK_NAME_LEN];	/* name of major driver */ /*磁盘名称，可以在/proc/partitions中显示*/
 	char *(*devnode)(struct gendisk *gd, umode_t *mode);
 
 	unsigned int events;		/* supported events */
@@ -186,7 +186,7 @@ struct gendisk {
 	struct hd_struct part0;
 
 	const struct block_device_operations *fops;
-	struct request_queue *queue;
+	struct request_queue *queue;      /*磁盘的请求队列*/
 	void *private_data;
 
 	int flags;

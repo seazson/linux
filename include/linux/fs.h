@@ -407,20 +407,20 @@ int pagecache_write_end(struct file *, struct address_space *mapping,
 struct backing_dev_info;
 struct address_space {
 	struct inode		*host;		/* owner: inode, block_device */
-	struct radix_tree_root	page_tree;	/* radix tree of all pages */
+	struct radix_tree_root	page_tree;	/* radix tree of all pages */      /*基数树的根节点,包含了该地址空间中所有物理内存页*/
 	spinlock_t		tree_lock;	/* and lock protecting it */
-	unsigned int		i_mmap_writable;/* count VM_SHARED mappings */
-	struct rb_root		i_mmap;		/* tree of private and shared mappings */
-	struct list_head	i_mmap_nonlinear;/*list VM_NONLINEAR mappings */
+	unsigned int		i_mmap_writable;/* count VM_SHARED mappings */         /*统计有VM_SHARED属性的页*/
+	struct rb_root		i_mmap;		/* tree of private and shared mappings */  /*与该inode相关的所有普通内存映射*/
+	struct list_head	i_mmap_nonlinear;/*list VM_NONLINEAR mappings */       /*包含非线性映射的页*/
 	struct mutex		i_mmap_mutex;	/* protect tree, count, list */
 	/* Protected by tree_lock together with the radix tree */
-	unsigned long		nrpages;	/* number of total pages */
+	unsigned long		nrpages;	/* number of total pages */            /*缓存页的总数*/
 	pgoff_t			writeback_index;/* writeback starts here */
 	const struct address_space_operations *a_ops;	/* methods */
 	unsigned long		flags;		/* error bits/gfp mask */
-	struct backing_dev_info *backing_dev_info; /* device readahead, etc */
+	struct backing_dev_info *backing_dev_info; /* device readahead, etc */ /*后备存储器的信息*/
 	spinlock_t		private_lock;	/* for use by the address_space */
-	struct list_head	private_list;	/* ditto */
+	struct list_head	private_list;	/* ditto */                     /*文件系统元数据(通常是间接块)的buffer_head实例*/
 	void			*private_data;	/* ditto */
 } __attribute__((aligned(sizeof(long))));
 	/*
@@ -431,12 +431,12 @@ struct address_space {
 struct request_queue;
 
 struct block_device {
-	dev_t			bd_dev;  /* not a kdev_t - it's a search key */
+	dev_t			bd_dev;  /* not a kdev_t - it's a search key *//*块设备设备号*/
 	int			bd_openers;
-	struct inode *		bd_inode;	/* will die */
+	struct inode *		bd_inode;	/* will die */ /*bdev伪文件系统中的inode，不是真实文件的inode*/
 	struct super_block *	bd_super;
 	struct mutex		bd_mutex;	/* open/close mutex */
-	struct list_head	bd_inodes;
+	struct list_head	bd_inodes;  /*该块设备的设备特殊文件的所有inode*/
 	void *			bd_claiming;
 	void *			bd_holder;
 	int			bd_holders;
@@ -446,13 +446,13 @@ struct block_device {
 #endif
 	struct block_device *	bd_contains;
 	unsigned		bd_block_size;
-	struct hd_struct *	bd_part;
-	/* number of times partitions within this device have been opened. */
-	unsigned		bd_part_count;
-	int			bd_invalidated;
+	struct hd_struct *	bd_part;    /*包含在该块设备上的分区*/
+ 	/* number of times partitions within this device have been opened. */
+	unsigned		bd_part_count;  /*分区的引用次数*/
+	int			bd_invalidated;     /*表示该分区在内核中的信息无效，因为磁盘上的分区信息已经改变*/
 	struct gendisk *	bd_disk;
 	struct request_queue *  bd_queue;
-	struct list_head	bd_list;
+	struct list_head	bd_list;    /*链接所有块设备，表头是all_bdevs*/
 	/*
 	 * Private data.  You must have bd_claim'ed the block_device
 	 * to use this.  NOTE:  bd_claim allows an owner to claim

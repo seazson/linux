@@ -1343,6 +1343,6 @@ void __init paging_init(struct machine_desc *mdesc)
 
 	bootmem_init();              /*自举分配器初始化,初始化伙伴系统*/
 
-	empty_zero_page = virt_to_page(zero_page);
+	empty_zero_page = virt_to_page(zero_page);    /*分配一个零页*/
 	__flush_dcache_page(NULL, empty_zero_page);
 }
