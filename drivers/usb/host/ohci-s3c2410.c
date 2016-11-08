@@ -343,7 +343,7 @@ static int usb_hcd_s3c2410_probe(const struct hc_driver *driver,
 
 	s3c2410_usb_set_power(dev->dev.platform_data, 1, 1);
 	s3c2410_usb_set_power(dev->dev.platform_data, 2, 1);
-	pr_sea("\n");
+	pr_sea_usb("\n");
 	hcd = usb_create_hcd(driver, &dev->dev, "s3c24xx");  /*创建并初始化一个hcd，并与platform_device相互关联起来*/
 	if (hcd == NULL)
 		return -ENOMEM;

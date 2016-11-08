@@ -673,7 +673,7 @@ static void __init mini2440_init(void)
 	s3c_i2c0_set_platdata(NULL);
 
 	i2c_register_board_info(0, mini2440_i2c_devs,
-				ARRAY_SIZE(mini2440_i2c_devs));
+				ARRAY_SIZE(mini2440_i2c_devs));   /*将设备注册到__i2c_board_list静态表中，并填入bus号0，在adapter0注册的时候就会注册它*/
 
 	platform_add_devices(mini2440_devices, ARRAY_SIZE(mini2440_devices));
 

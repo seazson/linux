@@ -168,7 +168,7 @@ static void __init arm_bootmem_init(unsigned long start_pfn,
 	boot_pages = bootmem_bootmap_pages(end_pfn - start_pfn);     /*计算需要为位图分配的页大小*/
 	bitmap = memblock_alloc_base(boot_pages << PAGE_SHIFT, L1_CACHE_BYTES,
 				__pfn_to_phys(end_pfn));                         /*从后分配空间*/
-	printk("arm_bootmem_init bitmap[0x%x] size 0x%x\n",bitmap,boot_pages << PAGE_SHIFT);
+	pr_sea_start("arm_bootmem_init bitmap[0x%x] size 0x%x\n",bitmap,boot_pages << PAGE_SHIFT);
 	/*
 	 * Initialise the bootmem allocator, handing the
 	 * memory banks over to bootmem.

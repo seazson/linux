@@ -267,7 +267,7 @@ do_page_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 
 	if (notify_page_fault(regs, fsr))
 		return 0;
-	printk("page fault at %x\n",addr);
+//	printk("page fault at %x\n",addr);
 	tsk = current;
 	mm  = tsk->mm;
 

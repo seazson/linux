@@ -374,7 +374,7 @@ unsigned long vm_mmap(struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot,
 	unsigned long flag, unsigned long offset)
 {
-	printk("addr=0x%x len=0x%x offset=0x%x\n",addr, len, offset);
+	pr_sea_mem("addr=0x%lx len=0x%lx offset=0x%lx\n",addr, len, offset);
 	if (unlikely(offset + PAGE_ALIGN(len) < offset))
 		return -EINVAL;
 	if (unlikely(offset & ~PAGE_MASK))

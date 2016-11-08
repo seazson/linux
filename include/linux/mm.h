@@ -1271,7 +1271,7 @@ static inline void pgtable_page_dtor(struct page *page)
 	pte_lock_deinit(page);
 	dec_zone_page_state(page, NR_PAGETABLE);
 }
-
+/*获取页表项地址*/
 #define pte_offset_map_lock(mm, pmd, address, ptlp)	\
 ({							\
 	spinlock_t *__ptl = pte_lockptr(mm, pmd);	\

@@ -1053,7 +1053,7 @@ __rmqueue_fallback(struct zone *zone, int order, int start_migratetype)
 				int pages;
 				pages = move_freepages_block(zone, page,              /*将page迁移到期望的迁移类型中，期望一次移动一个大块，实际可能小于一个大块，page返回成功移动的数目*/
 								start_migratetype);                   /*这里有一种可能只移了一个大块的一部分*/
-				printk("move_freepages_block %x order%d %x to %x\n",pages,order,migratetype,start_migratetype);
+				pr_sea_start("move_freepages_block %x order%d %x to %x\n",pages,order,migratetype,start_migratetype);
 				/* Claim the whole block if over half of it is free */ /*如果超过一半是空闲的，这主张获取整个块的所有权*/
 				if (pages >= (1 << (pageblock_order-1)) ||
 						page_group_by_mobility_disabled)
@@ -2856,6 +2856,7 @@ static unsigned long nr_free_zone_pages(int offset)
 		unsigned long high = high_wmark_pages(zone);
 		if (size > high)
 			sum += size - high;
+		pr_sea_start("nr_free_zone_pages %ld %ld %ld\n",min_wmark_pages(zone),low_wmark_pages(zone),high_wmark_pages(zone));
 	}
 
 	return sum;
@@ -2878,7 +2879,7 @@ EXPORT_SYMBOL_GPL(nr_free_buffer_pages);
  *
  * nr_free_pagecache_pages() counts the number of pages which are beyond the
  * high watermark within all zones.
- */
+ */  /*高于高水标可用的page数，高水标通常为0，实际为去除page数组所占大小后的page数*/
 unsigned long nr_free_pagecache_pages(void)
 {
 	return nr_free_zone_pages(gfp_zone(GFP_HIGHUSER_MOVABLE));
@@ -4670,24 +4671,24 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat,
 
 	for (j = 0; j < MAX_NR_ZONES; j++) {
 		struct zone *zone = pgdat->node_zones + j;
-		unsigned long size, realsize, freesize, memmap_pages;
-
+		unsigned long size, realsize, freesize, memmap_pages;     /*size代表包含空洞的总大小，realsize代表不包含空洞大小*/
+                                                                  /*memmap_pages表示page结构要使用的大小，freesize代表目前可用的大小*/  
 		size = zone_spanned_pages_in_node(nid, j, node_start_pfn,         /*包含空洞的大小*/
 						  node_end_pfn, zones_size);
 		realsize = freesize = size - zone_absent_pages_in_node(nid, j,    /*总大小减空洞大小得出可用page数目*/
 								node_start_pfn,
 								node_end_pfn,
 								zholes_size);
-		printk("free_area_init_core%d %d %d\n",j,size,realsize);
+		pr_sea_start("free_area_init_core%d %ld %ld\n",j,size,realsize);
 
 		/*
 		 * Adjust freesize so that it accounts for how much memory
 		 * is used by this zone for memmap. This affects the watermark
 		 * and per-cpu initialisations
 		 */
-		memmap_pages = calc_memmap_size(size, realsize);    /*page数组所需分配的page数*/
+		memmap_pages = calc_memmap_size(size, realsize);    /*page数组所需分配的page数。例如64M要用128个page空间*/
 		if (freesize >= memmap_pages) {
-			freesize -= memmap_pages;
+			freesize -= memmap_pages;                       /*freesize代表去除已用的，还可以管理的页数*/
 			if (memmap_pages)
 				printk(KERN_DEBUG
 				       "  %s zone: %lu pages used for memmap\n",
@@ -4771,7 +4772,7 @@ static void __init_refok alloc_node_mem_map(struct pglist_data *pgdat)
 		if (!map)
 			map = alloc_bootmem_node_nopanic(pgdat, size);  /*用自举分配器分配页帧空间*/
 		pgdat->node_mem_map = map + (pgdat->node_start_pfn - start);
-		printk("alloc_node_mem_map 0x%x 0x%x 0x%x 0x%x\n",start,end,size,(unsigned long)map);
+		pr_sea_start("alloc_node_mem_map 0x%lx 0x%lx 0x%lx 0x%lx\n",start,end,size,(unsigned long)map);
 	}
 #ifndef CONFIG_NEED_MULTIPLE_NODES
 	/*
@@ -5597,7 +5598,7 @@ int __meminit init_per_zone_wmark_min(void)
 
 	lowmem_kbytes = nr_free_buffer_pages() * (PAGE_SIZE >> 10);
 	new_min_free_kbytes = int_sqrt(lowmem_kbytes * 16);
-	printk("init_per_zone_wmark_min 0x%x 0x%x 0x%x\n",lowmem_kbytes,new_min_free_kbytes,user_min_free_kbytes);
+	printk("init_per_zone_wmark_min 0x%lx 0x%x 0x%x\n",lowmem_kbytes,new_min_free_kbytes,user_min_free_kbytes);
 	if (new_min_free_kbytes > user_min_free_kbytes) {
 		min_free_kbytes = new_min_free_kbytes;
 		if (min_free_kbytes < 128)

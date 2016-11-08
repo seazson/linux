@@ -1237,7 +1237,7 @@ static int s3c24xx_serial_probe(struct platform_device *pdev)
 {
 	struct s3c24xx_uart_port *ourport;
 	int ret;
-	pr_sea("---------------------------\n");
+	pr_sea_tty("---------------------------\n");
 	dbg("s3c24xx_serial_probe(%p) %d\n", pdev, probe_index);
 
 	ourport = &s3c24xx_serial_ports[probe_index];

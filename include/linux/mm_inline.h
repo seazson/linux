@@ -20,7 +20,7 @@ static inline int page_is_file_cache(struct page *page)
 {
 	return !PageSwapBacked(page);
 }
-
+/*将page加入到对应lru链表头部，并更新计数*/
 static __always_inline void add_page_to_lru_list(struct page *page,
 				struct lruvec *lruvec, enum lru_list lru)
 {

@@ -640,10 +640,10 @@ int usb_match_one_id(struct usb_interface *interface,
 
 	if (!usb_match_device(dev, id)) /*检查接口parent是否匹配，匹配成功才能继续*/
 	{
-		pr_sea("interface parent dismatch\n");
+		pr_sea_usb("interface parent dismatch\n");
 		return 0;
 	}
-	pr_sea("interface parent match\n");
+	pr_sea_usb("interface parent match\n");
 	return usb_match_one_id_intf(dev, intf, id); /*检查接口本身是否匹配*/
 }
 EXPORT_SYMBOL_GPL(usb_match_one_id);
@@ -744,7 +744,7 @@ EXPORT_SYMBOL_GPL(usb_match_id);
 static int usb_device_match(struct device *dev, struct device_driver *drv)
 {
 
-	pr_sea("dev=%s %d - drv=%s %d\n",dev->init_name,is_usb_device(dev),drv->name,is_usb_device_driver(drv));
+	pr_sea_usb("dev=%s %d - drv=%s %d\n",dev->init_name,is_usb_device(dev),drv->name,is_usb_device_driver(drv));
 	/* devices and interfaces are handled separately */
 	if (is_usb_device(dev)) {
 		/* interface drivers never match devices */

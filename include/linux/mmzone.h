@@ -390,7 +390,7 @@ struct zone {
 
 	/* Fields commonly accessed by the page reclaim scanner */
 	spinlock_t		lru_lock;
-	struct lruvec		lruvec;
+	struct lruvec		lruvec;           /*最近最少用链表，用于内存回收*/
 
 	unsigned long		pages_scanned;	   /* since last reclaim */ /*上一次换出一页以来，有多少页未能成功扫描*/
 	unsigned long		flags;		   /* zone flags, see below */

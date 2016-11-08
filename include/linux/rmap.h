@@ -34,7 +34,7 @@ struct anon_vma {
 	 * the reference is responsible for clearing up the
 	 * anon_vma if they are the last user on release
 	 */
-	atomic_t refcount;
+	atomic_t refcount;           /*表示有多少个子节点av指向本av*/
 
 	/*
 	 * NOTE: the LSB of the rb_root.rb_node is set by
@@ -61,9 +61,9 @@ struct anon_vma {
  * which link all the VMAs associated with this anon_vma.
  */
 struct anon_vma_chain {
-	struct vm_area_struct *vma;
-	struct anon_vma *anon_vma;
-	struct list_head same_vma;   /* locked by mmap_sem & page_table_lock */
+	struct vm_area_struct *vma;   /*指向本进程的vma*/
+	struct anon_vma *anon_vma;    /*指向本进程或者是父进程的av*/
+	struct list_head same_vma;   /* locked by mmap_sem & page_table_lock */ /*将本进程的avc们链接起来*/
 	struct rb_node rb;			/* locked by anon_vma->rwsem */
 	unsigned long rb_subtree_last;
 #ifdef CONFIG_DEBUG_VM_RB

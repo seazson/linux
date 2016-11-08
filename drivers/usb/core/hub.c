@@ -625,7 +625,7 @@ static void hub_irq(struct urb *urb)   /*被调用说明hub上有事件产生*/
 	int status = urb->status;
 	unsigned i;
 	unsigned long bits;
-	pr_sea("status =%x\n",status);
+	pr_sea_usb("status =%x\n",status);
 	switch (status) {
 	case -ENOENT:		/* synchronous unlink */
 	case -ECONNRESET:	/* async unlink */
@@ -1202,7 +1202,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 	}
  init3:
 	hub->quiescing = 0;
-	pr_sea("Send int trans\n");
+	pr_sea_usb("Send int trans\n");
 	status = usb_submit_urb(hub->urb, GFP_NOIO);   /*提交中断传输，立即返回了*/
 	if (status < 0)
 		dev_err(hub->intfdev, "activate --> %d\n", status);
@@ -1972,7 +1972,7 @@ static void choose_devnum(struct usb_device *udev)
 		set_bit(devnum, bus->devmap.devicemap);
 		udev->devnum = devnum;
 	}
-	pr_sea("alloc addr for this new usb: %d",devnum);
+	pr_sea_usb("alloc addr for this new usb: %d",devnum);
 }
 
 static void release_devnum(struct usb_device *udev)
@@ -2203,7 +2203,7 @@ fail:
 static int usb_enumerate_device(struct usb_device *udev)
 {
 	int err;
-	pr_sea("try to getconfig\n");
+	pr_sea_usb("try to getconfig\n");
 	if (udev->config == NULL) {
 		err = usb_get_configuration(udev);  /*一次获取所有的配置*/
 		if (err < 0) {
@@ -2290,7 +2290,7 @@ static void set_usb_port_removable(struct usb_device *udev)
 int usb_new_device(struct usb_device *udev)
 {
 	int err;
-	pr_sea("add new usb device to usb bus\n");
+	pr_sea_usb("add new usb device to usb bus\n");
 	if (udev->parent) {
 		/* Initialize non-root-hub device wakeup to disabled;
 		 * device (un)configuration controls wakeup capable
@@ -3920,7 +3920,7 @@ static int hub_set_address(struct usb_device *udev, int devnum)
 {
 	int retval;
 	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
-	pr_sea("set addr cmd\n");
+	pr_sea_usb("set addr cmd\n");
 	/*
 	 * The host controller will choose the device address,
 	 * instead of the core having chosen it earlier
@@ -4081,7 +4081,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 			 * 255 is for WUSB devices, we actually need to use
 			 * 512 (WUSB1.0[4.8.1]).
 			 */
-			pr_sea("try to get endpoint0 size\n");
+			pr_sea_usb("try to get endpoint0 size\n");
 			for (j = 0; j < 3; ++j) {
 				buf->bMaxPacketSize0 = 0;
 				r = usb_control_msg(udev, usb_rcvaddr0pipe(),
@@ -4218,7 +4218,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 		usb_ep0_reinit(udev);
 	}
 /*真正获取usb设备描述符*/
-	pr_sea("the real get descriptor\n");
+	pr_sea_usb("the real get descriptor\n");
 	retval = usb_get_device_descriptor(udev, USB_DT_DEVICE_SIZE);
 	if (retval < (signed)sizeof(udev->descriptor)) {
 		if (retval != -ENODEV)
@@ -4340,7 +4340,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 	struct usb_device *udev;
 	int status, i;
 	unsigned unit_load;
-	pr_sea("now we sure portstate have change\n");
+	pr_sea_usb("now we sure portstate have change\n");
 	dev_dbg (hub_dev,
 		"port %d, status %04x, change %04x, %s\n",
 		port1, portstatus, portchange, portspeed(hub, portstatus));
@@ -4440,7 +4440,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		/* reallocate for each attempt, since references
 		 * to the previous one can escape in various ways
 		 */
-		pr_sea("alloc a new usb_device\n"); 
+		pr_sea_usb("alloc a new usb_device\n"); 
 		udev = usb_alloc_dev(hdev, hdev->bus, port1);  /*为hub下接的设备分配一个usb_device*/
 		if (!udev) {
 			dev_err (hub_dev,
@@ -4625,7 +4625,7 @@ static void hub_events(void)
 	u16 portchange;
 	int i, ret;
 	int connect_change, wakeup_change;
-	pr_sea("\n");
+	pr_sea_usb("\n");
 	/*
 	 *  We restart the list every time to avoid a deadlock with
 	 * deleting hubs downstream from this one. This should be

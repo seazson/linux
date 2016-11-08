@@ -13,7 +13,7 @@
 
 struct page;
 struct address_space;
-
+/*lru缓存。只有非内存回收的情况下对lru链表进行操作，才需要使用到这些lru缓存，而内存回收时对lru链表的操作，大部分操作是不需要使用这些lru缓存的(只有将隔离的页重新加入lru链表时会使用)。*/
 struct pagevec {
 	unsigned long nr;
 	unsigned long cold;

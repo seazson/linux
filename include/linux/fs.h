@@ -444,7 +444,7 @@ struct block_device {
 #ifdef CONFIG_SYSFS
 	struct list_head	bd_holder_disks;
 #endif
-	struct block_device *	bd_contains;
+	struct block_device *	bd_contains;  /*指向磁盘所属的块设备*/
 	unsigned		bd_block_size;
 	struct hd_struct *	bd_part;    /*包含在该块设备上的分区*/
  	/* number of times partitions within this device have been opened. */

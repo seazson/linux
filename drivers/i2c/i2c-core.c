@@ -656,12 +656,12 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 		goto out_err_silent;
 	}
 
-	/* Check for address business */
+	/* Check for address business */ /*检查此地址在此条总线路径上是否已存在*/
 	status = i2c_check_addr_busy(adap, client->addr);
 	if (status)
 		goto out_err;
 
-	client->dev.parent = &client->adapter->dev;
+	client->dev.parent = &client->adapter->dev;  /*父节点是adapter*/
 	client->dev.bus = &i2c_bus_type;
 	client->dev.type = &i2c_client_type;
 	client->dev.of_node = info->of_node;
@@ -671,7 +671,7 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 	dev_set_name(&client->dev, "%d-%04x", i2c_adapter_id(adap),
 		     client->addr | ((client->flags & I2C_CLIENT_TEN)
 				     ? 0xa000 : 0));
-	status = device_register(&client->dev);
+	status = device_register(&client->dev);   /*注册这个设备*/
 	if (status)
 		goto out_err;
 
@@ -742,7 +742,7 @@ static struct i2c_driver dummy_driver = {
  *
  * This returns the new i2c client, which should be saved for later use with
  * i2c_unregister_device(); or NULL to indicate an error.
- */
+ */ /*添加一个dummy，对于类似eeprom的有多个i2c地址，需要dummy来占位*/
 struct i2c_client *i2c_new_dummy(struct i2c_adapter *adapter, u16 address)
 {
 	struct i2c_board_info info = {
@@ -788,7 +788,7 @@ static inline unsigned int i2c_adapter_depth(struct i2c_adapter *adapter)
  *
  * Parameter checking may look overzealous, but we really don't want
  * the user to provide incorrect parameters.
- */
+ */  /*通过sys来添加一个设备*/
 static ssize_t
 i2c_sysfs_new_device(struct device *dev, struct device_attribute *attr,
 		     const char *buf, size_t count)
@@ -953,7 +953,7 @@ static void i2c_scan_static_board_info(struct i2c_adapter *adapter)
 	}
 	up_read(&__i2c_board_lock);
 }
-
+/*新加入一个适配器，对应的drvier是否可以用了*/
 static int i2c_do_add_adapter(struct i2c_driver *driver,
 			      struct i2c_adapter *adap)
 {
@@ -976,7 +976,7 @@ static int __process_new_adapter(struct device_driver *d, void *data)
 {
 	return i2c_do_add_adapter(to_i2c_driver(d), data);
 }
-
+/*在i2c_bus_type下注册一个adapter*/
 static int i2c_register_adapter(struct i2c_adapter *adap)
 {
 	int res = 0;
@@ -1059,11 +1059,11 @@ static int i2c_register_adapter(struct i2c_adapter *adap)
 exit_recovery:
 	/* create pre-declared device nodes */
 	if (adap->nr < __i2c_first_dynamic_bus_num)
-		i2c_scan_static_board_info(adap);
+		i2c_scan_static_board_info(adap);   /*查看静态板卡信息中有没有与此adapter关联的设备，并注册*/
 
 	/* Notify drivers */
 	mutex_lock(&core_lock);
-	bus_for_each_drv(&i2c_bus_type, NULL, adap, __process_new_adapter);
+	bus_for_each_drv(&i2c_bus_type, NULL, adap, __process_new_adapter);  /*通知driver们，有新的adapter加入*/
 	mutex_unlock(&core_lock);
 
 	return 0;
@@ -1297,18 +1297,18 @@ int i2c_for_each_dev(void *data, int (*fn)(struct device *, void *))
 }
 EXPORT_SYMBOL_GPL(i2c_for_each_dev);
 
-static int __process_new_driver(struct device *dev, void *data)
+static int __process_new_driver(struct device *dev, void *data) /*data是刚注册的i2c_drvier*/
 {
-	if (dev->type != &i2c_adapter_type)
+	if (dev->type != &i2c_adapter_type)  
 		return 0;
-	return i2c_do_add_adapter(data, to_i2c_adapter(dev));
+	return i2c_do_add_adapter(data, to_i2c_adapter(dev)); /*只有遍历到的是适配器类型才进行，探寻当前driver下已经有的设备*/
 }
 
 /*
  * An i2c_driver is used with one or more i2c_client (device) nodes to access
  * i2c slave chips, on a bus instance associated with some i2c_adapter.
  */
-
+/*注册i2c驱动*/
 int i2c_register_driver(struct module *owner, struct i2c_driver *driver)
 {
 	int res;
@@ -1340,8 +1340,8 @@ int i2c_register_driver(struct module *owner, struct i2c_driver *driver)
 
 	INIT_LIST_HEAD(&driver->clients);
 	/* Walk the adapters that are already present */
-	i2c_for_each_dev(driver, __process_new_driver);
-
+	i2c_for_each_dev(driver, __process_new_driver); /*遍历i2c_bus_type下所有已经注册的设备，执行__process_new_driver*/
+													/*后者只对适配器类型起作用*/
 	return 0;
 }
 EXPORT_SYMBOL(i2c_register_driver);
@@ -1440,7 +1440,7 @@ static int __init i2c_init(void)
 		goto bus_err;
 	}
 #endif
-	retval = i2c_add_driver(&dummy_driver);
+	retval = i2c_add_driver(&dummy_driver);  /*注册一个虚的i2c驱动，具体什么时候添加这个设备根据其他驱动程序的需要*/
 	if (retval)
 		goto class_err;
 	return 0;

@@ -120,7 +120,7 @@ static void anon_vma_chain_free(struct anon_vma_chain *anon_vma_chain)
 {
 	kmem_cache_free(anon_vma_chain_cachep, anon_vma_chain);
 }
-
+/*建立vma，avc，av的联系*/
 static void anon_vma_chain_link(struct vm_area_struct *vma,
 				struct anon_vma_chain *avc,
 				struct anon_vma *anon_vma)
@@ -168,13 +168,13 @@ int anon_vma_prepare(struct vm_area_struct *vma)
 		struct mm_struct *mm = vma->vm_mm;
 		struct anon_vma *allocated;
 
-		avc = anon_vma_chain_alloc(GFP_KERNEL);
+		avc = anon_vma_chain_alloc(GFP_KERNEL);    /*分配一个anon_vma_chain*/
 		if (!avc)
 			goto out_enomem;
 
-		anon_vma = find_mergeable_anon_vma(vma);
+		anon_vma = find_mergeable_anon_vma(vma);   /*检查当前的vma能否与前后的vma合并，能合并的话使用它们的anon_vma*/
 		allocated = NULL;
-		if (!anon_vma) {
+		if (!anon_vma) {                           /*不能合并，分配一个anon_vma，其root指向自己*/
 			anon_vma = anon_vma_alloc();
 			if (unlikely(!anon_vma))
 				goto out_enomem_free_avc;
@@ -186,7 +186,7 @@ int anon_vma_prepare(struct vm_area_struct *vma)
 		spin_lock(&mm->page_table_lock);
 		if (likely(!vma->anon_vma)) {
 			vma->anon_vma = anon_vma;
-			anon_vma_chain_link(vma, avc, anon_vma);
+			anon_vma_chain_link(vma, avc, anon_vma);  /*建立vma，avc，av的链接关系*/
 			allocated = NULL;
 			avc = NULL;
 		}
@@ -235,16 +235,16 @@ static inline void unlock_anon_vma_root(struct anon_vma *root)
 /*
  * Attach the anon_vmas from src to dst.
  * Returns 0 on success, -ENOMEM on failure.
- */
+ */ /*克隆所用父节点的anon_vma_chain*/
 int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 {
 	struct anon_vma_chain *avc, *pavc;
 	struct anon_vma *root = NULL;
-
+	/*遍历父节点的所有anon_vma_chain*/
 	list_for_each_entry_reverse(pavc, &src->anon_vma_chain, same_vma) {
 		struct anon_vma *anon_vma;
 
-		avc = anon_vma_chain_alloc(GFP_NOWAIT | __GFP_NOWARN);
+		avc = anon_vma_chain_alloc(GFP_NOWAIT | __GFP_NOWARN);  /*分配一个avc*/
 		if (unlikely(!avc)) {
 			unlock_anon_vma_root(root);
 			root = NULL;
@@ -254,7 +254,7 @@ int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 		}
 		anon_vma = pavc->anon_vma;
 		root = lock_anon_vma_root(root, anon_vma);
-		anon_vma_chain_link(dst, avc, anon_vma);
+		anon_vma_chain_link(dst, avc, anon_vma);  /*将avc和子节点的vma以及父节点的av关联起来*/
 	}
 	unlock_anon_vma_root(root);
 	return 0;
@@ -282,14 +282,14 @@ int anon_vma_fork(struct vm_area_struct *vma, struct vm_area_struct *pvma)
 	 * First, attach the new VMA to the parent VMA's anon_vmas,
 	 * so rmap can find non-COWed pages in child processes.
 	 */
-	if (anon_vma_clone(vma, pvma))
+	if (anon_vma_clone(vma, pvma))     /*复制父节点所有的avc，复制之后的avc还是指向父节点的av*/
 		return -ENOMEM;
 
 	/* Then add our own anon_vma. */
-	anon_vma = anon_vma_alloc();
+	anon_vma = anon_vma_alloc();               /*创建子节点自己的av*/
 	if (!anon_vma)
 		goto out_error;
-	avc = anon_vma_chain_alloc(GFP_KERNEL);
+	avc = anon_vma_chain_alloc(GFP_KERNEL);    /*创建子节点字节的avc，每创建一个子进程，都会比父进程多一个avc*/
 	if (!avc)
 		goto out_error_free_anon_vma;
 
@@ -297,17 +297,17 @@ int anon_vma_fork(struct vm_area_struct *vma, struct vm_area_struct *pvma)
 	 * The root anon_vma's spinlock is the lock actually used when we
 	 * lock any of the anon_vmas in this anon_vma tree.
 	 */
-	anon_vma->root = pvma->anon_vma->root;
+	anon_vma->root = pvma->anon_vma->root;     /*子节点的av指向父节点的av*/
 	/*
 	 * With refcounts, an anon_vma can stay around longer than the
 	 * process it belongs to. The root anon_vma needs to be pinned until
 	 * this anon_vma is freed, because the lock lives in the root.
 	 */
-	get_anon_vma(anon_vma->root);
+	get_anon_vma(anon_vma->root);             /*因为子节点的av指向了父节点，所以父节点的av计数要增加*/
 	/* Mark this anon_vma as the one where our new (COWed) pages go. */
 	vma->anon_vma = anon_vma;
 	anon_vma_lock_write(anon_vma);
-	anon_vma_chain_link(vma, avc, anon_vma);
+	anon_vma_chain_link(vma, avc, anon_vma);  /*建立新分配的av，avc和vma的关联*/
 	anon_vma_unlock_write(anon_vma);
 
 	return 0;
@@ -659,7 +659,7 @@ int page_mapped_in_vma(struct page *page, struct vm_area_struct *vma)
 /*
  * Subfunctions of page_referenced: page_referenced_one called
  * repeatedly from either page_referenced_anon or page_referenced_file.
- */
+ */ /*检查该页在最近是否使用过*/
 int page_referenced_one(struct page *page, struct vm_area_struct *vma,
 			unsigned long address, unsigned int *mapcount,
 			unsigned long *vm_flags)
@@ -712,7 +712,7 @@ int page_referenced_one(struct page *page, struct vm_area_struct *vma,
 			goto out;
 		}
 
-		if (ptep_clear_flush_young_notify(vma, address, pte)) {
+		if (ptep_clear_flush_young_notify(vma, address, pte)) {  /*检查(young位表示近期使用过),使用过的话referenced++,同时清除young标志*/
 			/*
 			 * Don't treat a reference through a sequentially read
 			 * mapping as such.  If the page has been used in
@@ -733,7 +733,7 @@ int page_referenced_one(struct page *page, struct vm_area_struct *vma,
 out:
 	return referenced;
 }
-
+/*计算匿名页最近有多少使用*/
 static int page_referenced_anon(struct page *page,
 				struct mem_cgroup *memcg,
 				unsigned long *vm_flags)
@@ -744,7 +744,7 @@ static int page_referenced_anon(struct page *page,
 	struct anon_vma_chain *avc;
 	int referenced = 0;
 
-	anon_vma = page_lock_anon_vma_read(page);
+	anon_vma = page_lock_anon_vma_read(page);    /*获取page对应anon_vma结构*/
 	if (!anon_vma)
 		return referenced;
 
@@ -977,7 +977,7 @@ void page_move_anon_rmap(struct page *page,
  * @vma:	VM area to add page to.
  * @address:	User virtual address of the mapping	
  * @exclusive:	the page is exclusively owned by the current process
- */
+ */ /*关联page和av*/
 static void __page_set_anon_rmap(struct page *page,
 	struct vm_area_struct *vma, unsigned long address, int exclusive)
 {
@@ -997,7 +997,7 @@ static void __page_set_anon_rmap(struct page *page,
 		anon_vma = anon_vma->root;
 
 	anon_vma = (void *) anon_vma + PAGE_MAPPING_ANON;
-	page->mapping = (struct address_space *) anon_vma;
+	page->mapping = (struct address_space *) anon_vma;  /*匿名页的mapping会指向第一此访问它的vma的anon_vma*/
 	page->index = linear_page_index(vma, address);
 }
 
@@ -1081,7 +1081,7 @@ void do_page_add_anon_rmap(struct page *page,
  * Same as page_add_anon_rmap but must only be called on *new* pages.
  * This means the inc-and-test can be bypassed.
  * Page does not have to be locked.
- */
+ */ /*增加匿名映射统计，并添加到对应lru链表，添加逆向映射*/
 void page_add_new_anon_rmap(struct page *page,
 	struct vm_area_struct *vma, unsigned long address)
 {
@@ -1092,7 +1092,7 @@ void page_add_new_anon_rmap(struct page *page,
 		__inc_zone_page_state(page, NR_ANON_PAGES);
 	else
 		__inc_zone_page_state(page, NR_ANON_TRANSPARENT_HUGEPAGES);
-	__page_set_anon_rmap(page, vma, address, 1);
+	__page_set_anon_rmap(page, vma, address, 1);     /* 添加到逆向映射*/
 	if (!mlocked_vma_newpage(vma, page)) {
 		SetPageActive(page);
 		lru_cache_add(page);

@@ -382,7 +382,7 @@ void clockevents_config(struct clock_event_device *dev, u32 freq)
 	clockevents_calc_mult_shift(dev, freq, sec);
 	dev->min_delta_ns = clockevent_delta2ns(dev->min_delta_ticks, dev);
 	dev->max_delta_ns = clockevent_delta2ns(dev->max_delta_ticks, dev);
-	pr_sea("min_delta_ns=%d max_delta_ns=%d\n",dev->min_delta_ns,dev->max_delta_ns);
+	pr_sea_start("min_delta_ns=%lld max_delta_ns=%lld\n",dev->min_delta_ns,dev->max_delta_ns);
 }
 
 /**

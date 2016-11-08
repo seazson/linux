@@ -548,9 +548,9 @@ static int i2cdev_attach_adapter(struct device *dev, void *dummy)
 
 	if (dev->type != &i2c_adapter_type)
 		return 0;
-	adap = to_i2c_adapter(dev);
+	adap = to_i2c_adapter(dev);   /*根据dev得到它的adapter*/
 
-	i2c_dev = get_free_i2c_dev(adap);
+	i2c_dev = get_free_i2c_dev(adap);  /*创建一个i2c_dev，使用当前adapter*/
 	if (IS_ERR(i2c_dev))
 		return PTR_ERR(i2c_dev);
 
@@ -621,7 +621,7 @@ static struct notifier_block i2cdev_notifier = {
 /*
  * module load/unload record keeping
  */
-
+/*i2c的一个bus也是一个i2cdev*/
 static int __init i2c_dev_init(void)
 {
 	int res;
@@ -644,7 +644,7 @@ static int __init i2c_dev_init(void)
 		goto out_unreg_class;
 
 	/* Bind to already existing adapters right away */
-	i2c_for_each_dev(NULL, i2cdev_attach_adapter);
+	i2c_for_each_dev(NULL, i2cdev_attach_adapter);   /*遍历已经注册的i2c_bus_type执行i2cdev_attach_adapter*/
 
 	return 0;
 

@@ -1093,7 +1093,7 @@ static int s3c24xx_i2c_probe(struct platform_device *pdev)
 	/* setup info block for the i2c core */
 
 	i2c->adap.algo_data = i2c;
-	i2c->adap.dev.parent = &pdev->dev;
+	i2c->adap.dev.parent = &pdev->dev;   /*适配器的父节点为platform_device*/
 
 	i2c->pctrl = devm_pinctrl_get_select_default(i2c->dev);
 

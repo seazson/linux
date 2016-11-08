@@ -36,7 +36,7 @@
 #include "sysv68.h"
 
 int warn_no_part = 1; /*This is ugly: should make genhd removable media aware*/
-
+/*linux所支持的各种分区信息*/
 static int (*check_part[])(struct parsed_partitions *) = {
 	/*
 	 * Probe partition formats with tables at disk address 0

@@ -455,7 +455,7 @@ EXPORT_SYMBOL_GPL(replace_page_cache_page);
  *
  * This function is used to add a page to the pagecache. It must be locked.
  * This function does not add the page to the LRU.  The caller must do that.
- */
+ */ /*将page添加到地址空间，并更新NR_FILE_PAGES计数*/
 int add_to_page_cache_locked(struct page *page, struct address_space *mapping,
 		pgoff_t offset, gfp_t gfp_mask)
 {
@@ -471,15 +471,15 @@ int add_to_page_cache_locked(struct page *page, struct address_space *mapping,
 
 	error = radix_tree_preload(gfp_mask & ~__GFP_HIGHMEM);
 	if (error == 0) {
-		page_cache_get(page);
+		page_cache_get(page);      /*增加page引用计数*/
 		page->mapping = mapping;
 		page->index = offset;
 
 		spin_lock_irq(&mapping->tree_lock);
-		error = radix_tree_insert(&mapping->page_tree, offset, page);
+		error = radix_tree_insert(&mapping->page_tree, offset, page);   /*将page加入到地址空间基数树中*/
 		if (likely(!error)) {
 			mapping->nrpages++;
-			__inc_zone_page_state(page, NR_FILE_PAGES);
+			__inc_zone_page_state(page, NR_FILE_PAGES);   /*页缓存属于NR_FILE_PAGES*/
 			spin_unlock_irq(&mapping->tree_lock);
 			trace_mm_filemap_add_to_page_cache(page);
 		} else {
@@ -496,12 +496,12 @@ out:
 	return error;
 }
 EXPORT_SYMBOL(add_to_page_cache_locked);
-
+/*会添加到lru缓存中*/
 int add_to_page_cache_lru(struct page *page, struct address_space *mapping,
 				pgoff_t offset, gfp_t gfp_mask)
 {
 	int ret;
-
+	pr_sea_mem("add_to_page_cache_lru %ld\n",offset);
 	ret = add_to_page_cache(page, mapping, offset, gfp_mask);
 	if (ret == 0)
 		lru_cache_add_file(page);
@@ -1243,7 +1243,7 @@ readpage:
 		 */
 		ClearPageError(page);
 		/* Start the actual read. The read will unlock the page. */
-		error = mapping->a_ops->readpage(filp, page);
+		error = mapping->a_ops->readpage(filp, page);   /*从后备缓冲器中读入页面*/
 
 		if (unlikely(error)) {
 			if (error == AOP_TRUNCATED_PAGE) {
@@ -1287,7 +1287,7 @@ no_cached_page:
 		 * Ok, it wasn't cached, so we need to create a new
 		 * page..
 		 */
-		page = page_cache_alloc_cold(mapping);
+		page = page_cache_alloc_cold(mapping);   /*没有页缓存，分配页缓存*/
 		if (!page) {
 			desc->error = -ENOMEM;
 			goto out;

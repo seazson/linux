@@ -265,7 +265,7 @@ static ssize_t whole_disk_show(struct device *dev,
 }
 static DEVICE_ATTR(whole_disk, S_IRUSR | S_IRGRP | S_IROTH,
 		   whole_disk_show, NULL);
-
+/*在disk下添加一个分区*/
 struct hd_struct *add_partition(struct gendisk *disk, int partno,
 				sector_t start, sector_t len, int flags,
 				struct partition_meta_info *info)
@@ -430,7 +430,7 @@ rescan:
 		disk->fops->revalidate_disk(disk);
 	check_disk_size_change(disk, bdev);
 	bdev->bd_invalidated = 0;
-	if (!get_capacity(disk) || !(state = check_partition(disk, bdev)))
+	if (!get_capacity(disk) || !(state = check_partition(disk, bdev)))   /*遍历所有支持的格式，识别分区信息*/
 		return 0;
 	if (IS_ERR(state)) {
 		/*

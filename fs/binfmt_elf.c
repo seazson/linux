@@ -169,7 +169,7 @@ create_elf_tables(struct linux_binprm *bprm, struct elfhdr *exec,
 	 */
 
 	p = arch_align_stack(p);
-	printk("bprm->p = %x\n",bprm->p);
+	pr_sea_elf("bprm->p = %lx\n",bprm->p);
 	/*
 	 * If this architecture has a platform capability string, copy it
 	 * to userspace.  In some cases (Sparc), this info is impossible
@@ -569,53 +569,56 @@ static unsigned long randomize_stack_top(unsigned long stack_top)
 #define DUMPELF
 static void dump_elfhdr(struct elfhdr *elf_ex)
 {
-#ifdef DUMPELF
 	int i;
 	char *p = (char *)elf_ex;
-	for(i=0 ; i<sizeof(struct elfhdr); i++)
+
+	if(DO_PR_SEA_ELF)
 	{
-		if(i%32 == 0)
-			printk("\n");
-		printk("%02x ", *(p+i));
+		for(i=0 ; i<sizeof(struct elfhdr); i++)
+		{
+			if(i%32 == 0)
+				printk("\n");
+			printk("%02x ", *(p+i));
+		}
+		printk("\n");
+		printk("e_type  \t: 0x%x (1:rel 2:exe 3:dyn 4:core)\n",elf_ex->e_type);
+		printk("e_machine \t: 0x%x (0x28:arm)\n",elf_ex->e_machine);
+		printk("e_version \t: 0x%x\n",elf_ex->e_version);
+		printk("e_entry \t: 0x%x\n",elf_ex->e_entry);
+		printk("e_phoff \t: 0x%x\n",elf_ex->e_phoff);
+		printk("e_shoff \t: 0x%x\n",elf_ex->e_shoff);
+		printk("e_flags \t: 0x%x (31~24:eabi)\n",elf_ex->e_flags);
+		printk("e_ehsize \t: 0x%x\n",elf_ex->e_ehsize);
+		printk("e_phentsize \t: 0x%x\n",elf_ex->e_phentsize);
+		printk("e_phnum \t: 0x%x\n",elf_ex->e_phnum);
+		printk("e_shentsize \t: 0x%x\n",elf_ex->e_shentsize);
+		printk("e_shnum \t: 0x%x\n",elf_ex->e_shnum);
+		printk("e_shstrndx \t: 0x%x\n",elf_ex->e_shstrndx);
 	}
-	printk("\n");
-	printk("e_type  \t: 0x%x (1:rel 2:exe 3:dyn 4:core)\n",elf_ex->e_type);
-	printk("e_machine \t: 0x%x (0x28:arm)\n",elf_ex->e_machine);
-	printk("e_version \t: 0x%x\n",elf_ex->e_version);
-	printk("e_entry \t: 0x%x\n",elf_ex->e_entry);
-	printk("e_phoff \t: 0x%x\n",elf_ex->e_phoff);
-	printk("e_shoff \t: 0x%x\n",elf_ex->e_shoff);
-	printk("e_flags \t: 0x%x (31~24:eabi)\n",elf_ex->e_flags);
-	printk("e_ehsize \t: 0x%x\n",elf_ex->e_ehsize);
-	printk("e_phentsize \t: 0x%x\n",elf_ex->e_phentsize);
-	printk("e_phnum \t: 0x%x\n",elf_ex->e_phnum);
-	printk("e_shentsize \t: 0x%x\n",elf_ex->e_shentsize);
-	printk("e_shnum \t: 0x%x\n",elf_ex->e_shnum);
-	printk("e_shstrndx \t: 0x%x\n",elf_ex->e_shstrndx);
-#endif
 }
 
 static void dump_elfphdr(struct elf_phdr *elf_ex)
 {
-#ifdef DUMPELF	
 	int i;
 	char *p = (char *)elf_ex;
-	for(i=0 ; i<sizeof(struct elf_phdr); i++)
+	if(DO_PR_SEA_ELF)
 	{
-		if(i%32 == 0)
-			printk("\n");
-		printk("%02x ", *(p+i));
+		for(i=0 ; i<sizeof(struct elf_phdr); i++)
+		{
+			if(i%32 == 0)
+				printk("\n");
+			printk("%02x ", *(p+i));
+		}
+		printk("\n");
+		printk("p_type  \t: 0x%x\n",elf_ex->p_type);
+		printk("p_offset \t: 0x%x\n",elf_ex->p_offset);
+		printk("p_vaddr \t: 0x%x\n",elf_ex->p_vaddr);
+		printk("p_paddr \t: 0x%x\n",elf_ex->p_paddr);
+		printk("p_filesz \t: 0x%x\n",elf_ex->p_filesz);
+		printk("p_memsz \t: 0x%x\n",elf_ex->p_memsz);
+		printk("p_flags \t: 0x%x\n",elf_ex->p_flags);
+		printk("p_align \t: 0x%x\n",elf_ex->p_align);
 	}
-	printk("\n");
-	printk("p_type  \t: 0x%x\n",elf_ex->p_type);
-	printk("p_offset \t: 0x%x\n",elf_ex->p_offset);
-	printk("p_vaddr \t: 0x%x\n",elf_ex->p_vaddr);
-	printk("p_paddr \t: 0x%x\n",elf_ex->p_paddr);
-	printk("p_filesz \t: 0x%x\n",elf_ex->p_filesz);
-	printk("p_memsz \t: 0x%x\n",elf_ex->p_memsz);
-	printk("p_flags \t: 0x%x\n",elf_ex->p_flags);
-	printk("p_align \t: 0x%x\n",elf_ex->p_align);
-#endif
 }
 
 static int load_elf_binary(struct linux_binprm *bprm)
@@ -800,7 +803,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	}
 	
 	current->mm->start_stack = bprm->p;
-	printk("bprm->p = %x\n", bprm->p);
+	pr_sea_elf("bprm->p = %lx\n", bprm->p);
 	/* Now we do a little grungy work by mmapping the ELF image into
 	   the correct location in memory. */
 	for(i = 0, elf_ppnt = elf_phdata;
@@ -819,7 +822,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			   and clear the area.  */
 			retval = set_brk(elf_bss + load_bias,
 					 elf_brk + load_bias);                /*为匿名分配空间，需要对齐*/
-			printk("anuy = %x\n", retval);
+			pr_sea_elf("anuy = %x\n", retval);
 			if (retval) {
 				send_sig(SIGKILL, current, 0);
 				goto out_free_dentry;
@@ -933,14 +936,14 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	end_code += load_bias;
 	start_data += load_bias;
 	end_data += load_bias;
-	printk("start_code=%x end_code=%x,start_data=%x,end_data=%x,elf_bss=%x,elf_brk=%x\n",start_code,end_code,start_data,end_data,elf_bss,elf_brk);
+	pr_sea_elf("start_code=%lx end_code=%lx,start_data=%lx,end_data=%lx,elf_bss=%lx,elf_brk=%lx\n",start_code,end_code,start_data,end_data,elf_bss,elf_brk);
 	/* Calling set_brk effectively mmaps the pages that we need
 	 * for the bss and break sections.  We must do this before
 	 * mapping in the interpreter, to make sure it doesn't wind
 	 * up getting placed where the bss needs to go.
 	 */
 	retval = set_brk(elf_bss, elf_brk); /*映射bss段，设置堆的起始地址为bss尾*/
-	printk("bss = %x\n", retval);
+	pr_sea_elf("bss = %x\n", retval);
 	if (retval) {
 		send_sig(SIGKILL, current, 0);
 		goto out_free_dentry;

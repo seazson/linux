@@ -1275,7 +1275,7 @@ struct task_struct {
 /* journalling filesystem info */
 	void *journal_info;
 
-/* stacked block device info */
+/* stacked block device info */ /*递归调用累计的块信息*/
 	struct bio_list *bio_list;
 
 #ifdef CONFIG_BLOCK

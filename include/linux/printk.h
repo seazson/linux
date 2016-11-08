@@ -224,13 +224,36 @@ extern void dump_stack(void) __cold;
 #define pr_cont(fmt, ...) \
 	printk(KERN_CONT fmt, ##__VA_ARGS__)
 
-//#define SEA_DEBUG
-#ifdef SEA_DEBUG
+//add sea debug
+extern int printk_sea;
+#define SEA_PRINTK_START	0x1
+#define SEA_PRINTK_MEM	 	0x2
+#define SEA_PRINTK_TASK		0x4
+#define SEA_PRINTK_ELF   	0x8
+#define SEA_PRINTK_INT		0x10
+#define SEA_PRINTK_DBG		0x100
+#define SEA_PRINTK_USB		0x200
+#define SEA_PRINTK_TTY		0x400
+
+#define DO_PR_SEA_ELF 	(printk_sea & SEA_PRINTK_ELF)
+
+#define pr_sea_start(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_START) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_mem(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_MEM) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_task(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_TASK) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_elf(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_ELF) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_int(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_INT) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define pr_sea(fmt, ...) \
-	printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#else
-#define pr_sea(fmt, ...)
-#endif
+	if(printk_sea & SEA_PRINTK_DBG) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_usb(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_USB) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_tty(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_TTY) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
 
 /* pr_devel() should produce zero code unless DEBUG is defined */
 #ifdef DEBUG

@@ -747,6 +747,13 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= 4*sizeof(int),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
+	},	
+	{
+		.procname	= "printk_sea",
+		.data		= &printk_sea,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
 	},
 	{
 		.procname	= "printk_ratelimit",

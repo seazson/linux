@@ -611,10 +611,10 @@ void add_disk(struct gendisk *disk)
 	bdi = &disk->queue->backing_dev_info;
 	bdi_register_dev(bdi, disk_devt(disk));
 
-	blk_register_region(disk_devt(disk), disk->minors, NULL,
+	blk_register_region(disk_devt(disk), disk->minors, NULL,   /*确认要求的设备号范围尚未分配*/
 			    exact_match, exact_lock, disk);
-	register_disk(disk);
-	blk_register_queue(disk);
+	register_disk(disk);                                /*注册磁盘*/
+	blk_register_queue(disk);                           /*注册请求队列*/
 
 	/*
 	 * Take an extra ref on queue which will be put on disk_release()

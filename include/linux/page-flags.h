@@ -74,11 +74,11 @@
 enum pageflags {
 	PG_locked,		/* Page is locked. Don't touch. */
 	PG_error,
-	PG_referenced,
+	PG_referenced,   /*lru:最经有用过*/
 	PG_uptodate,
 	PG_dirty,
-	PG_lru,
-	PG_active,
+	PG_lru,          /*lru:在lru链表中*/
+	PG_active,       /*lru:活动链表*/
 	PG_slab,
 	PG_owner_priv_1,	/* Owner use. If pagecache, fs may use*/
 	PG_arch_1,
@@ -95,7 +95,7 @@ enum pageflags {
 	PG_swapcache,		/* Swap page: swp_entry_t in private */
 	PG_mappedtodisk,	/* Has blocks allocated on-disk */
 	PG_reclaim,		/* To be reclaimed asap */
-	PG_swapbacked,		/* Page is backed by RAM/swap */
+	PG_swapbacked,		/* Page is backed by RAM/swap */  /*匿名页，需要存到swap中*/
 	PG_unevictable,		/* Page is "unevictable"  */
 #ifdef CONFIG_MMU
 	PG_mlocked,		/* Page is vma mlocked */

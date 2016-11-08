@@ -813,7 +813,7 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 	/* We only care about interrupts that are enabled */
 	ints &= ohci_readl(ohci, &regs->intrenable);
 	if(ints)
-		pr_sea("interrapt able 0x%x\n",ints);
+		pr_sea_usb("interrapt able 0x%x\n",ints);
 
 	/* interrupt for some other device? */
 	if (ints == 0 || unlikely(ohci->rh_state == OHCI_RH_HALTED))

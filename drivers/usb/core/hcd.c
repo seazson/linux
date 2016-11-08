@@ -555,7 +555,7 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 				bufp = usb2_rh_dev_descriptor;
 				break;
 			case HCD_USB11:
-				pr_sea("root hub use usb11_rh_dev_descriptor\n");
+				pr_sea_usb("root hub use usb11_rh_dev_descriptor\n");
 				bufp = usb11_rh_dev_descriptor;
 				break;
 			default:
@@ -731,7 +731,7 @@ void usb_hcd_poll_rh_status(struct usb_hcd *hcd)
 		return;
 
 	length = hcd->driver->hub_status_data(hcd, buffer); /*获取hub端口状态ohci_s3c2410_hub_status_data*/
-	pr_sea("length=%d buffer=0x%x\n",length,buffer[0]);
+	pr_sea_usb("length=%d buffer=0x%x\n",length,buffer[0]);
 	if (length > 0) {
 
 		/* try to complete the status urb */
@@ -770,7 +770,7 @@ EXPORT_SYMBOL_GPL(usb_hcd_poll_rh_status);
 /* timer callback */
 static void rh_timer_func (unsigned long _hcd)
 {
-	pr_sea("\n");
+	pr_sea_usb("\n");
 	usb_hcd_poll_rh_status((struct usb_hcd *) _hcd);
 }
 
@@ -1016,7 +1016,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 	struct usb_device *usb_dev = hcd->self.root_hub;
 	const int devnum = 1;
 	int retval;
-	pr_sea("register root hub\n");
+	pr_sea_usb("register root hub\n");
 	usb_dev->devnum = devnum;                      /*root hub默认使用的地址是1*/
 	usb_dev->bus->devnum_next = devnum + 1;        /*本总线上下一个要分配的地址*/
 	memset (&usb_dev->bus->devmap.devicemap, 0,
@@ -1570,10 +1570,10 @@ int usb_hcd_submit_urb (struct urb *urb, gfp_t mem_flags)
 	 */
 
 	if (is_root_hub(urb->dev)) {/*root hub走这里*/
-		pr_sea("=====>roothub %s submit\n",usb_endpoint_xfer_int(&urb->ep->desc) ? "int" : "control");
+		pr_sea_usb("=====>roothub %s submit\n",usb_endpoint_xfer_int(&urb->ep->desc) ? "int" : "control");
 		status = rh_urb_enqueue(hcd, urb);
 	} else {
-		pr_sea("=====>normal submit\n");
+		pr_sea_usb("=====>normal submit\n");
 		status = map_urb_for_dma(hcd, urb, mem_flags);
 		if (likely(status == 0)) {
 			status = hcd->driver->urb_enqueue(hcd, urb, mem_flags);

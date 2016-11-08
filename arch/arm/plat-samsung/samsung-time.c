@@ -264,7 +264,7 @@ static void __init samsung_clockevent_init(void)
 	struct clk *tscaler;
 
 	pclk = clk_get_rate(timerclk);
-	pr_sea("pclk = %ld\n",pclk);
+	pr_sea_start("pclk = %ld\n",pclk);
 	tscaler = clk_get_parent(tdiv_event);
 
 	clk_set_rate(tscaler, pclk / TSCALER_DIV);
@@ -273,7 +273,7 @@ static void __init samsung_clockevent_init(void)
 
 	clock_rate = clk_get_rate(tin_event);
 	clock_count_per_tick = clock_rate / HZ; /*200HZz*/
-	pr_sea("clock_rate=%ld clock_count_per_tick=%ld\n",clock_rate,clock_count_per_tick);
+	pr_sea_start("clock_rate=%ld clock_count_per_tick=%ld\n",clock_rate,clock_count_per_tick);
 	time_event_device.cpumask = cpumask_of(0);
 	clockevents_config_and_register(&time_event_device, clock_rate, 1, -1);/*注册设备并设置中断处理函数*/
 
@@ -334,7 +334,7 @@ static void __init samsung_clocksource_init(void)
 	clk_set_parent(tin_source, tdiv_source);
 
 	clock_rate = clk_get_rate(tin_source); /*clock_rate 1000,000*/
-	pr_sea("clock_rate=%ld\n",clock_rate);
+	pr_sea_start("clock_rate=%ld\n",clock_rate);
 	samsung_time_setup(timer_source.source_id, TCNT_MAX);
 	samsung_time_start(timer_source.source_id, PERIODIC);
 

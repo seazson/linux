@@ -182,7 +182,7 @@ struct gendisk {/*表示一个磁盘*/
 	 * non-critical accesses use RCU.  Always access through
 	 * helpers.
 	 */
-	struct disk_part_tbl __rcu *part_tbl;
+	struct disk_part_tbl __rcu *part_tbl;   /*硬盘对应的分区信息*/
 	struct hd_struct part0;
 
 	const struct block_device_operations *fops;

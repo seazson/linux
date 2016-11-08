@@ -42,7 +42,7 @@ struct page {
 	/* First double word block */
 	unsigned long flags;		/* Atomic flags, some possibly 页属性
 					 * updated asynchronously */
-	struct address_space *mapping;	/* If low bit clear, points to 指定页帧所在地址空间
+	struct address_space *mapping;	/* If low bit clear, points to 指定页帧所在地址空间，对于匿名页来说指向的是anon_vma
 					 * inode address_space, or NULL.
 					 * If page mapped as anonymous
 					 * memory, low bit is set, and
@@ -52,7 +52,7 @@ struct page {
 	/* Second double word */
 	struct {
 		union {
-			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量*/
+			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量。例如打开一个文件，表示在文件中的偏移量*/
 			void *freelist;		/* slub/slob first free object */
 			bool pfmemalloc;	/* If set by the page allocator,
 						 * ALLOC_NO_WATERMARKS was set
@@ -114,7 +114,7 @@ struct page {
 
 	/* Third double word block */
 	union {
-		struct list_head lru;	/* Pageout list, eg. active_list  用于冷热页
+		struct list_head lru;	/* Pageout list, eg. active_list  用于链表。可能连在lru上，可能连在伙伴系统冷热页链表上，也可能连在slab上
 					 * protected by zone->lru_lock !
 					 */
 		struct {		/* slub per cpu partial pages */

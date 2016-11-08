@@ -159,7 +159,7 @@ int usb_choose_configuration(struct usb_device *udev)
 static int generic_probe(struct usb_device *udev)
 {
 	int err, c;
-	pr_sea("%d:%s\n",udev->devnum,udev->devpath);
+	pr_sea_usb("%d:%s\n",udev->devnum,udev->devpath);
 	/* Choose and set the configuration.  This registers the interfaces
 	 * with the driver core and lets interface drivers bind to them.
 	 */

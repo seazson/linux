@@ -207,7 +207,7 @@ struct machine_desc * __init setup_machine_tags(phys_addr_t __atags_pointer,
 		tags = phys_to_virt(__atags_pointer);
 	else if (mdesc->atag_offset)
 		tags = (void *)(PAGE_OFFSET + mdesc->atag_offset);
-	pr_sea("tags vir at 0x%x\n",tags);
+	pr_sea_start("tags vir at 0x%lx\n",(unsigned long)tags);
 #if defined(CONFIG_DEPRECATED_PARAM_STRUCT)
 	/*
 	 * If we have the old style parameters, convert them to

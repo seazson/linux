@@ -1112,7 +1112,7 @@ static int anon_vma_compatible(struct vm_area_struct *a, struct vm_area_struct *
  */
 static struct anon_vma *reusable_anon_vma(struct vm_area_struct *old, struct vm_area_struct *a, struct vm_area_struct *b)
 {
-	if (anon_vma_compatible(a, b)) {
+	if (anon_vma_compatible(a, b)) {  /*检查前后vma权限是否相同*/
 		struct anon_vma *anon_vma = ACCESS_ONCE(old->anon_vma);
 
 		if (anon_vma && list_is_singular(&old->anon_vma_chain))
@@ -1963,7 +1963,7 @@ get_unmapped_area(struct file *file, unsigned long addr, unsigned long len,
 
 	addr = arch_rebalance_pgtables(addr, len);
 	error = security_mmap_addr(addr);
-	printk("get_unmapped_area %x\n",addr);
+//	printk("get_unmapped_area %x\n",addr);
 	return error ? error : addr;
 }
 

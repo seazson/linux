@@ -492,7 +492,7 @@ static int bdev_set(struct inode *inode, void *data)
 }
 
 static LIST_HEAD(all_bdevs);
-/*根据设备号找到块设备*/
+/*根据设备号找到块设备，如果之前没有打开过的话分配一个inode*/
 struct block_device *bdget(dev_t dev)
 {
 	struct block_device *bdev;
@@ -1040,7 +1040,7 @@ static void __blkdev_put(struct block_device *bdev, fmode_t mode, int for_part);
  *  mutex_lock(part->bd_mutex)
  *    mutex_lock_nested(whole->bd_mutex, 1)
  */
-
+/*打开块设备*/
 static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 {
 	struct gendisk *disk;
@@ -1067,14 +1067,14 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
  restart:
 
 	ret = -ENXIO;
-	disk = get_gendisk(bdev->bd_dev, &partno);   /*获取块设备对应的磁盘信息*/
+	disk = get_gendisk(bdev->bd_dev, &partno);   /*获取块设备对应的磁盘*/
 	if (!disk)
 		goto out;
 	owner = disk->fops->owner;
 
 	disk_block_events(disk);
 	mutex_lock_nested(&bdev->bd_mutex, for_part);
-	if (!bdev->bd_openers) {/*块设备之前未打开过*/
+	if (!bdev->bd_openers) {/*块设备之前未打开过，所以要初始化block_device让其对应*/
 		bdev->bd_disk = disk;
 		bdev->bd_queue = disk->queue;
 		bdev->bd_contains = bdev;
@@ -1088,7 +1088,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 
 			ret = 0;
 			if (disk->fops->open) {
-				ret = disk->fops->open(bdev, mode);
+				ret = disk->fops->open(bdev, mode);  /*就是硬盘注册时的fops*/
 				if (ret == -ERESTARTSYS) {
 					/* Lost a race with 'disk' being
 					 * deleted, try again.
@@ -1106,7 +1106,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 				}
 			}
 
-			if (!ret) {
+			if (!ret) {                                 /*设置后备储存器信息如果没有的话*/
 				bd_set_size(bdev,(loff_t)get_capacity(disk)<<9);
 				bdi = blk_get_backing_dev_info(bdev);
 				if (bdi == NULL)
@@ -1122,7 +1122,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 			 */
 			if (bdev->bd_invalidated) {
 				if (!ret)
-					rescan_partitions(disk, bdev);
+					rescan_partitions(disk, bdev);  /*分区信息无效，需要重新扫描*/
 				else if (ret == -ENOMEDIUM)
 					invalidate_partitions(disk, bdev);
 			}
@@ -1130,18 +1130,18 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 				goto out_clear;
 		} else {  /*如果打开的是之前没有打开过的分区，则需要关联打开分区的block_device和包含该分区的block_device*/
 			struct block_device *whole;
-			whole = bdget_disk(disk, 0);
+			whole = bdget_disk(disk, 0);      /*获取主分区*/
 			ret = -ENOMEM;
 			if (!whole)
 				goto out_clear;
 			BUG_ON(for_part);
-			ret = __blkdev_get(whole, mode, 1);
+			ret = __blkdev_get(whole, mode, 1); /*打开主分区，里面可能重建分区表*/
 			if (ret)
 				goto out_clear;
-			bdev->bd_contains = whole;
+			bdev->bd_contains = whole;        /*设置分区的包含在主分区下*/
 			bdev_inode_switch_bdi(bdev->bd_inode,
-				whole->bd_inode->i_data.backing_dev_info);
-			bdev->bd_part = disk_get_part(disk, partno);
+				whole->bd_inode->i_data.backing_dev_info); /*使用主分区的backing_dev_info*/
+			bdev->bd_part = disk_get_part(disk, partno);   /*获取分区的hd_struct*/
 			if (!(disk->flags & GENHD_FL_UP) ||
 			    !bdev->bd_part || !bdev->bd_part->nr_sects) {
 				ret = -ENXIO;
@@ -1358,7 +1358,7 @@ struct block_device *blkdev_get_by_dev(dev_t dev, fmode_t mode, void *holder)
 	return bdev;
 }
 EXPORT_SYMBOL(blkdev_get_by_dev);
-
+/*块设备标准打开函数*/
 static int blkdev_open(struct inode * inode, struct file * filp)
 {
 	struct block_device *bdev;
@@ -1378,7 +1378,7 @@ static int blkdev_open(struct inode * inode, struct file * filp)
 	if ((filp->f_flags & O_ACCMODE) == 3)
 		filp->f_mode |= FMODE_WRITE_IOCTL;
 
-	bdev = bd_acquire(inode);
+	bdev = bd_acquire(inode);            /*获取block_device*/
 	if (bdev == NULL)
 		return -ENOMEM;
 

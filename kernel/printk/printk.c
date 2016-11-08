@@ -68,6 +68,7 @@ int console_printk[4] = {
 	DEFAULT_CONSOLE_LOGLEVEL,	/* default_console_loglevel */
 };
 
+int printk_sea = 0;
 /*
  * Low level drivers may need that to know if they can schedule in
  * their unblank() callback or not. So let's export it.
@@ -2225,7 +2226,7 @@ void register_console(struct console *newcon)
 	unsigned long flags;
 	struct console *bcon = NULL;
 	struct console_cmdline *c;
-	pr_sea("%s\n",newcon->name);
+	pr_sea_tty("%s\n",newcon->name);
 	/*
 	 * before we register a new CON_BOOT console, make sure we don't
 	 * already have a valid console

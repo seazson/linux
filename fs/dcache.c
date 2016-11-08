@@ -3079,6 +3079,6 @@ void __init vfs_caches_init(unsigned long mempages)
 	inode_init();
 	files_init(mempages);
 	mnt_init();
-	bdev_cache_init();
+	bdev_cache_init();     /*初始化块设备的伪文件系统*/
 	chrdev_init();
 }

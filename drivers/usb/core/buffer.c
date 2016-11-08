@@ -56,7 +56,7 @@ int hcd_buffer_create(struct usb_hcd *hcd)
 	if (!hcd->self.controller->dma_mask &&
 	    !(hcd->driver->flags & HCD_LOCAL_MEM))
 	{
-		pr_sea("Don't support usb DMA pool\n");
+		pr_sea_usb("Don't support usb DMA pool\n");
 		return 0;
 	}
 

@@ -193,7 +193,7 @@ struct i2c_driver {
 	/* Device detection callback for automatic device creation */
 	int (*detect)(struct i2c_client *, struct i2c_board_info *);
 	const unsigned short *address_list;
-	struct list_head clients;
+	struct list_head clients;   /*本driver所对应的设备*/
 };
 #define to_i2c_driver(d) container_of(d, struct i2c_driver, driver)
 

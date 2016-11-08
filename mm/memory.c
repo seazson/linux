@@ -996,7 +996,7 @@ static inline int copy_pmd_range(struct mm_struct *dst_mm, struct mm_struct *src
 	} while (dst_pmd++, src_pmd++, addr = next, addr != end);
 	return 0;
 }
-
+/*分配并拷贝页表*/
 static inline int copy_pud_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 		pgd_t *dst_pgd, pgd_t *src_pgd, struct vm_area_struct *vma,
 		unsigned long addr, unsigned long end)
@@ -3226,7 +3226,7 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		return VM_FAULT_SIGBUS;
 
 	/* Use the zero-page for reads */
-	if (!(flags & FAULT_FLAG_WRITE)) {
+	if (!(flags & FAULT_FLAG_WRITE)) {      /*只是读的话从zero page分配*/
 		entry = pte_mkspecial(pfn_pte(my_zero_pfn(address),
 						vma->vm_page_prot));
 		page_table = pte_offset_map_lock(mm, pmd, address, &ptl);
@@ -3236,9 +3236,9 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	}
 
 	/* Allocate our own private page. */
-	if (unlikely(anon_vma_prepare(vma)))
+	if (unlikely(anon_vma_prepare(vma)))    /*分配av，avc，并建立和vma的关系*/
 		goto oom;
-	page = alloc_zeroed_user_highpage_movable(vma, address);
+	page = alloc_zeroed_user_highpage_movable(vma, address);   /*从伙伴系统中分配一页*/
 	if (!page)
 		goto oom;
 	/*
@@ -3253,19 +3253,19 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 
 	entry = mk_pte(page, vma->vm_page_prot);
 	if (vma->vm_flags & VM_WRITE)
-		entry = pte_mkwrite(pte_mkdirty(entry));
+		entry = pte_mkwrite(pte_mkdirty(entry));                /*添加硬件可写标识*/
 
-	page_table = pte_offset_map_lock(mm, pmd, address, &ptl);
+	page_table = pte_offset_map_lock(mm, pmd, address, &ptl);   /*计算页表项地址*/
 	if (!pte_none(*page_table))
 		goto release;
 
 	inc_mm_counter_fast(mm, MM_ANONPAGES);
-	page_add_new_anon_rmap(page, vma, address);
+	page_add_new_anon_rmap(page, vma, address);                 /*增加匿名映射计数，加入lru，加入逆向信息*/
 setpte:
-	set_pte_at(mm, address, page_table, entry);
+	set_pte_at(mm, address, page_table, entry);                 /*设置页表项值*/
 
 	/* No need to invalidate - it was non-present before */
-	update_mmu_cache(vma, address, page_table);
+	update_mmu_cache(vma, address, page_table);                 /*清除对应高速缓存*/
 unlock:
 	pte_unmap_unlock(page_table, ptl);
 	return 0;
@@ -3291,7 +3291,7 @@ oom:
  * We enter with non-exclusive mmap_sem (to exclude vma changes,
  * but allow concurrent faults), and pte neither mapped nor locked.
  * We return with mmap_sem still held, but pte unmapped and unlocked.
- */
+ */ /*orig_pte表示页表项的内容，pgoff标识访问的地址在文件中的偏移。在do_linear_fault和do_nonlinear_fault中会调用*/
 static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		unsigned long address, pmd_t *pmd,
 		pgoff_t pgoff, unsigned int flags, pte_t orig_pte)
@@ -3311,7 +3311,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	 * If we do COW later, allocate page befor taking lock_page()
 	 * on the file cache page. This will reduce lock holding time.
 	 */
-	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED)) {    /*如果有写的请求处于性能考虑立即分配页*/
+	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED)) {    /*如果有写的请求处于性能考虑立即分配页,减少锁占用时间*/
 
 		if (unlikely(anon_vma_prepare(vma)))
 			return VM_FAULT_OOM;
@@ -3332,7 +3332,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	vmf.flags = flags;
 	vmf.page = NULL;
 
-	ret = vma->vm_ops->fault(vma, &vmf);                  /*大多数情况下调用filemap_fault*/
+	ret = vma->vm_ops->fault(vma, &vmf);                  /*大多数情况下调用filemap_fault，读到vmf.page中*/
 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE |
 			    VM_FAULT_RETRY)))
 		goto uncharge_out;
@@ -3410,23 +3410,23 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	/* Only go through if we didn't race with anybody else... */
 	if (likely(pte_same(*page_table, orig_pte))) {
 		flush_icache_page(vma, page);
-		entry = mk_pte(page, vma->vm_page_prot);
+		entry = mk_pte(page, vma->vm_page_prot);    /*根据page得出对应页表项值*/
 		if (flags & FAULT_FLAG_WRITE)
 			entry = maybe_mkwrite(pte_mkdirty(entry), vma);
 		else if (pte_file(orig_pte) && pte_file_soft_dirty(orig_pte))
 			pte_mksoft_dirty(entry);
 		if (anon) {
 			inc_mm_counter_fast(mm, MM_ANONPAGES);
-			page_add_new_anon_rmap(page, vma, address);
-		} else {
+			page_add_new_anon_rmap(page, vma, address);   /*增加匿名页计数，只有在写时复制时才会把anon置1*/
+		} else {                                          /*也就是说写时复制的page属于匿名类型*/
 			inc_mm_counter_fast(mm, MM_FILEPAGES);
-			page_add_file_rmap(page);
+			page_add_file_rmap(page);                     /*增加文件页计数*/
 			if (flags & FAULT_FLAG_WRITE) {
 				dirty_page = page;
 				get_page(dirty_page);
 			}
 		}
-		set_pte_at(mm, address, page_table, entry);
+		set_pte_at(mm, address, page_table, entry);  /*往页表中写入页表项*/
 
 		/* no need to invalidate: a not-present page won't be cached */
 		update_mmu_cache(vma, address, page_table);
@@ -3519,7 +3519,7 @@ static int do_nonlinear_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		return VM_FAULT_SIGBUS;
 	}
 
-	pgoff = pte_to_pgoff(orig_pte);
+	pgoff = pte_to_pgoff(orig_pte);  /*地址的获取方式与线性映射不同!*/
 	return __do_fault(mm, vma, address, pmd, pgoff, flags, orig_pte);
 }
 
@@ -3718,8 +3718,9 @@ int handle_pte_fault(struct mm_struct *mm,
 			return do_anonymous_page(mm, vma, address,     /*创建匿名页*/
 						 pte, pmd, flags);
 		}
+		/*页创建了，但是不在内存中，说明被换出了*/
 		if (pte_file(entry))
-			return do_nonlinear_fault(mm, vma, address,    /*非线性换出的处理*/
+			return do_nonlinear_fault(mm, vma, address,    /*非线性换出的处理。文件类型的映射或者高端内存*/
 					pte, pmd, flags, entry);
 		return do_swap_page(mm, vma, address,              /*页被换出了，需要按需调页*/
 					pte, pmd, flags, entry);
@@ -3727,7 +3728,7 @@ int handle_pte_fault(struct mm_struct *mm,
 
 	if (pte_numa(entry))
 		return do_numa_page(mm, vma, address, entry, pte, pmd);
-
+	/*页在内存中，但是发生了缺页异常，说明是写时拷贝*/
 	ptl = pte_lockptr(mm, pmd);
 	spin_lock(ptl);
 	if (unlikely(!pte_same(*pte, entry)))

@@ -263,7 +263,7 @@ radix_tree_node_free(struct radix_tree_node *node)
  *
  * To make use of this facility, the radix tree must be initialised without
  * __GFP_WAIT being passed to INIT_RADIX_TREE().
- */
+ */ /*预先分配好的基数树结点缓存*/
 int radix_tree_preload(gfp_t gfp_mask)
 {
 	struct radix_tree_preload *rtp;

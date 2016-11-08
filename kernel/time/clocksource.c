@@ -754,7 +754,7 @@ void __clocksource_updatefreq_scale(struct clocksource *cs, u32 scale, u32 freq)
 	}
 
 	cs->max_idle_ns = clocksource_max_deferment(cs);
-	pr_sea("mult=%d shift=%d max_idle_ns=%lld\n",cs->mult, cs->shift, cs->max_idle_ns);
+	pr_sea_start("mult=%d shift=%d max_idle_ns=%lld\n",cs->mult, cs->shift, cs->max_idle_ns);
 }
 EXPORT_SYMBOL_GPL(__clocksource_updatefreq_scale);
 

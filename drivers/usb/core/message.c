@@ -163,11 +163,11 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 	struct usb_ctrlrequest *dr;
 	int ret;
 	if((request == 6 || request == 7)&& (value >> 8) < 7)
-		pr_sea("MSG: %s[%x] %s[%x] - %s[%x]\n", (requesttype&0x80)?"In":"Out", requesttype, request_map[request], request, value_map[value>>8], value);
+		pr_sea_usb("MSG: %s[%x] %s[%x] - %s[%x]\n", (requesttype&0x80)?"In":"Out", requesttype, request_map[request], request, value_map[value>>8], value);
 	else if(request < 0x0c && (value >> 8) < 7)
-		pr_sea("MSG: %s[%x] %s[%x] - %x\n", (requesttype&0x80)?"In":"Out", requesttype, request_map[request], request, value);
+		pr_sea_usb("MSG: %s[%x] %s[%x] - %x\n", (requesttype&0x80)?"In":"Out", requesttype, request_map[request], request, value);
 	else
-		pr_sea("MSG: %s[%x] %x - %x\n", (requesttype&0x80)?"In":"Out", requesttype,request,value);
+		pr_sea_usb("MSG: %s[%x] %x - %x\n", (requesttype&0x80)?"In":"Out", requesttype,request,value);
 
 	dr = kmalloc(sizeof(struct usb_ctrlrequest), GFP_NOIO);
 	if (!dr)
@@ -1923,7 +1923,7 @@ free_interfaces:
 	for (i = 0; i < nintf; ++i) {
 		struct usb_interface *intf = cp->interface[i];
 
-		pr_sea("adding %s (config #%d, interface %d)\n",
+		pr_sea_usb("adding %s (config #%d, interface %d)\n",
 			dev_name(&intf->dev), configuration,
 			intf->cur_altsetting->desc.bInterfaceNumber);
 		device_enable_async_suspend(&intf->dev);

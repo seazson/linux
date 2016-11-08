@@ -222,7 +222,7 @@ int elevator_init(struct request_queue *q, char *name)
 		}
 	}
 
-	err = e->ops.elevator_init_fn(q, e);
+	err = e->ops.elevator_init_fn(q, e);      /*将调度器和等待队列关联起来*/
 	return 0;
 }
 EXPORT_SYMBOL(elevator_init);

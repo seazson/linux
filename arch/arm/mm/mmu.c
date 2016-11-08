@@ -807,7 +807,7 @@ static void __init create_mapping(struct map_desc *md)      /*根据类型创建一级或
 
 	pgd = pgd_offset_k(addr);                        /*pgd是虚拟地址，init的pgd位置是0xc0007000,能映射1G空间*/
 	end = addr + length;
-	printk("create_mapping 0x%x to 0x%x - 0x%x pgd 0x%x\n",phys, addr, end, pgd_offset_k(addr));
+	pr_sea_start("create_mapping 0x%x to 0x%lx - 0x%lx pgd 0x%lx\n",phys, addr, end, (unsigned long)pgd_offset_k(addr));
 	do {
 		unsigned long next = pgd_addr_end(addr, end);  /*每一个PGD大小处理一次(2M)*/
 
@@ -1146,7 +1146,7 @@ static inline void prepare_page_table(void)
 	if (end >= arm_lowmem_limit)
 		end = arm_lowmem_limit;
 	printk("arm_lowmem_limit:0x%x 0x%x 0x%x\n",memblock.memory.regions[0].base,memblock.memory.regions[0].size,arm_lowmem_limit);
-	printk("high_memory: 0x%x\n",high_memory);
+	printk("high_memory: 0x%lx\n",(unsigned long)high_memory);
 	/*
 	 * Clear out all the kernel space mappings, except for the first
 	 * memory bank, up to the vmalloc region.

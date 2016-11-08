@@ -1497,7 +1497,7 @@ void blk_queue_bio(struct request_queue *q, struct bio *bio)
 
 	spin_lock_irq(q->queue_lock);
 
-	el_ret = elv_merge(q, &req, bio);     /*检查请求能否合并*/
+	el_ret = elv_merge(q, &req, bio);     /*检查请求能否合并，得到能合并的req*/
 	if (el_ret == ELEVATOR_BACK_MERGE) {
 		if (bio_attempt_back_merge(q, req, bio)) {  /*向后合并*/
 			elv_bio_merged(q, req, bio);
@@ -1513,7 +1513,7 @@ void blk_queue_bio(struct request_queue *q, struct bio *bio)
 			goto out_unlock;
 		}
 	}
-
+/*不能合并的话往下走*/	
 get_rq:
 	/*
 	 * This sync check and mask will be re-done in init_request_from_bio(),
@@ -1528,7 +1528,7 @@ get_rq:
 	 * Grab a free request. This is might sleep but can not fail.
 	 * Returns with the queue unlocked.
 	 */
-	req = get_request(q, rw_flags, bio, GFP_NOIO);    /*获取一个请求*/
+	req = get_request(q, rw_flags, bio, GFP_NOIO);    /*获取一个空的req，以便加入bio*/
 	if (unlikely(!req)) {
 		bio_endio(bio, -ENODEV);	/* @q is dead */
 		goto out_unlock;
@@ -1793,7 +1793,7 @@ void generic_make_request(struct bio *bio)
 	if (!generic_make_request_checks(bio))
 		return;
 
-	/*
+	/*  
 	 * We only want one ->make_request_fn to be active at a time, else
 	 * stack usage with stacked devices could be a problem.  So use
 	 * current->bio_list to keep a list of requests submited by a
@@ -1802,8 +1802,8 @@ void generic_make_request(struct bio *bio)
 	 * task or not.  If it is NULL, then no make_request is active.  If
 	 * it is non-NULL, then a make_request is active, and new requests
 	 * should be added at the tail
-	 */
-	if (current->bio_list) {
+	 */ /*用于检测是否已经有bio在list上了，防止递归调用*/
+	if (current->bio_list) {  /*先添加到当前进程的bio_list中*/
 		bio_list_add(current->bio_list, bio);
 		return;
 	}
@@ -1828,9 +1828,9 @@ void generic_make_request(struct bio *bio)
 	do {
 		struct request_queue *q = bdev_get_queue(bio->bi_bdev);   /*块设备所属磁盘的请求队列*/
 
-		q->make_request_fn(q, bio);    /*通常调用内核标准函数blk_queue_bio*/
+		q->make_request_fn(q, bio);    /*通常调用内核标准函数blk_queue_bio，提交给IO调度器*/
 
-		bio = bio_list_pop(current->bio_list);
+		bio = bio_list_pop(current->bio_list);  /*从当前链表中移出刚提交的bio*/
 	} while (bio);
 	current->bio_list = NULL; /* deactivate */
 }

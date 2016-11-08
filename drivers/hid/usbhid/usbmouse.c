@@ -65,7 +65,7 @@ static void usb_mouse_irq(struct urb *urb)
 	signed char *data = mouse->data;
 	struct input_dev *dev = mouse->dev;
 	int status;
-	pr_sea("=============================\n");
+	pr_sea_usb("=============================\n");
 	switch (urb->status) {
 	case 0:			/* success */
 		break;
@@ -125,7 +125,7 @@ static int usb_mouse_probe(struct usb_interface *intf, const struct usb_device_i
 	struct input_dev *input_dev;
 	int pipe, maxp;
 	int error = -ENOMEM;
-	pr_sea("\n");
+	pr_sea_usb("\n");
 	interface = intf->cur_altsetting;
 /*鼠标仅有一个中断类型in端点*/
 	if (interface->desc.bNumEndpoints != 1)

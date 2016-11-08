@@ -303,8 +303,8 @@ struct request_queue {
 	 */
 	struct request_list	root_rl;
 
-	request_fn_proc		*request_fn;       /*通常需要驱动程序自己实现，用于向队列添加新请求。例如mtd_blktrans_request*/
-	make_request_fn		*make_request_fn;  /*创建新请求，默认为blk_queue_bio*/
+	request_fn_proc		*request_fn;       /*通常需要驱动程序自己实现，用于处理队列发来的请求，会经过调度器。例如mtd_blktrans_request*/
+	make_request_fn		*make_request_fn;  /*绕过IO调度器直接提交并处理请求，默认为blk_queue_bio会使用调度器。*/
 	prep_rq_fn		*prep_rq_fn;           /*请求预备函数，用于发送请求之前向硬件发送特定命令*/
 	unprep_rq_fn		*unprep_rq_fn;
 	merge_bvec_fn		*merge_bvec_fn;    /*确定是否向一个现存的请求增加更多数据*/
@@ -1519,9 +1519,9 @@ struct block_device_operations {
 	unsigned int (*check_events) (struct gendisk *disk,
 				      unsigned int clearing);
 	/* ->media_changed() is DEPRECATED, use ->check_events() instead */
-	int (*media_changed) (struct gendisk *);
+	int (*media_changed) (struct gendisk *);      /*检查介质是否改变*/
 	void (*unlock_native_capacity) (struct gendisk *);
-	int (*revalidate_disk) (struct gendisk *);
+	int (*revalidate_disk) (struct gendisk *);    /*介质改变的话会调用此函数重新激活介质*/
 	int (*getgeo)(struct block_device *, struct hd_geometry *);
 	/* this callback is with swap_lock and sometimes page table lock held */
 	void (*swap_slot_free_notify) (struct block_device *, unsigned long);
