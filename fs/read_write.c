@@ -467,7 +467,7 @@ ssize_t vfs_write(struct file *file, const char __user *buf, size_t count, loff_
 	if (unlikely(!access_ok(VERIFY_READ, buf, count)))
 		return -EFAULT;
 
-	ret = rw_verify_area(WRITE, file, pos, count);
+	ret = rw_verify_area(WRITE, file, pos, count);   /*获取真正能写的大小*/
 	if (ret >= 0) {
 		count = ret;
 		file_start_write(file);
@@ -525,7 +525,7 @@ SYSCALL_DEFINE3(write, unsigned int, fd, const char __user *, buf,
 		if (ret >= 0)
 			file_pos_write(f.file, pos);
 		fdput(f);
-	}
+	} 
 
 	return ret;
 }

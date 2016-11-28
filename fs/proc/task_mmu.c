@@ -79,7 +79,7 @@ unsigned long task_statm(struct mm_struct *mm,
 	*text = (PAGE_ALIGN(mm->end_code) - (mm->start_code & PAGE_MASK))
 								>> PAGE_SHIFT;
 	*data = mm->total_vm - mm->shared_vm;
-	*resident = *shared + get_mm_counter(mm, MM_ANONPAGES);
+	*resident = *shared + get_mm_counter(mm, MM_ANONPAGES);   /*表示驻留在内存中的，可能是页缓存，也可能是匿名页*/
 	return mm->total_vm;
 }
 
@@ -444,7 +444,7 @@ struct mem_size_stats {
 	u64 pss;
 };
 
-
+/*ptent是addr对应页表项的内容*/
 static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 		unsigned long ptent_size, struct mm_walk *walk)
 {
@@ -454,16 +454,16 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 	struct page *page = NULL;
 	int mapcount;
 
-	if (pte_present(ptent)) {
+	if (pte_present(ptent)) {   /*页在内存中*/
 		page = vm_normal_page(vma, addr, ptent);
-	} else if (is_swap_pte(ptent)) {
+	} else if (is_swap_pte(ptent)) {   /*页被交换到swap*/
 		swp_entry_t swpent = pte_to_swp_entry(ptent);
 
 		if (!non_swap_entry(swpent))
 			mss->swap += ptent_size;
 		else if (is_migration_entry(swpent))
 			page = migration_entry_to_page(swpent);
-	} else if (pte_file(ptent)) {
+	} else if (pte_file(ptent)) {   /*页映射的是文件*/
 		if (pte_to_pgoff(ptent) != pgoff)
 			mss->nonlinear += ptent_size;
 	}
@@ -471,18 +471,18 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 	if (!page)
 		return;
 
-	if (PageAnon(page))
+	if (PageAnon(page))                    /*匿名映射*/
 		mss->anonymous += ptent_size;
 
-	if (page->index != pgoff)
+	if (page->index != pgoff)              /*非线性映射*/
 		mss->nonlinear += ptent_size;
 
-	mss->resident += ptent_size;
+	mss->resident += ptent_size;           /*只要page在内存中就会计入*/
 	/* Accumulate the size in pages that have been accessed. */
 	if (pte_young(ptent) || PageReferenced(page))
-		mss->referenced += ptent_size;
+		mss->referenced += ptent_size;     /*最近有引用过*/
 	mapcount = page_mapcount(page);
-	if (mapcount >= 2) {
+	if (mapcount >= 2) {                   /*有多个引用者，说明被共享*/
 		if (pte_dirty(ptent) || PageDirty(page))
 			mss->shared_dirty += ptent_size;
 		else
@@ -519,7 +519,7 @@ static int smaps_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end,
 	 * keeps khugepaged out of here and from collapsing things
 	 * in here.
 	 */
-	pte = pte_offset_map_lock(vma->vm_mm, pmd, addr, &ptl);
+	pte = pte_offset_map_lock(vma->vm_mm, pmd, addr, &ptl);  /*得到addr对应的页表项地址*/
 	for (; addr != end; pte++, addr += PAGE_SIZE)
 		smaps_pte_entry(*pte, addr, PAGE_SIZE, walk);
 	pte_unmap_unlock(pte - 1, ptl);
@@ -594,7 +594,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 	mss.vma = vma;
 	/* mmap_sem is held in m_start */
 	if (vma->vm_mm && !is_vm_hugetlb_page(vma))
-		walk_page_range(vma->vm_start, vma->vm_end, &smaps_walk);
+		walk_page_range(vma->vm_start, vma->vm_end, &smaps_walk);   /*遍历各级页表获取相关信息*/
 
 	show_map_vma(m, vma, is_pid);
 
@@ -901,7 +901,7 @@ static inline pagemap_entry_t make_pme(u64 val)
 {
 	return (pagemap_entry_t) { .pme = val };
 }
-
+/*将获取到的pme存入buffer，准备返回给用户*/
 static int add_to_pagemap(unsigned long addr, pagemap_entry_t *pme,
 			  struct pagemapread *pm)
 {
@@ -934,11 +934,11 @@ static void pte_to_pagemap_entry(pagemap_entry_t *pme, struct pagemapread *pm,
 	struct page *page = NULL;
 	int flags2 = 0;
 
-	if (pte_present(pte)) {
-		frame = pte_pfn(pte);
+	if (pte_present(pte)) {    /*页在内存中*/
+		frame = pte_pfn(pte);  /*获取页的逻辑编号*/
 		flags = PM_PRESENT;
 		page = vm_normal_page(vma, addr, pte);
-	} else if (is_swap_pte(pte)) {
+	} else if (is_swap_pte(pte)) {   /*页被交换到swap中*/
 		swp_entry_t entry;
 		if (pte_swp_soft_dirty(pte))
 			flags2 |= __PM_SOFT_DIRTY;
@@ -949,7 +949,7 @@ static void pte_to_pagemap_entry(pagemap_entry_t *pme, struct pagemapread *pm,
 		if (is_migration_entry(entry))
 			page = migration_entry_to_page(entry);
 	} else {
-		*pme = make_pme(PM_NOT_PRESENT(pm->v2));
+		*pme = make_pme(PM_NOT_PRESENT(pm->v2));   /*页不存在*/
 		return;
 	}
 
@@ -1119,7 +1119,7 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 
 	ret = -EINVAL;
 	/* file position must be aligned */
-	if ((*ppos % PM_ENTRY_BYTES) || (count % PM_ENTRY_BYTES))
+	if ((*ppos % PM_ENTRY_BYTES) || (count % PM_ENTRY_BYTES))   /*一个pagemap是64位*/
 		goto out_task;
 
 	ret = 0;
@@ -1127,8 +1127,8 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 		goto out_task;
 
 	pm.v2 = soft_dirty_cleared;
-	pm.len = (PAGEMAP_WALK_SIZE >> PAGE_SHIFT);
-	pm.buffer = kmalloc(pm.len * PM_ENTRY_BYTES, GFP_TEMPORARY);
+	pm.len = (PAGEMAP_WALK_SIZE >> PAGE_SHIFT);    /*对于arm来说一个二级页表对应512个页表项*/
+	pm.buffer = kmalloc(pm.len * PM_ENTRY_BYTES, GFP_TEMPORARY);  /*所以一次会读512个页表项*/
 	ret = -ENOMEM;
 	if (!pm.buffer)
 		goto out_task;
@@ -1138,8 +1138,8 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 	if (!mm || IS_ERR(mm))
 		goto out_free;
 
-	pagemap_walk.pmd_entry = pagemap_pte_range;
-	pagemap_walk.pte_hole = pagemap_pte_hole;
+	pagemap_walk.pmd_entry = pagemap_pte_range;   /*页表项已赋值*/
+	pagemap_walk.pte_hole = pagemap_pte_hole;     /*页表项未赋值的时候*/
 #ifdef CONFIG_HUGETLB_PAGE
 	pagemap_walk.hugetlb_entry = pagemap_hugetlb_range;
 #endif
@@ -1148,8 +1148,8 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 
 	src = *ppos;
 	svpfn = src / PM_ENTRY_BYTES;
-	start_vaddr = svpfn << PAGE_SHIFT;
-	end_vaddr = TASK_SIZE_OF(task);
+	start_vaddr = svpfn << PAGE_SHIFT; /*查询的虚拟地址=(pos/8)*4096*/
+	end_vaddr = TASK_SIZE_OF(task);    /*进程空间的末尾*/
 
 	/* watch out for wraparound */
 	if (svpfn > TASK_SIZE_OF(task) >> PAGE_SHIFT)
@@ -1167,12 +1167,12 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 		unsigned long end;
 
 		pm.pos = 0;
-		end = (start_vaddr + PAGEMAP_WALK_SIZE) & PAGEMAP_WALK_MASK;
+		end = (start_vaddr + PAGEMAP_WALK_SIZE) & PAGEMAP_WALK_MASK;   /*PAGEMAP_WALK_SIZE二级页表的空间512*4K*/
 		/* overflow ? */
 		if (end < start_vaddr || end > end_vaddr)
 			end = end_vaddr;
 		down_read(&mm->mmap_sem);
-		ret = walk_page_range(start_vaddr, end, &pagemap_walk);
+		ret = walk_page_range(start_vaddr, end, &pagemap_walk);   /*一次处理整个二级页表(512个)*/
 		up_read(&mm->mmap_sem);
 		start_vaddr = end;
 

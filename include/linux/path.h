@@ -5,8 +5,8 @@ struct dentry;
 struct vfsmount;
 
 struct path {
-	struct vfsmount *mnt;
-	struct dentry *dentry;
+	struct vfsmount *mnt;     /*文件所在文件系统*/
+	struct dentry *dentry;    /*当前路径的dentry*/
 };
 
 extern void path_get(const struct path *);

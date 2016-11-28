@@ -204,7 +204,7 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
 	if (!access_ok(VERIFY_WRITE, dirent, count))
 		return -EFAULT;
 
-	f = fdget(fd);
+	f = fdget(fd);             /*根据fd获取对应的file*/
 	if (!f.file)
 		return -EBADF;
 

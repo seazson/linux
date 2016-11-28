@@ -759,7 +759,7 @@ static inline bool is_cow_mapping(vm_flags_t flags)
  * advantage is that we don't have to follow the strict linearity rule of
  * PFNMAP mappings in order to support COWable mappings.
  *
- */
+ */ /*根据pte得到对应的page*/
 #ifdef __HAVE_ARCH_PTE_SPECIAL
 # define HAVE_PTE_SPECIAL 1
 #else
@@ -768,7 +768,7 @@ static inline bool is_cow_mapping(vm_flags_t flags)
 struct page *vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
 				pte_t pte)
 {
-	unsigned long pfn = pte_pfn(pte);
+	unsigned long pfn = pte_pfn(pte);  /*根据pte得到fpn，pte本身就存有物理地址信息*/
 
 	if (HAVE_PTE_SPECIAL) {
 		if (likely(!pte_special(pte)))
@@ -790,7 +790,7 @@ struct page *vm_normal_page(struct vm_area_struct *vma, unsigned long addr,
 		} else {
 			unsigned long off;
 			off = (addr - vma->vm_start) >> PAGE_SHIFT;
-			if (pfn == vma->vm_pgoff + off)
+			if (pfn == vma->vm_pgoff + off)          /*特殊映射的计算方式*/
 				return NULL;
 			if (!is_cow_mapping(vma->vm_flags))
 				return NULL;
@@ -1544,7 +1544,7 @@ split_fallthrough:
 	ptep = pte_offset_map_lock(mm, pmd, address, &ptl);
 
 	pte = *ptep;
-	if (!pte_present(pte)) {
+	if (!pte_present(pte)) {   /*根据页表项的值判断页是不是在内存中*/
 		swp_entry_t entry;
 		/*
 		 * KSM's break_ksm() relies upon recognizing a ksm page
@@ -1567,7 +1567,7 @@ split_fallthrough:
 	if ((flags & FOLL_WRITE) && !pte_write(pte))
 		goto unlock;
 
-	page = vm_normal_page(vma, address, pte);
+	page = vm_normal_page(vma, address, pte);    /*根据pte得到page*/
 	if (unlikely(!page)) {
 		if ((flags & FOLL_DUMP) ||
 		    !is_zero_pfn(pte_pfn(pte)))
@@ -1734,7 +1734,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 	do {
 		struct vm_area_struct *vma;
 
-		vma = find_extend_vma(mm, start);
+		vma = find_extend_vma(mm, start);   /*查找start地址对应的vma，必要时可以扩展栈。*/
 		if (!vma && in_gate_area(mm, start)) {
 			unsigned long pg = start & PAGE_MASK;
 			pgd_t *pgd;
@@ -1793,7 +1793,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 					&start, &nr_pages, i, gup_flags);
 			continue;
 		}
-
+		/*到这里我们找到了一个包含addr的可用vma*/
 		do {
 			struct page *page;
 			unsigned int foll_flags = gup_flags;
@@ -1808,8 +1808,8 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 
 			cond_resched();
 			while (!(page = follow_page_mask(vma, start,
-						foll_flags, &page_mask))) {
-				int ret;
+						foll_flags, &page_mask))) {  /*获取page*/
+				int ret;           			/*没有获取到page会进来，说明页还没有建立物理映射*/
 				unsigned int fault_flags = 0;
 
 				/* For mlock, just skip the stack guard page. */
@@ -1825,7 +1825,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 					fault_flags |= (FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_RETRY_NOWAIT);
 
 				ret = handle_mm_fault(mm, vma, start,
-							fault_flags);
+							fault_flags);   /*构造一个缺页异常*/
 
 				if (ret & VM_FAULT_ERROR) {
 					if (ret & VM_FAULT_OOM)
@@ -1878,7 +1878,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 			if (IS_ERR(page))
 				return i ? i : PTR_ERR(page);
 			if (pages) {
-				pages[i] = page;
+				pages[i] = page;     /*pages指向获取到的页*/
 
 				flush_anon_page(vma, page, start);
 				flush_dcache_page(page);
@@ -1886,7 +1886,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 			}
 next_page:
 			if (vmas) {
-				vmas[i] = vma;
+				vmas[i] = vma;       /*vmas指向包含page的wma*/
 				page_mask = 0;
 			}
 			page_increm = 1 + (~(start >> PAGE_SHIFT) & page_mask);
@@ -2604,7 +2604,7 @@ static inline void cow_user_page(struct page *dst, struct page *src, unsigned lo
  * We enter with non-exclusive mmap_sem (to exclude vma changes,
  * but allow concurrent faults), with pte both mapped and locked.
  * We return with mmap_sem still held, but pte unmapped and unlocked.
- */
+ */ /*page_table:二级页表项地址 pmd:一级页表项地址 orig_pte:二级页表项地址。对于可写的共享页不会copy一份*/
 static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		unsigned long address, pte_t *page_table, pmd_t *pmd,
 		spinlock_t *ptl, pte_t orig_pte)
@@ -2618,7 +2618,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	unsigned long mmun_start = 0;	/* For mmu_notifiers */
 	unsigned long mmun_end = 0;	/* For mmu_notifiers */
 
-	old_page = vm_normal_page(vma, address, orig_pte);
+	old_page = vm_normal_page(vma, address, orig_pte);  /*根据pte得到对应page，未使用的page会返回零页*/
 	if (!old_page) {
 		/*
 		 * VM_MIXEDMAP !pfn_valid() case
@@ -2637,7 +2637,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	 * Take out anonymous pages first, anonymous shared vmas are
 	 * not dirty accountable.
 	 */
-	if (PageAnon(old_page) && !PageKsm(old_page)) {
+	if (PageAnon(old_page) && !PageKsm(old_page)) {   /*写时复制的是匿名页，两条路:1 copy一份 2使用swap的*/
 		if (!trylock_page(old_page)) {
 			page_cache_get(old_page);
 			pte_unmap_unlock(page_table, ptl);
@@ -2662,7 +2662,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		}
 		unlock_page(old_page);
 	} else if (unlikely((vma->vm_flags & (VM_WRITE|VM_SHARED)) ==
-					(VM_WRITE|VM_SHARED))) {
+					(VM_WRITE|VM_SHARED))) {               /*是文件页，并且是共享可写的，不会copy*/
 		/*
 		 * Only catch write-faults on shared writable pages,
 		 * read-only shared pages can get COWed by
@@ -2723,7 +2723,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		dirty_page = old_page;
 		get_page(dirty_page);
 
-reuse:
+reuse: /*对可写的共享页来说，不需要重新分配一个新页，标记为脏和可写*/
 		flush_cache_page(vma, address, pte_pfn(orig_pte));
 		entry = pte_mkyoung(orig_pte);
 		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
@@ -2776,7 +2776,7 @@ reuse:
 gotten:
 	pte_unmap_unlock(page_table, ptl);
 
-	if (unlikely(anon_vma_prepare(vma)))
+	if (unlikely(anon_vma_prepare(vma)))   /*准备建立逆向映射*/
 		goto oom;
 
 	if (is_zero_pfn(pte_pfn(orig_pte))) {
@@ -2787,7 +2787,7 @@ gotten:
 		new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, address);
 		if (!new_page)
 			goto oom;
-		cow_user_page(new_page, old_page, address, vma);
+		cow_user_page(new_page, old_page, address, vma);   /*拷贝数据到新分配的页面上*/
 	}
 	__SetPageUptodate(new_page);
 
@@ -2809,10 +2809,10 @@ gotten:
 				inc_mm_counter_fast(mm, MM_ANONPAGES);
 			}
 		} else
-			inc_mm_counter_fast(mm, MM_ANONPAGES);
+			inc_mm_counter_fast(mm, MM_ANONPAGES);         /*old_page不存在的话增加匿名页计数*/
 		flush_cache_page(vma, address, pte_pfn(orig_pte));
 		entry = mk_pte(new_page, vma->vm_page_prot);
-		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
+		entry = maybe_mkwrite(pte_mkdirty(entry), vma);    /*设置pte指向新的page，并且新的page标记为脏和可写*/
 		/*
 		 * Clear the pte entry and flush it first, before updating the
 		 * pte with the new entry. This will avoid a race condition
@@ -2820,13 +2820,13 @@ gotten:
 		 * thread doing COW.
 		 */
 		ptep_clear_flush(vma, address, page_table);
-		page_add_new_anon_rmap(new_page, vma, address);
+		page_add_new_anon_rmap(new_page, vma, address);   /*添加一个新的匿名页时调用*/
 		/*
 		 * We call the notify macro here because, when using secondary
 		 * mmu page tables (such as kvm shadow page tables), we want the
 		 * new page to be mapped directly into the secondary page table.
 		 */
-		set_pte_at_notify(mm, address, page_table, entry);
+		set_pte_at_notify(mm, address, page_table, entry);  /*先通知再真正修改页表项值*/
 		update_mmu_cache(vma, address, page_table);
 		if (old_page) {
 			/*
@@ -2851,7 +2851,7 @@ gotten:
 			 * mapcount is visible. So transitively, TLBs to
 			 * old page will be flushed before it can be reused.
 			 */
-			page_remove_rmap(old_page);
+			page_remove_rmap(old_page);                   /*修改引用计数和统计信息*/
 		}
 
 		/* Free the old page.. */
@@ -3307,6 +3307,9 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	int ret;
 	int page_mkwrite = 0;
 
+	struct task_struct *task = container_of(mm, struct task_struct, mm);
+	if(DO_PR_SEA_INT)
+		pr_sea_mem("%s address : 0x%08lx %lx\n",current->comm,address,pgoff);
 	/*
 	 * If we do COW later, allocate page befor taking lock_page()
 	 * on the file cache page. This will reduce lock holding time.
@@ -3733,14 +3736,14 @@ int handle_pte_fault(struct mm_struct *mm,
 	spin_lock(ptl);
 	if (unlikely(!pte_same(*pte, entry)))
 		goto unlock;
-	if (flags & FAULT_FLAG_WRITE) {                        /*软件上有写的权限*/
+	if (flags & FAULT_FLAG_WRITE) {                        /*由于写操作而产生了异常。软件上有写的权限*/
 		if (!pte_write(entry))                             /*但是硬件上没有写的权限，发生这种情况是因为写时复制机制*/
 			return do_wp_page(mm, vma, address,            /*写时复制*/
 					pte, pmd, ptl, entry);
-		entry = pte_mkdirty(entry);
+		entry = pte_mkdirty(entry);                        /*设置硬件脏标志*/
 	}
-	entry = pte_mkyoung(entry);                            /*置上access软件标志*/
-	if (ptep_set_access_flags(vma, address, pte, entry, flags & FAULT_FLAG_WRITE)) {
+	entry = pte_mkyoung(entry);                            /*置上access软件标志，表示最近访问过*/
+	if (ptep_set_access_flags(vma, address, pte, entry, flags & FAULT_FLAG_WRITE)) { /*将新的值写入页表项中*/
 		update_mmu_cache(vma, address, pte);
 	} else {
 		/*
@@ -4094,7 +4097,7 @@ static int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
 		struct page *page = NULL;
 
 		ret = get_user_pages(tsk, mm, addr, 1,
-				write, 1, &page, &vma);
+				write, 1, &page, &vma);   /*获取用户mm中地址为addr的page，产生缺页异常的话算tsk的*/
 		if (ret <= 0) {
 			/*
 			 * Check if this is a VM_IO | VM_PFNMAP VMA, which
@@ -4117,7 +4120,7 @@ static int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
 			if (bytes > PAGE_SIZE-offset)
 				bytes = PAGE_SIZE-offset;
 
-			maddr = kmap(page);
+			maddr = kmap(page);           /*映射得到的page到虚拟地址*/
 			if (write) {
 				copy_to_user_page(vma, page, addr,
 						  maddr + offset, buf, bytes);

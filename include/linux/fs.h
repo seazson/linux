@@ -331,13 +331,13 @@ static inline size_t iov_iter_count(struct iov_iter *i)
  * mode.
  */
 typedef struct {
-	size_t written;
-	size_t count;
+	size_t written;         /*实际读取的长度*/
+	size_t count;           /*要读取的长度*/
 	union {
-		char __user *buf;
+		char __user *buf;   /*读取的地址*/
 		void *data;
 	} arg;
-	int error;
+	int error;              /*读取过程中产生的错误*/
 } read_descriptor_t;
 
 typedef int (*read_actor_t)(read_descriptor_t *, struct page *,
@@ -521,7 +521,7 @@ struct posix_acl;
  * of the 'struct inode'
  */
 struct inode {
-	umode_t			i_mode;
+	umode_t			i_mode;             /*文件访问权限*/
 	unsigned short		i_opflags;
 	kuid_t			i_uid;
 	kgid_t			i_gid;
@@ -532,16 +532,16 @@ struct inode {
 	struct posix_acl	*i_default_acl;
 #endif
 
-	const struct inode_operations	*i_op;
+	const struct inode_operations	*i_op;    /*对文件属性的操作*/
 	struct super_block	*i_sb;
-	struct address_space	*i_mapping;
+	struct address_space	*i_mapping;       /*地址空间*/
 
 #ifdef CONFIG_SECURITY
 	void			*i_security;
 #endif
 
 	/* Stat data, not accessed from path walking */
-	unsigned long		i_ino;
+	unsigned long		i_ino;             /*inode唯一编号*/
 	/*
 	 * Filesystems may only read i_nlink directly.  They shall use the
 	 * following functions for modification:
@@ -550,18 +550,18 @@ struct inode {
 	 *    inode_(inc|dec)_link_count
 	 */
 	union {
-		const unsigned int i_nlink;
+		const unsigned int i_nlink;         /*硬链接数*/
 		unsigned int __i_nlink;
 	};
-	dev_t			i_rdev;
-	loff_t			i_size;
-	struct timespec		i_atime;
-	struct timespec		i_mtime;
-	struct timespec		i_ctime;
+	dev_t			i_rdev;                 /*是设备的时候使用*/
+	loff_t			i_size;                 /*文件长度*/
+	struct timespec		i_atime;            /*最后访问文件时间*/
+	struct timespec		i_mtime;            /*最后修改文件时间*/
+	struct timespec		i_ctime;            /*最后修改inode属性时间*/
 	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
 	unsigned short          i_bytes;
 	unsigned int		i_blkbits;
-	blkcnt_t		i_blocks;
+	blkcnt_t		i_blocks;               /*文件占多少块*/
 
 #ifdef __NEED_I_SIZE_ORDERED
 	seqcount_t		i_size_seqcount;
@@ -576,26 +576,26 @@ struct inode {
 	struct hlist_node	i_hash;
 	struct list_head	i_wb_list;	/* backing dev IO list */
 	struct list_head	i_lru;		/* inode LRU list */
-	struct list_head	i_sb_list;
+	struct list_head	i_sb_list;    /*链接到所属超级块的s_inodes上*/
 	union {
 		struct hlist_head	i_dentry;
 		struct rcu_head		i_rcu;
 	};
 	u64			i_version;
-	atomic_t		i_count;
+	atomic_t		i_count;               /*访问该inode的进程数*/
 	atomic_t		i_dio_count;
 	atomic_t		i_writecount;
-	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */
+	const struct file_operations	*i_fop;	/* former ->i_op->default_file_ops */  /*对文件内容的操作*/
 	struct file_lock	*i_flock;
 	struct address_space	i_data;
 #ifdef CONFIG_QUOTA
 	struct dquot		*i_dquot[MAXQUOTAS];
 #endif
-	struct list_head	i_devices;
+	struct list_head	i_devices;         /*将设备连接起来*/
 	union {
-		struct pipe_inode_info	*i_pipe;
-		struct block_device	*i_bdev;
-		struct cdev		*i_cdev;
+		struct pipe_inode_info	*i_pipe;   /*用于管道*/
+		struct block_device	*i_bdev;       /*用于块设备*/ 
+		struct cdev		*i_cdev;           /*用于字符设备*/
 	};
 
 	__u32			i_generation;
@@ -787,7 +787,7 @@ struct file {
 #endif
 	atomic_long_t		f_count;
 	unsigned int 		f_flags;
-	fmode_t			f_mode;
+	fmode_t			f_mode;            /*打开文件时的模式*/
 	loff_t			f_pos;
 	struct fown_struct	f_owner;
 	const struct cred	*f_cred;
@@ -1240,19 +1240,19 @@ struct sb_writers {
 };
 
 struct super_block {
-	struct list_head	s_list;		/* Keep this first */
+	struct list_head	s_list;		/* Keep this first */  /*所有超级块链接到super_blocks全局链表上*/
 	dev_t			s_dev;		/* search index; _not_ kdev_t */
 	unsigned char		s_blocksize_bits;
 	unsigned long		s_blocksize;
 	loff_t			s_maxbytes;	/* Max file size */
-	struct file_system_type	*s_type;
-	const struct super_operations	*s_op;
+	struct file_system_type	*s_type;               /*所属的文件系统类型*/
+	const struct super_operations	*s_op;         /*创建销毁inode的操作函数，对文件系统的操作函数*/
 	const struct dquot_operations	*dq_op;
 	const struct quotactl_ops	*s_qcop;
 	const struct export_operations *s_export_op;
 	unsigned long		s_flags;
 	unsigned long		s_magic;
-	struct dentry		*s_root;
+	struct dentry		*s_root;             /*根目录对应dentry*/
 	struct rw_semaphore	s_umount;
 	int			s_count;
 	atomic_t		s_active;
@@ -1261,12 +1261,12 @@ struct super_block {
 #endif
 	const struct xattr_handler **s_xattr;
 
-	struct list_head	s_inodes;	/* all inodes */
+	struct list_head	s_inodes;	/* all inodes */   /*属于超级块的所有inode*/
 	struct hlist_bl_head	s_anon;		/* anonymous dentries for (nfs) exporting */
 #ifdef CONFIG_SMP
 	struct list_head __percpu *s_files;
 #else
-	struct list_head	s_files;
+	struct list_head	s_files;    /*sb下打开的文件*/
 #endif
 	struct list_head	s_mounts;	/* list of mounts; _not_ for fs use */
 	/* s_dentry_lru, s_nr_dentry_unused protected by dcache.c lru locks */
@@ -1279,9 +1279,9 @@ struct super_block {
 	int			s_nr_inodes_unused;	/* # of inodes on lru */
 
 	struct block_device	*s_bdev;
-	struct backing_dev_info *s_bdi;
+	struct backing_dev_info *s_bdi;    /*所属后备存储器*/
 	struct mtd_info		*s_mtd;
-	struct hlist_node	s_instances;
+	struct hlist_node	s_instances;   /*添加到对应文件系统类型的哈希表下type->fs_supers*/
 	struct quota_info	s_dquot;	/* Diskquota specific options */
 
 	struct sb_writers	s_writers;
@@ -1827,8 +1827,8 @@ struct file_system_type {
 		       const char *, void *);
 	void (*kill_sb) (struct super_block *);
 	struct module *owner;
-	struct file_system_type * next;
-	struct hlist_head fs_supers;
+	struct file_system_type * next;    /*将各种文件系统链接起来*/
+	struct hlist_head fs_supers;       /*属于本文件系统的超级块组成的hash表*/
 
 	struct lock_class_key s_lock_key;
 	struct lock_class_key s_umount_key;

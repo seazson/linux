@@ -780,14 +780,14 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	if (!type)
 		return ERR_PTR(-ENODEV);
 
-	mnt = alloc_vfsmnt(name);
+	mnt = alloc_vfsmnt(name);                  /*分配一个mount结构体*/
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
 
 	if (flags & MS_KERNMOUNT)
 		mnt->mnt.mnt_flags = MNT_INTERNAL;
 
-	root = mount_fs(type, flags, name, data);
+	root = mount_fs(type, flags, name, data);  /*调用文件系统的mount函数，成功之后会返回mount节点的dentry*/
 	if (IS_ERR(root)) {
 		free_vfsmnt(mnt);
 		return ERR_CAST(root);

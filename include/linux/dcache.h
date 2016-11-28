@@ -104,9 +104,9 @@ struct dentry {
 	/* RCU lookup touched fields */
 	unsigned int d_flags;		/* protected by d_lock */
 	seqcount_t d_seq;		/* per dentry seqlock */
-	struct hlist_bl_node d_hash;	/* lookup hash list */
+	struct hlist_bl_node d_hash;	/* lookup hash list */  /*链接到哈希表*/
 	struct dentry *d_parent;	/* parent directory */
-	struct qstr d_name;
+	struct qstr d_name;         /*文件或者目录的名称*/
 	struct inode *d_inode;		/* Where the name belongs to - NULL is
 					 * negative */
 	unsigned char d_iname[DNAME_INLINE_LEN];	/* small names */
@@ -115,7 +115,7 @@ struct dentry {
 	unsigned int d_count;		/* protected by d_lock */
 	spinlock_t d_lock;		/* per dentry lock */
 	const struct dentry_operations *d_op;
-	struct super_block *d_sb;	/* The root of the dentry tree */
+	struct super_block *d_sb;	/* The root of the dentry tree */ /*指向本挂载点的超级块*/
 	unsigned long d_time;		/* used by d_revalidate */
 	void *d_fsdata;			/* fs-specific data */
 
@@ -124,10 +124,10 @@ struct dentry {
 	 * d_child and d_rcu can share memory
 	 */
 	union {
-		struct list_head d_child;	/* child of parent list */
+		struct list_head d_child;	/* child of parent list */ /*兄弟节点*/
 	 	struct rcu_head d_rcu;
 	} d_u;
-	struct list_head d_subdirs;	/* our children */
+	struct list_head d_subdirs;	/* our children */  /*本dentry下的子节点*/
 	struct hlist_node d_alias;	/* inode alias list */
 };
 

@@ -1265,7 +1265,7 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 			return -EAGAIN;
 	}
 
-	inode = file ? file_inode(file) : NULL;
+	inode = file ? file_inode(file) : NULL;           /*判断是否是文件，以区分匿名映射*/
 
 	if (file) {
 		switch (flags & MAP_TYPE) {
@@ -1546,7 +1546,7 @@ munmap_back:
 
 	error = -EINVAL;	/* when rejecting VM_GROWSDOWN|VM_GROWSUP */
 
-	if (file) {
+	if (file) {  	/*将文件和vma关联起来*/
 		if (vm_flags & (VM_GROWSDOWN|VM_GROWSUP))
 			goto free_vma;
 		if (vm_flags & VM_DENYWRITE) {
@@ -1556,7 +1556,7 @@ munmap_back:
 			correct_wcount = 1;
 		}
 		vma->vm_file = get_file(file);
-		error = file->f_op->mmap(file, vma);
+		error = file->f_op->mmap(file, vma);  /*调用file的mmap*/
 		if (error)
 			goto unmap_and_free_vma;
 

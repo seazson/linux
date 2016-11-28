@@ -751,11 +751,11 @@ static ssize_t mem_rw(struct file *file, char __user *buf,
 		return -ENOMEM;
 
 	copied = 0;
-	if (!atomic_inc_not_zero(&mm->mm_users))
+	if (!atomic_inc_not_zero(&mm->mm_users))   /*确保用户进程的mm是有用户的，不然说明要释放了*/
 		goto free;
 
 	while (count > 0) {
-		int this_len = min_t(int, count, PAGE_SIZE);
+		int this_len = min_t(int, count, PAGE_SIZE);   /*一次最多读一个page*/
 
 		if (write && copy_from_user(page, buf, this_len)) {
 			copied = -EFAULT;

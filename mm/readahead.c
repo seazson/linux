@@ -118,6 +118,8 @@ static int read_pages(struct address_space *mapping, struct file *filp,
 	blk_start_plug(&plug);
 	/*有多页读函数使用多页读*/
 	if (mapping->a_ops->readpages) {
+	pr_sea_mem("%x \n",mapping->a_ops->readpages);
+
 		ret = mapping->a_ops->readpages(filp, mapping, pages, nr_pages);
 		/* Clean up the remaining pages */
 		put_pages_list(pages);
@@ -126,6 +128,7 @@ static int read_pages(struct address_space *mapping, struct file *filp,
 	/*只有单页读函数，使用单页读*/
 	for (page_idx = 0; page_idx < nr_pages; page_idx++) {
 		struct page *page = list_to_page(pages);
+		pr_sea_mem("%x \n",mapping->a_ops->readpage);
 		list_del(&page->lru);
 		if (!add_to_page_cache_lru(page, mapping,
 					page->index, GFP_KERNEL)) {
@@ -162,6 +165,7 @@ __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
 	int ret = 0;
 	loff_t isize = i_size_read(inode);
 
+	pr_sea_mem("%x \n",offset);
 	if (isize == 0)
 		goto out;
 
@@ -506,6 +510,7 @@ void page_cache_sync_readahead(struct address_space *mapping,
 			       struct file_ra_state *ra, struct file *filp,
 			       pgoff_t offset, unsigned long req_size)
 {
+	pr_sea_mem("%x \n",offset);
 	/* no read-ahead */
 	if (!ra->ra_pages)
 		return;
@@ -542,6 +547,8 @@ page_cache_async_readahead(struct address_space *mapping,
 			   struct page *page, pgoff_t offset,
 			   unsigned long req_size)
 {
+	pr_sea_mem("%x \n",offset);
+
 	/* no read-ahead */
 	if (!ra->ra_pages)
 		return;

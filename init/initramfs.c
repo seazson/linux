@@ -442,7 +442,7 @@ static char * __init unpack_to_rootfs(char *buf, unsigned len)
 		loff_t saved_offset = this_header;
 		if (*buf == '0' && !(this_header & 3)) {
 			state = Start;
-			written = write_buffer(buf, len);
+			written = write_buffer(buf, len);    /*这里会拷贝给rootfs*/
 			buf += written;
 			len -= written;
 			continue;
@@ -582,11 +582,13 @@ static void __init clean_rootfs(void)
 static int __init populate_rootfs(void)
 {
 	char *err = unpack_to_rootfs(__initramfs_start, __initramfs_size);
+
 	if (err)
 		panic(err);	/* Failed to decompress INTERNAL initramfs */
 	if (initrd_start) {
 #ifdef CONFIG_BLK_DEV_RAM
 		int fd;
+		pr_sea_start("\n");
 		printk(KERN_INFO "Trying to unpack rootfs image as initramfs...\n");
 		err = unpack_to_rootfs((char *)initrd_start,
 			initrd_end - initrd_start);

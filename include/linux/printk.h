@@ -231,11 +231,13 @@ extern int printk_sea;
 #define SEA_PRINTK_TASK		0x4
 #define SEA_PRINTK_ELF   	0x8
 #define SEA_PRINTK_INT		0x10
+#define SEA_PRINTK_FS		0x20
 #define SEA_PRINTK_DBG		0x100
 #define SEA_PRINTK_USB		0x200
 #define SEA_PRINTK_TTY		0x400
 
 #define DO_PR_SEA_ELF 	(printk_sea & SEA_PRINTK_ELF)
+#define DO_PR_SEA_INT 	(printk_sea & SEA_PRINTK_INT)
 
 #define pr_sea_start(fmt, ...) \
 	if(printk_sea & SEA_PRINTK_START) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
@@ -247,6 +249,8 @@ extern int printk_sea;
 	if(printk_sea & SEA_PRINTK_ELF) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define pr_sea_int(fmt, ...) \
 	if(printk_sea & SEA_PRINTK_INT) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_fs(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_FS) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define pr_sea(fmt, ...) \
 	if(printk_sea & SEA_PRINTK_DBG) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define pr_sea_usb(fmt, ...) \

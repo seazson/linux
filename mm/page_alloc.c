@@ -5730,7 +5730,7 @@ __setup("hashdist=", set_hashdist);
  * - it is assumed that the hash table must contain an exact power-of-2
  *   quantity of entries
  * - limit is the number of hash buckets, not the total allocation size
- */
+ */ /*分配hash表大小，每个元素大小由bucketsize决定，元素个数可以指定numentries也可以内核自动。实际上就是一个数组*/
 void *__init alloc_large_system_hash(const char *tablename,
 				     unsigned long bucketsize,
 				     unsigned long numentries,
@@ -5746,7 +5746,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 	void *table = NULL;
 
 	/* allow the kernel cmdline to have a say */
-	if (!numentries) {
+	if (!numentries) {   /*由内核来分配数量大小*/
 		/* round applicable memory size up to nearest megabyte */
 		numentries = nr_kernel_pages;
 		numentries += (1UL << (20 - PAGE_SHIFT)) - 1;

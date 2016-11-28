@@ -11,14 +11,14 @@ struct vfsmount;
 enum { MAX_NESTED_LINKS = 8 };
 
 struct nameidata {
-	struct path	path;
-	struct qstr	last;
-	struct path	root;
-	struct inode	*inode; /* path.dentry.d_inode */
-	unsigned int	flags;
+	struct path	path;    /*当前找到的路径*/
+	struct qstr	last;    /*最后一次查找的分量。当前路径下要查找的目录或文件*/
+	struct path	root;    /*root路径*/
+	struct inode	*inode; /* path.dentry.d_inode */  /*当前路径的inode*/
+	unsigned int	flags;  /*lookup用的标志*/
 	unsigned	seq;
-	int		last_type;
-	unsigned	depth;
+	int		last_type;      /*最后一次查找得是根目录，本级目录，上级目录，链接还是普通目录*/
+	unsigned	depth;      /*查找深度*/
 	char *saved_names[MAX_NESTED_LINKS + 1];
 };
 

@@ -1188,7 +1188,7 @@ struct task_struct {
 				       it with task_lock())
 				     - initialized normally by setup_new_exec */
 /* file system info */
-	int link_count, total_link_count;
+	int link_count, total_link_count;      /*防止查找陷入无限循环*/
 #ifdef CONFIG_SYSVIPC
 /* ipc stuff */
 	struct sysv_sem sysvsem;
@@ -1204,7 +1204,7 @@ struct task_struct {
 /* open file information */
 	struct files_struct *files;
 /* namespaces */
-	struct nsproxy *nsproxy;
+	struct nsproxy *nsproxy;    /*命名空间，注意与地址空间区分*/
 /* signal handlers */
 	struct signal_struct *signal;
 	struct sighand_struct *sighand;

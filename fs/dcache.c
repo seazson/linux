@@ -1799,7 +1799,7 @@ struct dentry *__d_lookup_rcu(const struct dentry *parent,
 {
 	u64 hashlen = name->hash_len;
 	const unsigned char *str = name->name;
-	struct hlist_bl_head *b = d_hash(parent, hashlen_hash(hashlen));
+	struct hlist_bl_head *b = d_hash(parent, hashlen_hash(hashlen)); /*先确定在hash的哪个链上*/
 	struct hlist_bl_node *node;
 	struct dentry *dentry;
 

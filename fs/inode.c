@@ -905,7 +905,7 @@ EXPORT_SYMBOL(get_next_ino);
  */
 struct inode *new_inode_pseudo(struct super_block *sb)
 {
-	struct inode *inode = alloc_inode(sb);
+	struct inode *inode = alloc_inode(sb);   /*使用文件系统自带，或者标准的函数分配inode*/
 
 	if (inode) {
 		spin_lock(&inode->i_lock);

@@ -57,12 +57,12 @@ struct inode *ramfs_get_inode(struct super_block *sb,
 	struct inode * inode = new_inode(sb);     /*分配一个inode*/
 
 	if (inode) {
-		inode->i_ino = get_next_ino();
-		inode_init_owner(inode, dir, mode);
-		inode->i_mapping->a_ops = &ramfs_aops;
+		inode->i_ino = get_next_ino();        /*分配唯一的inode编号*/
+		inode_init_owner(inode, dir, mode);   /*分配uid，gid*/
+		inode->i_mapping->a_ops = &ramfs_aops;  /*关联地址空间操作函数*/
 		inode->i_mapping->backing_dev_info = &ramfs_backing_dev_info;
 		mapping_set_gfp_mask(inode->i_mapping, GFP_HIGHUSER);
-		mapping_set_unevictable(inode->i_mapping);
+		mapping_set_unevictable(inode->i_mapping); /*设置为不可回收*/
 		inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 		switch (mode & S_IFMT) {              /*根据目录，文件，设备节点，软连接来选择不同的操作函数*/
 		default:
@@ -94,18 +94,19 @@ struct inode *ramfs_get_inode(struct super_block *sb,
 static int
 ramfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 {
-	struct inode * inode = ramfs_get_inode(dir->i_sb, dir, mode, dev);
+	struct inode * inode = ramfs_get_inode(dir->i_sb, dir, mode, dev); /*在超级块的dir下创建一个inode*/
 	int error = -ENOSPC;
 
+	pr_sea_start("%s\n",dentry->d_name.name);
 	if (inode) {
-		d_instantiate(dentry, inode);
+		d_instantiate(dentry, inode);                 /*关联dentry和inode*/
 		dget(dentry);	/* Extra count - pin the dentry in core */
 		error = 0;
-		dir->i_mtime = dir->i_ctime = CURRENT_TIME;
+		dir->i_mtime = dir->i_ctime = CURRENT_TIME;   /*我们创建了一个文件，所以要更新父目录的修改时间*/
 	}
 	return error;
 }
-
+/*在dir下创建一个文件夹，文件夹名字在dentry中了*/
 static int ramfs_mkdir(struct inode * dir, struct dentry * dentry, umode_t mode)
 {
 	int retval = ramfs_mknod(dir, dentry, mode | S_IFDIR, 0);
@@ -205,7 +206,7 @@ static int ramfs_parse_options(char *data, struct ramfs_mount_opts *opts)
 
 	return 0;
 }
-
+/*填充超级块，得到根节点的dentry*/
 int ramfs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct ramfs_fs_info *fsi;
@@ -230,8 +231,8 @@ int ramfs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_op		= &ramfs_ops;
 	sb->s_time_gran		= 1;
 
-	inode = ramfs_get_inode(sb, NULL, S_IFDIR | fsi->mount_opts.mode, 0);
-	sb->s_root = d_make_root(inode);    /*分配sb inode的dentry*/
+	inode = ramfs_get_inode(sb, NULL, S_IFDIR | fsi->mount_opts.mode, 0);  /*分配并初始化一个文件夹属性的inode，用作根目录*/
+	sb->s_root = d_make_root(inode);    /*分配root inode的dentry，给超级块*/
 	if (!sb->s_root)
 		return -ENOMEM;
 

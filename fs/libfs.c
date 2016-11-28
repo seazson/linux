@@ -52,7 +52,7 @@ static int simple_delete_dentry(const struct dentry *dentry)
 /*
  * Lookup the data. This is trivial - if the dentry didn't already
  * exist, we know it is negative.  Set d_op to delete negative dentries.
- */
+ */ /*在inode下查找一个文件，文件名在dentry中*/
 struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
 	static const struct dentry_operations simple_dentry_operations = {
@@ -62,11 +62,11 @@ struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned 
 	if (dentry->d_name.len > NAME_MAX)
 		return ERR_PTR(-ENAMETOOLONG);
 	if (!dentry->d_sb->s_d_op)
-		d_set_d_op(dentry, &simple_dentry_operations);
-	d_add(dentry, NULL);
+		d_set_d_op(dentry, &simple_dentry_operations);  /*关联dentry和它的操作函数*/
+	d_add(dentry, NULL);       /*关联dentry和inode，并将dentry加入链表，对于ramfs来说没有inode?*/
 	return NULL;
 }
-
+/*创建本目录的dentry*/
 int dcache_dir_open(struct inode *inode, struct file *file)
 {
 	static struct qstr cursor_name = QSTR_INIT(".", 1);
@@ -138,7 +138,7 @@ static inline unsigned char dt_type(struct inode *inode)
 
 int dcache_readdir(struct file *file, struct dir_context *ctx)
 {
-	struct dentry *dentry = file->f_path.dentry;
+	struct dentry *dentry = file->f_path.dentry;      /*代表当前目录'.'*/
 	struct dentry *cursor = file->private_data;
 	struct list_head *p, *q = &cursor->d_u.d_child;
 
@@ -148,7 +148,7 @@ int dcache_readdir(struct file *file, struct dir_context *ctx)
 	if (ctx->pos == 2)
 		list_move(q, &dentry->d_subdirs);
 
-	for (p = q->next; p != &dentry->d_subdirs; p = p->next) {
+	for (p = q->next; p != &dentry->d_subdirs; p = p->next) {  /*遍历子文件夹*/
 		struct dentry *next = list_entry(p, struct dentry, d_u.d_child);
 		spin_lock_nested(&next->d_lock, DENTRY_D_LOCK_NESTED);
 		if (!simple_positive(next)) {
@@ -423,7 +423,7 @@ int simple_write_end(struct file *file, struct address_space *mapping,
 	loff_t last_pos = pos + copied;
 
 	/* zero the stale part of the page if we did a short copy */
-	if (copied < len) {
+	if (copied < len) {   /*如果只拷贝了页的一部分，将剩余的置0*/
 		unsigned from = pos & (PAGE_CACHE_SIZE - 1);
 
 		zero_user(page, from + copied, len - copied);
@@ -435,7 +435,7 @@ int simple_write_end(struct file *file, struct address_space *mapping,
 	 * No need to use i_size_read() here, the i_size
 	 * cannot change under us because we hold the i_mutex.
 	 */
-	if (last_pos > inode->i_size)
+	if (last_pos > inode->i_size)              /*增加文件大小*/
 		i_size_write(inode, last_pos);
 
 	set_page_dirty(page);

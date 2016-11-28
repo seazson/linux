@@ -453,7 +453,7 @@ struct super_block *sget(struct file_system_type *type,
 retry:
 	spin_lock(&sb_lock);
 	if (test) {
-		hlist_for_each_entry(old, &type->fs_supers, s_instances) {
+		hlist_for_each_entry(old, &type->fs_supers, s_instances) { /*首先遍历本文件系统类型下有没有超级块可用*/
 			if (!test(old, data))
 				continue;
 			if (!grab_super(old))
@@ -468,7 +468,7 @@ retry:
 	}
 	if (!s) {
 		spin_unlock(&sb_lock);
-		s = alloc_super(type, flags);
+		s = alloc_super(type, flags);    /*如果没有的话分配并初始化一个超级块*/
 		if (!s)
 			return ERR_PTR(-ENOMEM);
 		goto retry;
@@ -487,7 +487,7 @@ retry:
 	hlist_add_head(&s->s_instances, &type->fs_supers);
 	spin_unlock(&sb_lock);
 	get_filesystem(type);
-	register_shrinker(&s->s_shrink);
+	register_shrinker(&s->s_shrink);     /*注册超级块回收函数*/
 	return s;
 }
 
@@ -1039,7 +1039,7 @@ struct dentry *mount_nodev(struct file_system_type *fs_type,
 	int (*fill_super)(struct super_block *, void *, int))
 {
 	int error;
-	struct super_block *s = sget(fs_type, NULL, set_anon_super, flags, NULL);
+	struct super_block *s = sget(fs_type, NULL, set_anon_super, flags, NULL);  /*分配一个超级块*/
 
 	if (IS_ERR(s))
 		return ERR_CAST(s);
@@ -1050,7 +1050,7 @@ struct dentry *mount_nodev(struct file_system_type *fs_type,
 		return ERR_PTR(error);
 	}
 	s->s_flags |= MS_ACTIVE;
-	return dget(s->s_root);
+	return dget(s->s_root);   /*dentry的引用计数加1*/
 }
 EXPORT_SYMBOL(mount_nodev);
 
@@ -1101,7 +1101,7 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
 			goto out_free_secdata;
 	}
 
-	root = type->mount(type, flags, name, data);
+	root = type->mount(type, flags, name, data);      /*调用文件系统相应的mount*/
 	if (IS_ERR(root)) {
 		error = PTR_ERR(root);
 		goto out_free_secdata;
@@ -1109,7 +1109,7 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
 	sb = root->d_sb;
 	BUG_ON(!sb);
 	WARN_ON(!sb->s_bdi);
-	WARN_ON(sb->s_bdi == &default_backing_dev_info);
+	WARN_ON(sb->s_bdi == &default_backing_dev_info);  /*如果文件系统没有指定后备设备属性，就使用默认的*/
 	sb->s_flags |= MS_BORN;
 
 	error = security_sb_kern_mount(sb, flags, secdata);

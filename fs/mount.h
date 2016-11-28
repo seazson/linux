@@ -23,12 +23,12 @@ struct mountpoint {
 	struct dentry *m_dentry;
 	int m_count;
 };
-
+/*表示一个挂载点*/
 struct mount {
 	struct list_head mnt_hash;
-	struct mount *mnt_parent;
-	struct dentry *mnt_mountpoint;
-	struct vfsmount mnt;
+	struct mount *mnt_parent;       /*指向父目录的mount*/
+	struct dentry *mnt_mountpoint;  /*指向所挂载的父目录的dentry*/
+	struct vfsmount mnt;            /*本挂载点的mnt*/
 #ifdef CONFIG_SMP
 	struct mnt_pcp __percpu *mnt_pcp;
 #else

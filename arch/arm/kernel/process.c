@@ -494,10 +494,10 @@ int arch_setup_additional_pages(struct linux_binprm *bprm, int uses_interp)
 		ret = addr;
 		goto up_fail;
 	}
-	pr_sea_start("arch_setup_additional_pages addr = %lx\n",addr);
+	pr_sea_elf("arch_setup_additional_pages addr = %lx\n",addr);
 	ret = install_special_mapping(mm, addr, PAGE_SIZE,
 		VM_READ | VM_EXEC | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC,
-		&signal_page);                      /*关联wma和page*/
+		&signal_page);                      /*关联wma和page，使用不同的缺页异常处理函数*/
 
 	if (ret == 0)
 		mm->context.sigpage = addr;

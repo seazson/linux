@@ -1123,16 +1123,16 @@ static void do_generic_file_read(struct file *filp, loff_t *ppos,
 
 		cond_resched();
 find_page:
-		page = find_get_page(mapping, index);
-		if (!page) {
+		page = find_get_page(mapping, index); /*在当前file的地址空间中寻找对应的页缓存*/
+		if (!page) {                          /*没有找到page，说明没有对应的页缓存*/
 			page_cache_sync_readahead(mapping,
 					ra, filp,
-					index, last_index - index);
+					index, last_index - index);     /*同步读操作，分配页缓存，并从后备缓冲区中读入数据*/
 			page = find_get_page(mapping, index);
 			if (unlikely(page == NULL))
 				goto no_cached_page;
 		}
-		if (PageReadahead(page)) {
+		if (PageReadahead(page)) {                 /*如果需要预读，再发起一次异步读操作*/
 			page_cache_async_readahead(mapping,
 					ra, filp, page,
 					index, last_index - index);
@@ -1151,7 +1151,7 @@ find_page:
 				goto page_not_up_to_date_locked;
 			unlock_page(page);
 		}
-page_ok:
+page_ok:  /*到这里页缓存已经建立，并且已经把数据读入缓存中*/
 		/*
 		 * i_size must be checked after we know the page is Uptodate.
 		 *
@@ -1204,7 +1204,7 @@ page_ok:
 		 * "pos" here (the actor routine has to update the user buffer
 		 * pointers and the remaining count).
 		 */
-		ret = actor(desc, page, offset, nr);
+		ret = actor(desc, page, offset, nr);     /*通常会调用file_read_actor。将页缓存中需要的数据拷贝到desc指定的用户空间*/
 		offset += ret;
 		index += offset >> PAGE_CACHE_SHIFT;
 		offset &= ~PAGE_CACHE_MASK;
@@ -1243,7 +1243,7 @@ readpage:
 		 */
 		ClearPageError(page);
 		/* Start the actual read. The read will unlock the page. */
-		error = mapping->a_ops->readpage(filp, page);   /*从后备缓冲器中读入页面*/
+		error = mapping->a_ops->readpage(filp, page);   /*从后备缓冲器中读入一页面*/
 
 		if (unlikely(error)) {
 			if (error == AOP_TRUNCATED_PAGE) {
@@ -1287,7 +1287,7 @@ no_cached_page:
 		 * Ok, it wasn't cached, so we need to create a new
 		 * page..
 		 */
-		page = page_cache_alloc_cold(mapping);   /*没有页缓存，分配页缓存*/
+		page = page_cache_alloc_cold(mapping);   /*前面同步读取失败了，从伙伴系统分配一个页缓存*/
 		if (!page) {
 			desc->error = -ENOMEM;
 			goto out;
@@ -1305,7 +1305,7 @@ no_cached_page:
 	}
 
 out:
-	ra->prev_pos = prev_index;
+	ra->prev_pos = prev_index;                     /*更新readhead结构体*/
 	ra->prev_pos <<= PAGE_CACHE_SHIFT;
 	ra->prev_pos |= prev_offset;
 
@@ -1399,7 +1399,7 @@ EXPORT_SYMBOL(generic_segment_checks);
  *
  * This is the "read()" routine for all filesystems
  * that can use the page cache directly.
- */
+ */ /*要读取的buf和len都在iov里面*/
 ssize_t
 generic_file_aio_read(struct kiocb *iocb, const struct iovec *iov,
 		unsigned long nr_segs, loff_t pos)
@@ -1411,7 +1411,7 @@ generic_file_aio_read(struct kiocb *iocb, const struct iovec *iov,
 	loff_t *ppos = &iocb->ki_pos;
 
 	count = 0;
-	retval = generic_segment_checks(iov, &nr_segs, &count, VERIFY_WRITE);
+	retval = generic_segment_checks(iov, &nr_segs, &count, VERIFY_WRITE); /*处理每个iov，得到能读取的实际总长度和向量个数*/
 	if (retval)
 		return retval;
 
@@ -1505,7 +1505,7 @@ static int page_cache_read(struct file *file, pgoff_t offset)
 	struct address_space *mapping = file->f_mapping;
 	struct page *page; 
 	int ret;
-
+	pr_sea_mem("%x \n",offset);
 	do {
 		page = page_cache_alloc_cold(mapping);
 		if (!page)
@@ -1638,7 +1638,7 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
 		ret = VM_FAULT_MAJOR;
 retry_find:
-		page = find_get_page(mapping, offset);
+		page = find_get_page(mapping, offset);                 /*如果同步预读操作没有读到数据，尝试只读一页*/
 		if (!page)
 			goto no_cached_page;
 	}
@@ -2100,7 +2100,7 @@ inline int generic_write_checks(struct file *file, loff_t *pos, size_t *count, i
         if (unlikely(*pos < 0))
                 return -EINVAL;
 
-	if (!isblk) {
+	if (!isblk) {  /*非块设备，检查写入是否超过限制*/
 		/* FIXME: this is for backwards compatibility with 2.4 */
 		if (file->f_flags & O_APPEND)
                         *pos = i_size_read(inode);
@@ -2335,13 +2335,13 @@ again:
 		 * to check that the address is actually valid, when atomic
 		 * usercopies are used, below.
 		 */
-		if (unlikely(iov_iter_fault_in_readable(i, bytes))) {
+		if (unlikely(iov_iter_fault_in_readable(i, bytes))) {  /*检查用户空间能否正常访问*/
 			status = -EFAULT;
 			break;
 		}
 
 		status = a_ops->write_begin(file, mapping, pos, bytes, flags,
-						&page, &fsdata);
+						&page, &fsdata);                        /*建立一个页缓存，用于用户数据写入。ramfs对应simple_write_begin*/
 		if (unlikely(status))
 			break;
 
@@ -2349,13 +2349,14 @@ again:
 			flush_dcache_page(page);
 
 		pagefault_disable();
-		copied = iov_iter_copy_from_user_atomic(page, i, offset, bytes);
+		copied = iov_iter_copy_from_user_atomic(page, i, offset, bytes);  /*从用户空间拷贝数据到内核空间*/
 		pagefault_enable();
 		flush_dcache_page(page);
 
 		mark_page_accessed(page);
 		status = a_ops->write_end(file, mapping, pos, bytes, copied,
-						page, fsdata);
+						page, fsdata);                         /*ramfs对应simple_write_end*/
+		if (unlikely(status))
 		if (unlikely(status < 0))
 			break;
 		copied = status;
@@ -2398,7 +2399,7 @@ generic_file_buffered_write(struct kiocb *iocb, const struct iovec *iov,
 	ssize_t status;
 	struct iov_iter i;
 
-	iov_iter_init(&i, iov, nr_segs, count, written);
+	iov_iter_init(&i, iov, nr_segs, count, written);  /*将iovec转换成iov_iter*/
 	status = generic_perform_write(file, &i, pos);
 
 	if (likely(status >= 0)) {
@@ -2442,7 +2443,7 @@ ssize_t __generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	ssize_t		err;
 
 	ocount = 0;
-	err = generic_segment_checks(iov, &nr_segs, &ocount, VERIFY_READ);
+	err = generic_segment_checks(iov, &nr_segs, &ocount, VERIFY_READ);  /*检查要写入的各个向量是否合理，得到总写入长度*/
 	if (err)
 		return err;
 
@@ -2453,23 +2454,23 @@ ssize_t __generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	current->backing_dev_info = mapping->backing_dev_info;
 	written = 0;
 
-	err = generic_write_checks(file, &pos, &count, S_ISBLK(inode->i_mode));
+	err = generic_write_checks(file, &pos, &count, S_ISBLK(inode->i_mode)); /*对写的检查，返回一次能写的count数*/
 	if (err)
 		goto out;
 
 	if (count == 0)
 		goto out;
 
-	err = file_remove_suid(file);
+	err = file_remove_suid(file);   /*移除uid*/
 	if (err)
 		goto out;
 
-	err = file_update_time(file);
+	err = file_update_time(file);   /*更新文件时间*/
 	if (err)
 		goto out;
 
 	/* coalesce the iovecs and go direct-to-BIO for O_DIRECT */
-	if (unlikely(file->f_flags & O_DIRECT)) {
+	if (unlikely(file->f_flags & O_DIRECT)) {  /*需要O_DIRECT*/
 		loff_t endbyte;
 		ssize_t written_buffered;
 
@@ -2518,7 +2519,7 @@ ssize_t __generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 		}
 	} else {
 		written = generic_file_buffered_write(iocb, iov, nr_segs,
-				pos, ppos, count, written);
+				pos, ppos, count, written);  /*常规写走这里*/
 	}
 out:
 	current->backing_dev_info = NULL;
@@ -2553,7 +2554,7 @@ ssize_t generic_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	if (ret > 0 || ret == -EIOCBQUEUED) {
 		ssize_t err;
 
-		err = generic_write_sync(file, pos, ret);
+		err = generic_write_sync(file, pos, ret);   /*写完之后，有需要的话发起一次同步操作*/
 		if (err < 0 && ret > 0)
 			ret = err;
 	}

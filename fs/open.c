@@ -941,7 +941,7 @@ EXPORT_SYMBOL(file_open_root);
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
-	int fd = build_open_flags(flags, mode, &op);
+	int fd = build_open_flags(flags, mode, &op);     /*对打开的模式进行提取验证，结果存在op中*/
 	struct filename *tmp;
 
 	if (fd)
@@ -951,21 +951,21 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
-	fd = get_unused_fd_flags(flags);
+	fd = get_unused_fd_flags(flags);                 /*分配一个fd*/
 	if (fd >= 0) {
-		struct file *f = do_filp_open(dfd, tmp, &op);
+		struct file *f = do_filp_open(dfd, tmp, &op);  /*执行打开操作*/
 		if (IS_ERR(f)) {
 			put_unused_fd(fd);
 			fd = PTR_ERR(f);
 		} else {
 			fsnotify_open(f);
-			fd_install(fd, f);
+			fd_install(fd, f);      /*关联fd和file*/
 		}
 	}
 	putname(tmp);
 	return fd;
 }
-
+/*AT_FDCWD表示当前工作目录，openat指定工作目录对应为dfd。如果是用绝对路径dfd就可以忽略*/
 SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 {
 	if (force_o_largefile())

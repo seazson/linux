@@ -98,7 +98,7 @@ struct page {
 					 * never succeed on tail
 					 * pages.
 					 */
-					atomic_t _mapcount;  /*表示有多少项指向该页，也用于逆向映射搜索*/
+					atomic_t _mapcount;  /*表示有多少项指向该页，也用于逆向映射搜索。用于表示有多少进程共享该页*/
 
 					struct { /* SLUB */
 						unsigned inuse:16;
@@ -107,7 +107,7 @@ struct page {
 					};
 					int units;	/* SLOB */
 				};
-				atomic_t _count;		/* Usage count, see below. 引用计数*/
+				atomic_t _count;		/* Usage count, see below. 引用计数，通常用于程序流程的标记。进入某段加1，出来减1*/
 			};
 		};
 	};
@@ -275,11 +275,11 @@ struct vm_area_struct {
 	struct anon_vma *anon_vma;	/* Serialized by page_table_lock */
 
 	/* Function pointers to deal with this struct. */
-	const struct vm_operations_struct *vm_ops;
+	const struct vm_operations_struct *vm_ops;       /*虚拟地址空间的操作函数，包括缺页异常的处理函数*/
 
 	/* Information about our backing store: */
 	unsigned long vm_pgoff;		/* Offset (within vm_file) in PAGE_SIZE
-					   units, *not* PAGE_CACHE_SIZE */  /*文件中的偏移*/
+					   units, *not* PAGE_CACHE_SIZE */  /*文件中的偏移。对特殊映射来说是相对于第一个pfn的偏移*/
 	struct file * vm_file;		/* File we map to (can be NULL). */
 	void * vm_private_data;		/* was vm_pte (shared mem) */
 
