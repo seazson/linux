@@ -811,7 +811,7 @@ static void __pagevec_lru_add_fn(struct page *page, struct lruvec *lruvec,
 {
 	int file = page_is_file_cache(page);    /*判断是文件映射还是匿名映射*/
 	int active = PageActive(page);          /*判断是活动还是非活动*/
-	enum lru_list lru = page_lru(page);     /*的到要加入的链表类型*/
+	enum lru_list lru = page_lru(page);     /*得到要加入的链表类型*/
 
 	VM_BUG_ON(PageLRU(page));
 

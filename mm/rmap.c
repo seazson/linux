@@ -128,7 +128,7 @@ static void anon_vma_chain_link(struct vm_area_struct *vma,
 	avc->vma = vma;
 	avc->anon_vma = anon_vma;
 	list_add(&avc->same_vma, &vma->anon_vma_chain);
-	anon_vma_interval_tree_insert(avc, &anon_vma->rb_root);
+	anon_vma_interval_tree_insert(avc, &anon_vma->rb_root);  /*将avc插入到av的红黑树中。键值为avc对应的vma的start-end的。*/
 }
 
 /**
@@ -157,7 +157,7 @@ static void anon_vma_chain_link(struct vm_area_struct *vma,
  * an anon_vma.
  *
  * This must be called with the mmap_sem held for reading.
- */
+ */ /*建立vma对应的av及avc，如果已经建立过就返回*/
 int anon_vma_prepare(struct vm_area_struct *vma)
 {
 	struct anon_vma *anon_vma = vma->anon_vma;
@@ -172,8 +172,8 @@ int anon_vma_prepare(struct vm_area_struct *vma)
 		if (!avc)
 			goto out_enomem;
 
-		anon_vma = find_mergeable_anon_vma(vma);   /*检查当前的vma能否与前后的vma合并，能合并的话使用它们的anon_vma*/
-		allocated = NULL;
+		anon_vma = find_mergeable_anon_vma(vma);   /*检查当前的vma能否与前后的vma共用av(地址需要相连，并且属性相同)*/
+		allocated = NULL;						/*地址相连的vma不一定会合并，有的定义了vm_ops->close()，就不会合并，因为应用可能会关闭这个vma */
 		if (!anon_vma) {                           /*不能合并，分配一个anon_vma，其root指向自己*/
 			anon_vma = anon_vma_alloc();
 			if (unlikely(!anon_vma))
@@ -399,21 +399,21 @@ void __init anon_vma_init(void)
  * Since anon_vma's slab is DESTROY_BY_RCU and we know from page_remove_rmap()
  * that the anon_vma pointer from page->mapping is valid if there is a
  * mapcount, we can dereference the anon_vma after observing those.
- */
+ */ /*获取page对应的av*/
 struct anon_vma *page_get_anon_vma(struct page *page)
 {
 	struct anon_vma *anon_vma = NULL;
 	unsigned long anon_mapping;
 
 	rcu_read_lock();
-	anon_mapping = (unsigned long) ACCESS_ONCE(page->mapping);
+	anon_mapping = (unsigned long) ACCESS_ONCE(page->mapping);  /*保证原子，排除编译器优化出并发问题*/
 	if ((anon_mapping & PAGE_MAPPING_FLAGS) != PAGE_MAPPING_ANON)
 		goto out;
-	if (!page_mapped(page))
+	if (!page_mapped(page))         /*页有多个引用*/
 		goto out;
 
 	anon_vma = (struct anon_vma *) (anon_mapping - PAGE_MAPPING_ANON);
-	if (!atomic_inc_not_zero(&anon_vma->refcount)) {
+	if (!atomic_inc_not_zero(&anon_vma->refcount)) {   /*本av有子节点的话加一，没有的话退出*/
 		anon_vma = NULL;
 		goto out;
 	}
@@ -526,7 +526,7 @@ __vma_address(struct page *page, struct vm_area_struct *vma)
 inline unsigned long
 vma_address(struct page *page, struct vm_area_struct *vma)
 {
-	unsigned long address = __vma_address(page, vma);
+	unsigned long address = __vma_address(page, vma);   /*获取进程地址空间所属线性地址*/
 
 	/* page should be within @vma mapping range */
 	VM_BUG_ON(address < vma->vm_start || address >= vma->vm_end);
@@ -997,8 +997,8 @@ static void __page_set_anon_rmap(struct page *page,
 		anon_vma = anon_vma->root;
 
 	anon_vma = (void *) anon_vma + PAGE_MAPPING_ANON;
-	page->mapping = (struct address_space *) anon_vma;  /*匿名页的mapping会指向第一此访问它的vma的anon_vma*/
-	page->index = linear_page_index(vma, address);
+	page->mapping = (struct address_space *) anon_vma;  /*匿名页的mapping会指向第一次访问它的vma的anon_vma*/
+	page->index = linear_page_index(vma, address);   /*page在此vma中的偏移量*/
 }
 
 /**
@@ -1081,7 +1081,7 @@ void do_page_add_anon_rmap(struct page *page,
  * Same as page_add_anon_rmap but must only be called on *new* pages.
  * This means the inc-and-test can be bypassed.
  * Page does not have to be locked.
- */ /*增加匿名映射统计，并添加到对应lru链表，添加逆向映射*/
+ */ /*增加匿名映射统计，并添加到对应lru链表，关联av。在创建新页的时候会调用*/
 void page_add_new_anon_rmap(struct page *page,
 	struct vm_area_struct *vma, unsigned long address)
 {
@@ -1092,10 +1092,10 @@ void page_add_new_anon_rmap(struct page *page,
 		__inc_zone_page_state(page, NR_ANON_PAGES);
 	else
 		__inc_zone_page_state(page, NR_ANON_TRANSPARENT_HUGEPAGES);
-	__page_set_anon_rmap(page, vma, address, 1);     /* 添加到逆向映射*/
+	__page_set_anon_rmap(page, vma, address, 1);     /* 添加到逆向映射，实际上是关联av并设置page的index偏移量*/
 	if (!mlocked_vma_newpage(vma, page)) {
 		SetPageActive(page);
-		lru_cache_add(page);
+		lru_cache_add(page);         /*将page添加到lru链表中*/
 	} else
 		add_page_to_unevictable_list(page);
 }
@@ -1184,7 +1184,7 @@ out:
 /*
  * Subfunctions of try_to_unmap: try_to_unmap_one called
  * repeatedly from try_to_unmap_ksm, try_to_unmap_anon or try_to_unmap_file.
- */
+ */ /*修改vma中与page对应页表项的内容，断开页表项与物理page关联*/
 int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 		     unsigned long address, enum ttu_flags flags)
 {
@@ -1193,7 +1193,7 @@ int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 	pte_t pteval;
 	spinlock_t *ptl;
 	int ret = SWAP_AGAIN;
-
+/*父进程新建的页可以反查到子进程，但是子进程应该没有此页，所以要检查*/
 	pte = page_check_address(page, mm, address, &ptl, 0);
 	if (!pte)
 		goto out;
@@ -1271,7 +1271,7 @@ int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 		swp_pte = swp_entry_to_pte(entry);
 		if (pte_soft_dirty(pteval))
 			swp_pte = pte_swp_mksoft_dirty(swp_pte);
-		set_pte_at(mm, address, pte, swp_pte);
+		set_pte_at(mm, address, pte, swp_pte);             /*修改页表项的值*/
 		BUG_ON(pte_file(*pte));
 	} else if (IS_ENABLED(CONFIG_MIGRATION) &&
 		   (TTU_ACTION(flags) == TTU_MIGRATION)) {
@@ -1282,7 +1282,7 @@ int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 	} else
 		dec_mm_counter(mm, MM_FILEPAGES);
 
-	page_remove_rmap(page);
+	page_remove_rmap(page);  /*减少page相关统计信息*/
 	page_cache_release(page);
 
 out_unmap:
@@ -1460,7 +1460,7 @@ bool is_vma_temporary_stack(struct vm_area_struct *vma)
  * where the page was found will be held for write.  So, we won't recheck
  * vm_flags for that VMA.  That should be OK, because that vma shouldn't be
  * 'LOCKED.
- */
+ */ /*unmap所有与该page相关的页表项*/
 static int try_to_unmap_anon(struct page *page, enum ttu_flags flags)
 {
 	struct anon_vma *anon_vma;
@@ -1468,13 +1468,13 @@ static int try_to_unmap_anon(struct page *page, enum ttu_flags flags)
 	struct anon_vma_chain *avc;
 	int ret = SWAP_AGAIN;
 
-	anon_vma = page_lock_anon_vma_read(page);
+	anon_vma = page_lock_anon_vma_read(page);   /*获取page对应的anon_vma，并上锁*/
 	if (!anon_vma)
 		return ret;
 
 	pgoff = page->index << (PAGE_CACHE_SHIFT - PAGE_SHIFT);
-	anon_vma_interval_tree_foreach(avc, &anon_vma->rb_root, pgoff, pgoff) {
-		struct vm_area_struct *vma = avc->vma;
+	anon_vma_interval_tree_foreach(avc, &anon_vma->rb_root, pgoff, pgoff) {/*查找anon下包含pgoff地址的avc*/
+		struct vm_area_struct *vma = avc->vma;     /*有了avc就能获取到vma*/
 		unsigned long address;
 
 		/*
@@ -1489,8 +1489,8 @@ static int try_to_unmap_anon(struct page *page, enum ttu_flags flags)
 				is_vma_temporary_stack(vma))
 			continue;
 
-		address = vma_address(page, vma);
-		ret = try_to_unmap_one(page, vma, address, flags);
+		address = vma_address(page, vma);                    /*获取线性地址*/
+		ret = try_to_unmap_one(page, vma, address, flags);   /*更新与之相关的页表项*/
 		if (ret != SWAP_AGAIN || !page_mapped(page))
 			break;
 	}
@@ -1529,14 +1529,14 @@ static int try_to_unmap_file(struct page *page, enum ttu_flags flags)
 		pgoff = page->index << compound_order(page);
 
 	mutex_lock(&mapping->i_mmap_mutex);
-	vma_interval_tree_foreach(vma, &mapping->i_mmap, pgoff, pgoff) {
+	vma_interval_tree_foreach(vma, &mapping->i_mmap, pgoff, pgoff) { /*首先遍历所有的线性映射关系，非线性映射的vma会从这里面拿出放到i_mmap_nonlinear中*/
 		unsigned long address = vma_address(page, vma);
-		ret = try_to_unmap_one(page, vma, address, flags);
+		ret = try_to_unmap_one(page, vma, address, flags);   /*更新与该页相关的所有页表项*/
 		if (ret != SWAP_AGAIN || !page_mapped(page))
 			goto out;
 	}
 
-	if (list_empty(&mapping->i_mmap_nonlinear))
+	if (list_empty(&mapping->i_mmap_nonlinear))    /*文件如果没有进行过非线性映射操作就返回*/
 		goto out;
 
 	/*
@@ -1585,7 +1585,7 @@ static int try_to_unmap_file(struct page *page, enum ttu_flags flags)
 			while ( cursor < max_nl_cursor &&
 				cursor < vma->vm_end - vma->vm_start) {
 				if (try_to_unmap_cluster(cursor, &mapcount,
-						vma, page) == SWAP_MLOCK)
+						vma, page) == SWAP_MLOCK)               /*对非线性映射的解绑操作*/
 					ret = SWAP_MLOCK;
 				cursor += CLUSTER_SIZE;
 				vma->vm_private_data = (void *) cursor;
@@ -1623,7 +1623,7 @@ out:
  * SWAP_AGAIN	- we missed a mapping, try again later
  * SWAP_FAIL	- the page is unswappable
  * SWAP_MLOCK	- page is mlocked.
- */
+ */ /*移除所有引用该页的页表项信息*/
 int try_to_unmap(struct page *page, enum ttu_flags flags)
 {
 	int ret;

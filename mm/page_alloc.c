@@ -2509,7 +2509,7 @@ rebalance:
 		goto nopage;
 
 	/* Try direct reclaim and then allocating */
-	page = __alloc_pages_direct_reclaim(gfp_mask, order,             /*第五次尝试:调度后再执行分配(慢路径)*/
+	page = __alloc_pages_direct_reclaim(gfp_mask, order,             /*第五次尝试:调度后调用直接释放函数try_to_free_pages，再执行分配(慢路径)*/
 					zonelist, high_zoneidx,
 					nodemask,
 					alloc_flags, preferred_zone,

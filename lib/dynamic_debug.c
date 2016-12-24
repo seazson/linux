@@ -854,7 +854,7 @@ static const struct file_operations ddebug_proc_fops = {
 /*
  * Allocate a new ddebug_table for the given module
  * and add it to the global list.
- */
+ */ /*n表示本模块有多少个打印调试项*/
 int ddebug_add_module(struct _ddebug *tab, unsigned int n,
 			     const char *name)
 {

@@ -379,10 +379,10 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 		goto out;
 
 	prev = NULL;
-	for (mpnt = oldmm->mmap; mpnt; mpnt = mpnt->vm_next) {
+	for (mpnt = oldmm->mmap; mpnt; mpnt = mpnt->vm_next) {  /*遍历父进程的所有vma*/
 		struct file *file;
 
-		if (mpnt->vm_flags & VM_DONTCOPY) {
+		if (mpnt->vm_flags & VM_DONTCOPY) {                 /*父进程的vma不让拷贝，继续下一个*/
 			vm_stat_account(mm, mpnt->vm_flags, mpnt->vm_file,
 							-vma_pages(mpnt));
 			continue;
@@ -395,23 +395,23 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 				goto fail_nomem;
 			charge = len;
 		}
-		tmp = kmem_cache_alloc(vm_area_cachep, GFP_KERNEL);
+		tmp = kmem_cache_alloc(vm_area_cachep, GFP_KERNEL); /*为子进程分配一个vma*/
 		if (!tmp)
 			goto fail_nomem;
-		*tmp = *mpnt;
-		INIT_LIST_HEAD(&tmp->anon_vma_chain);
+		*tmp = *mpnt;                                       /*拷贝父进程的vma*/
+		INIT_LIST_HEAD(&tmp->anon_vma_chain);        /*子进程vma的avc初始化*/
 		pol = mpol_dup(vma_policy(mpnt));
 		retval = PTR_ERR(pol);
 		if (IS_ERR(pol))
 			goto fail_nomem_policy;
 		vma_set_policy(tmp, pol);
-		tmp->vm_mm = mm;
-		if (anon_vma_fork(tmp, mpnt))                /*复制匿名线性区*/
+		tmp->vm_mm = mm;                             /*子进程的vma应该指向子进程的mm*/
+		if (anon_vma_fork(tmp, mpnt))                /*复制父进程的avc，同时创建子进程的avc和av*/
 			goto fail_nomem_anon_vma_fork;
 		tmp->vm_flags &= ~VM_LOCKED;
 		tmp->vm_next = tmp->vm_prev = NULL;
 		file = tmp->vm_file;
-		if (file) {
+		if (file) {                                  /*如果此vma映射的是文件*/
 			struct inode *inode = file_inode(file);
 			struct address_space *mapping = file->f_mapping;
 
@@ -444,12 +444,12 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 		/*
 		 * Link in the new vma and copy the page table entries.
 		 */
-		*pprev = tmp;
+		*pprev = tmp;                                  /*vma加入线性链表中*/
 		pprev = &tmp->vm_next;
 		tmp->vm_prev = prev;
 		prev = tmp;
 
-		__vma_link_rb(mm, tmp, rb_link, rb_parent);
+		__vma_link_rb(mm, tmp, rb_link, rb_parent);    /*vma加入红黑树中*/
 		rb_link = &tmp->vm_rb.rb_right;
 		rb_parent = &tmp->vm_rb;
 

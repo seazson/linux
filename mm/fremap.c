@@ -85,7 +85,7 @@ static int install_file_pte(struct mm_struct *mm, struct vm_area_struct *vma,
 out:
 	return err;
 }
-
+/*非线性映射的时候会调用*/
 int generic_file_remap_pages(struct vm_area_struct *vma, unsigned long addr,
 			     unsigned long size, pgoff_t pgoff)
 {
@@ -111,7 +111,7 @@ EXPORT_SYMBOL(generic_file_remap_pages);
  * @start: start of the remapped virtual memory range
  * @size: size of the remapped virtual memory range
  * @prot: new protection bits of the range (see NOTE)
- * @pgoff: to-be-mapped page of the backing store file
+ * @pgoff: to-be-mapped page of the backing store file  要移动的原始位置，以page为单位
  * @flags: 0 or MAP_NONBLOCKED - the later will cause no IO.
  *
  * sys_remap_file_pages remaps arbitrary pages of an existing VM_SHARED vma
@@ -223,7 +223,7 @@ get_write_lock:
 		mutex_lock(&mapping->i_mmap_mutex);
 		flush_dcache_mmap_lock(mapping);
 		vma->vm_flags |= VM_NONLINEAR;
-		vma_interval_tree_remove(vma, &mapping->i_mmap);
+		vma_interval_tree_remove(vma, &mapping->i_mmap);          /*在做非线性映射的时候vma会从线性映射中移除，加入非线性链表中*/
 		vma_nonlinear_insert(vma, &mapping->i_mmap_nonlinear);
 		flush_dcache_mmap_unlock(mapping);
 		mutex_unlock(&mapping->i_mmap_mutex);

@@ -378,9 +378,9 @@ static __initdata int (*actions[])(void) = {
 	[Collect]	= do_collect,
 	[GotHeader]	= do_header,
 	[SkipIt]	= do_skip,
-	[GotName]	= do_name,
-	[CopyFile]	= do_copy,
-	[GotSymlink]	= do_symlink,
+	[GotName]	= do_name,              /*创建文件*/
+	[CopyFile]	= do_copy,              /*复制文件内容*/
+	[GotSymlink]	= do_symlink,       /*创建链接*/
 	[Reset]		= do_reset,
 };
 

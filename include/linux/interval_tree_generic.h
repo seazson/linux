@@ -24,14 +24,14 @@
 /*
  * Template for implementing interval trees
  *
- * ITSTRUCT:   struct type of the interval tree nodes
- * ITRB:       name of struct rb_node field within ITSTRUCT
- * ITTYPE:     type of the interval endpoints
- * ITSUBTREE:  name of ITTYPE field within ITSTRUCT holding last-in-subtree
- * ITSTART(n): start endpoint of ITSTRUCT node n
- * ITLAST(n):  last endpoint of ITSTRUCT node n
- * ITSTATIC:   'static' or empty
- * ITPREFIX:   prefix to use for the inline tree definitions
+ * ITSTRUCT:   struct type of the interval tree nodes                           struct anon_vma_chain
+ * ITRB:       name of struct rb_node field within ITSTRUCT                     rb
+ * ITTYPE:     type of the interval endpoints                                   long
+ * ITSUBTREE:  name of ITTYPE field within ITSTRUCT holding last-in-subtree     rb_subtree_last
+ * ITSTART(n): start endpoint of ITSTRUCT node n                                avc_start_pgoff
+ * ITLAST(n):  last endpoint of ITSTRUCT node n                                 avc_last_pgoff
+ * ITSTATIC:   'static' or empty                                                static inline
+ * ITPREFIX:   prefix to use for the inline tree definitions                    __anon_vma_interval_tree
  *
  * Note - before using this, please consider if non-generic version
  * (interval_tree.h) would work for you...

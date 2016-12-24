@@ -1709,7 +1709,7 @@ page_not_uptodate:
 	 * and we need to check for errors.
 	 */
 	ClearPageError(page);
-	error = mapping->a_ops->readpage(file, page);               /*将数据读到page中，更新内存*/
+	error = mapping->a_ops->readpage(file, page);               /*将一页数据读到page中，更新内存*/
 	if (!error) {
 		wait_on_page_locked(page);
 		if (!PageUptodate(page))

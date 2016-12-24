@@ -52,7 +52,7 @@ struct page {
 	/* Second double word */
 	struct {
 		union {
-			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量。例如打开一个文件，表示在文件中的偏移量*/
+			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量。例如打开一个文件，表示在文件中的偏移量。偏移量是对整个地址空间，而不是相对于所属vma*/
 			void *freelist;		/* slub/slob first free object */
 			bool pfmemalloc;	/* If set by the page allocator,
 						 * ALLOC_NO_WATERMARKS was set
@@ -224,18 +224,18 @@ struct vm_region {
  * per VM-area/task.  A VM area is any part of the process virtual memory
  * space that has a special rule for the page-fault handlers (ie a shared
  * library, the executable area etc).
- */
+ */ /*一个vma只能代表一种映射，要么是文件映射，要么是匿名映射*/
 struct vm_area_struct {
 	/* The first cache line has the info for VMA tree walking. */
 
-	unsigned long vm_start;		/* Our start address within vm_mm. */
+	unsigned long vm_start;		/* Our start address within vm_mm. */  /*代表的是虚拟内存的地址*/
 	unsigned long vm_end;		/* The first byte after our end address
 					   within vm_mm. */
 
 	/* linked list of VM areas per task, sorted by address */
 	struct vm_area_struct *vm_next, *vm_prev;
 
-	struct rb_node vm_rb;
+	struct rb_node vm_rb;              /*用来组织本进程的所有vma*/
 
 	/*
 	 * Largest free memory gap in bytes to the left of this VMA.
@@ -255,10 +255,10 @@ struct vm_area_struct {
 	 * For areas with an address space and backing store,
 	 * linkage into the address_space->i_mmap interval tree, or
 	 * linkage of vma in the address_space->i_mmap_nonlinear list.
-	 */
+	 */ /*文件页的反向映射*/
 	union {
 		struct {
-			struct rb_node rb;
+			struct rb_node rb;                 /*属于address_space的i_mmap中的节点，用于文件反向映射*/
 			unsigned long rb_subtree_last;
 		} linear;
 		struct list_head nonlinear;
@@ -269,7 +269,7 @@ struct vm_area_struct {
 	 * list, after a COW of one of the file pages.	A MAP_SHARED vma
 	 * can only be in the i_mmap tree.  An anonymous MAP_PRIVATE, stack
 	 * or brk vma (with NULL file) can only be in an anon_vma list.
-	 */
+	 */ /*匿名页的反向映射*/
 	struct list_head anon_vma_chain; /* Serialized by mmap_sem &
 					  * page_table_lock */
 	struct anon_vma *anon_vma;	/* Serialized by page_table_lock */
@@ -279,7 +279,7 @@ struct vm_area_struct {
 
 	/* Information about our backing store: */
 	unsigned long vm_pgoff;		/* Offset (within vm_file) in PAGE_SIZE
-					   units, *not* PAGE_CACHE_SIZE */  /*文件中的偏移。对特殊映射来说是相对于第一个pfn的偏移*/
+					   units, *not* PAGE_CACHE_SIZE */  /*文件中的偏移。对特殊映射(内存)来说是相对于第一个pfn的偏移*/
 	struct file * vm_file;		/* File we map to (can be NULL). */
 	void * vm_private_data;		/* was vm_pte (shared mem) */
 
@@ -324,7 +324,7 @@ struct mm_rss_stat {
 
 struct mm_struct {
 	struct vm_area_struct * mmap;		/* list of VMAs */
-	struct rb_root mm_rb;               /* 管理VMAs的红黑树 */
+	struct rb_root mm_rb;               /* 管理本进程空间下VMAs的红黑树 */
 	struct vm_area_struct * mmap_cache;	/* last find_vma result */  /*每次找到都会更新这个值*/
 #ifdef CONFIG_MMU
 	unsigned long (*get_unmapped_area) (struct file *filp,

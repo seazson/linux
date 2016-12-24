@@ -1112,7 +1112,7 @@ static int anon_vma_compatible(struct vm_area_struct *a, struct vm_area_struct *
  */
 static struct anon_vma *reusable_anon_vma(struct vm_area_struct *old, struct vm_area_struct *a, struct vm_area_struct *b)
 {
-	if (anon_vma_compatible(a, b)) {  /*检查前后vma权限是否相同*/
+	if (anon_vma_compatible(a, b)) {  /*检查前后vma权限是否相同，地址是否相连*/
 		struct anon_vma *anon_vma = ACCESS_ONCE(old->anon_vma);
 
 		if (anon_vma && list_is_singular(&old->anon_vma_chain))
@@ -2157,7 +2157,7 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 
 /*
  * vma is the first one with address < vma->vm_start.  Have to extend vma.
- */
+ *//*扩展栈空间*/
 int expand_downwards(struct vm_area_struct *vma,
 				   unsigned long address)
 {
@@ -2167,7 +2167,7 @@ int expand_downwards(struct vm_area_struct *vma,
 	 * We must make sure the anon_vma is allocated
 	 * so that the anon_vma locking is not a noop.
 	 */
-	if (unlikely(anon_vma_prepare(vma)))
+	if (unlikely(anon_vma_prepare(vma)))   /* 对于栈而言，实际上不需要做什么，因为av已经创建过了*/
 		return -ENOMEM;
 
 	address &= PAGE_MASK;
@@ -2188,7 +2188,7 @@ int expand_downwards(struct vm_area_struct *vma,
 		unsigned long size, grow;
 
 		size = vma->vm_end - address;
-		grow = (vma->vm_start - address) >> PAGE_SHIFT;
+		grow = (vma->vm_start - address) >> PAGE_SHIFT;   /*栈需要扩大多少*/
 
 		error = -ENOMEM;
 		if (grow <= vma->vm_pgoff) {
@@ -2206,10 +2206,10 @@ int expand_downwards(struct vm_area_struct *vma,
 				 * against concurrent vma expansions.
 				 */
 				spin_lock(&vma->vm_mm->page_table_lock);
-				anon_vma_interval_tree_pre_update_vma(vma);
-				vma->vm_start = address;
+				anon_vma_interval_tree_pre_update_vma(vma);   /*将vma从av中移除*/
+				vma->vm_start = address;                      /*更新栈空间大小*/
 				vma->vm_pgoff -= grow;
-				anon_vma_interval_tree_post_update_vma(vma);
+				anon_vma_interval_tree_post_update_vma(vma);  /*将更新后的vma加入av中*/
 				vma_gap_update(vma);
 				spin_unlock(&vma->vm_mm->page_table_lock);
 

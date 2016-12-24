@@ -3522,7 +3522,7 @@ static int do_nonlinear_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		return VM_FAULT_SIGBUS;
 	}
 
-	pgoff = pte_to_pgoff(orig_pte);  /*地址的获取方式与线性映射不同!*/
+	pgoff = pte_to_pgoff(orig_pte);  /*地址的获取方式与线性映射不同!，需要从页表项里面读出来，因为不是线性地址不能直接计算*/
 	return __do_fault(mm, vma, address, pmd, pgoff, flags, orig_pte);
 }
 
@@ -3712,18 +3712,18 @@ int handle_pte_fault(struct mm_struct *mm,
 
 	entry = *pte;  /*addr对应二级页表项内容*/
 	if (!pte_present(entry)) {    /*页不在物理内存中*/
-		if (pte_none(entry)) {    /*页表项还没创建*/
+		if (pte_none(entry)) {    /*页表项存在，但是内容为空*/
 			if (vma->vm_ops) {
 				if (likely(vma->vm_ops->fault))
-					return do_linear_fault(mm, vma, address,  /*按需分配页*/
+					return do_linear_fault(mm, vma, address,  /*按需分配页，线性映射*/
 						pte, pmd, flags, entry);
 			}
 			return do_anonymous_page(mm, vma, address,     /*创建匿名页*/
 						 pte, pmd, flags);
 		}
-		/*页创建了，但是不在内存中，说明被换出了*/
+		/*页表项有值，但是缺页了，说明是非线性映射过的(线性映射页回收后会清掉页表项值)。非线性映射一定是文件类型映射*/
 		if (pte_file(entry))
-			return do_nonlinear_fault(mm, vma, address,    /*非线性换出的处理。文件类型的映射或者高端内存*/
+			return do_nonlinear_fault(mm, vma, address,    /*非线性映射处理*/
 					pte, pmd, flags, entry);
 		return do_swap_page(mm, vma, address,              /*页被换出了，需要按需调页*/
 					pte, pmd, flags, entry);

@@ -410,7 +410,7 @@ struct address_space {
 	struct radix_tree_root	page_tree;	/* radix tree of all pages */      /*基数树的根节点,包含了该地址空间中所有物理内存页*/
 	spinlock_t		tree_lock;	/* and lock protecting it */
 	unsigned int		i_mmap_writable;/* count VM_SHARED mappings */         /*统计有VM_SHARED属性的页*/
-	struct rb_root		i_mmap;		/* tree of private and shared mappings */  /*与该inode相关的所有普通内存映射*/
+	struct rb_root		i_mmap;		/* tree of private and shared mappings */  /*与该inode相关的普通内存映射。由vma的linear链接，包含所有映射了该文件的进程vma*/
 	struct list_head	i_mmap_nonlinear;/*list VM_NONLINEAR mappings */       /*包含非线性映射的页*/
 	struct mutex		i_mmap_mutex;	/* protect tree, count, list */
 	/* Protected by tree_lock together with the radix tree */
