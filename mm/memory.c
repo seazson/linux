@@ -3009,9 +3009,9 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		goto out;
 
 	entry = pte_to_swp_entry(orig_pte);
-	if (unlikely(non_swap_entry(entry))) {
+	if (unlikely(non_swap_entry(entry))) {   /*说明不是常规的swap entry*/
 		if (is_migration_entry(entry)) {
-			migration_entry_wait(mm, pmd, address);
+			migration_entry_wait(mm, pmd, address);  /*说明正在访问的页正在页迁移*/
 		} else if (is_hwpoison_entry(entry)) {
 			ret = VM_FAULT_HWPOISON;
 		} else {
@@ -3021,7 +3021,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		goto out;
 	}
 	delayacct_set_flag(DELAYACCT_PF_SWAPIN);
-	page = lookup_swap_cache(entry);
+	page = lookup_swap_cache(entry);       /*对于页迁移来说，再一次查找就能找到新页了*/
 	if (!page) {
 		page = swapin_readahead(entry,
 					GFP_HIGHUSER_MOVABLE, vma, address);
@@ -3725,7 +3725,7 @@ int handle_pte_fault(struct mm_struct *mm,
 		if (pte_file(entry))
 			return do_nonlinear_fault(mm, vma, address,    /*非线性映射处理*/
 					pte, pmd, flags, entry);
-		return do_swap_page(mm, vma, address,              /*页被换出了，需要按需调页*/
+		return do_swap_page(mm, vma, address,              /*页被换出了，需要按需调页。页迁移的时候对页的访问也会走到这里*/
 					pte, pmd, flags, entry);
 	}
 

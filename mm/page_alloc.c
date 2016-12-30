@@ -1641,7 +1641,7 @@ static bool __zone_watermark_ok(struct zone *z, int order, unsigned long mark,
 		free_cma = zone_page_state(z, NR_FREE_CMA_PAGES);
 #endif
 
-	if (free_pages - free_cma <= min + lowmem_reserve)
+	if (free_pages - free_cma <= min + lowmem_reserve)   /*剩余的页框数少于保留页+low/min/high中的一个，具体是哪个由传入参数决定*/
 		return false;
 	for (o = 0; o < order; o++) {
 		/* At the next order, this order's pages become unavailable */
@@ -1842,7 +1842,7 @@ static inline void init_zone_allows_reclaim(int nid)
 /*
  * get_page_from_freelist goes through the zonelist trying to allocate
  * a page.
- */
+ */ /*快速分配函数*/
 static struct page *
 get_page_from_freelist(gfp_t gfp_mask, nodemask_t *nodemask, unsigned int order,
 		struct zonelist *zonelist, int high_zoneidx, int alloc_flags,
@@ -1907,7 +1907,7 @@ zonelist_scan:
 
 			mark = zone->watermark[alloc_flags & ALLOC_WMARK_MASK];
 			if (zone_watermark_ok(zone, order, mark,
-				    classzone_idx, alloc_flags))            /*检查是否有连续可用空间*/
+				    classzone_idx, alloc_flags))            /*检查剩余内存值，不满足条件的话需要进行内存回收*/
 				goto try_this_zone;
 
 			if (IS_ENABLED(CONFIG_NUMA) &&
@@ -1934,7 +1934,7 @@ zonelist_scan:
 				!zlc_zone_worth_trying(zonelist, z, allowednodes))
 				continue;
 
-			ret = zone_reclaim(zone, gfp_mask, order);
+			ret = zone_reclaim(zone, gfp_mask, order);     /*发起单个zone内存回收*/
 			switch (ret) {
 			case ZONE_RECLAIM_NOSCAN:
 				/* did not scan */
@@ -5456,7 +5456,7 @@ static void setup_per_zone_lowmem_reserve(void)
 	/* update totalreserve_pages */
 	calculate_totalreserve_pages();
 }
-
+/*计算内存回收水标*/
 static void __setup_per_zone_wmarks(void)
 {
 	unsigned long pages_min = min_free_kbytes >> (PAGE_SHIFT - 10);

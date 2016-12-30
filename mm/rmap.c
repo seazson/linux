@@ -1184,7 +1184,7 @@ out:
 /*
  * Subfunctions of try_to_unmap: try_to_unmap_one called
  * repeatedly from try_to_unmap_ksm, try_to_unmap_anon or try_to_unmap_file.
- */ /*修改vma中与page对应页表项的内容，断开页表项与物理page关联*/
+ */ /*修改vma中与page对应页表项的内容，断开页表项与物理page关联。对于迁移的页面会临时修改成swap类型页表项*/
 int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 		     unsigned long address, enum ttu_flags flags)
 {
@@ -1219,16 +1219,16 @@ int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 
 	/* Nuke the page table entry. */
 	flush_cache_page(vma, address, page_to_pfn(page));
-	pteval = ptep_clear_flush(vma, address, pte);
+	pteval = ptep_clear_flush(vma, address, pte);     /*获取并清空页表项*/
 
 	/* Move the dirty bit to the physical page now the pte is gone. */
-	if (pte_dirty(pteval))
+	if (pte_dirty(pteval))           /*页是脏的，更新page标示*/
 		set_page_dirty(page);
 
 	/* Update high watermark before we lower rss */
 	update_hiwater_rss(mm);
 
-	if (PageHWPoison(page) && !(flags & TTU_IGNORE_HWPOISON)) {
+	if (PageHWPoison(page) && !(flags & TTU_IGNORE_HWPOISON)) { /*页是坏的处理*/
 		if (!PageHuge(page)) {
 			if (PageAnon(page))
 				dec_mm_counter(mm, MM_ANONPAGES);
@@ -1237,11 +1237,11 @@ int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 		}
 		set_pte_at(mm, address, pte,
 			   swp_entry_to_pte(make_hwpoison_entry(page)));
-	} else if (PageAnon(page)) {
-		swp_entry_t entry = { .val = page_private(page) };
+	} else if (PageAnon(page)) {                           /*匿名页的处理*/
+		swp_entry_t entry = { .val = page_private(page) };  /* 获取page->private中保存的内容，调用到try_to_unmap()前会把此页加入到swapcache，然后分配一个以swap页槽偏移量为内容的swp_entry_t */
 		pte_t swp_pte;
 
-		if (PageSwapCache(page)) {
+		if (PageSwapCache(page)) {   /*对于内存回收，通常匿名页都会走这里*/
 			/*
 			 * Store the swap location in the pte.
 			 * See handle_pte_fault() ...
@@ -1259,27 +1259,27 @@ int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 			}
 			dec_mm_counter(mm, MM_ANONPAGES);
 			inc_mm_counter(mm, MM_SWAPENTS);
-		} else if (IS_ENABLED(CONFIG_MIGRATION)) {
+		} else if (IS_ENABLED(CONFIG_MIGRATION)) {  /*匿名页的迁移*/
 			/*
 			 * Store the pfn of the page in a special migration
 			 * pte. do_swap_page() will wait until the migration
 			 * pte is removed and then restart fault handling.
 			 */
 			BUG_ON(TTU_ACTION(flags) != TTU_MIGRATION);
-			entry = make_migration_entry(page, pte_write(pteval));
+			entry = make_migration_entry(page, pte_write(pteval));  /*构造一个用于页迁移的页表项*/
 		}
-		swp_pte = swp_entry_to_pte(entry);
+		swp_pte = swp_entry_to_pte(entry);  /*这个entry可能是page的private，也可能是上面创建的migration*/
 		if (pte_soft_dirty(pteval))
 			swp_pte = pte_swp_mksoft_dirty(swp_pte);
 		set_pte_at(mm, address, pte, swp_pte);             /*修改页表项的值*/
 		BUG_ON(pte_file(*pte));
 	} else if (IS_ENABLED(CONFIG_MIGRATION) &&
-		   (TTU_ACTION(flags) == TTU_MIGRATION)) {
+		   (TTU_ACTION(flags) == TTU_MIGRATION)) {         /*文件页的迁移*/
 		/* Establish migration entry for a file page */
 		swp_entry_t entry;
 		entry = make_migration_entry(page, pte_write(pteval));
 		set_pte_at(mm, address, pte, swp_entry_to_pte(entry));
-	} else
+	} else                                                 /*文件页的回收，不需要修改页表项，因为前面已经删除了*/
 		dec_mm_counter(mm, MM_FILEPAGES);
 
 	page_remove_rmap(page);  /*减少page相关统计信息*/
@@ -1738,7 +1738,7 @@ static int rmap_walk_file(struct page *page, int (*rmap_one)(struct page *,
 	mutex_unlock(&mapping->i_mmap_mutex);
 	return ret;
 }
-
+/*反向映射遍历*/
 int rmap_walk(struct page *page, int (*rmap_one)(struct page *,
 		struct vm_area_struct *, unsigned long, void *), void *arg)
 {

@@ -107,7 +107,7 @@ struct page {
 					};
 					int units;	/* SLOB */
 				};
-				atomic_t _count;		/* Usage count, see below. 引用计数，通常用于程序流程的标记。进入某段加1，出来减1*/
+				atomic_t _count;		/* Usage count, see below. 引用计数，通常用于程序流程的标记。进入某段加1，出来减1。页在伙伴系统里时是-1*/
 			};
 		};
 	};

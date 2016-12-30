@@ -152,11 +152,11 @@ static int remove_migration_pte(struct page *new, struct vm_area_struct *vma,
 	entry = pte_to_swp_entry(pte);
 
 	if (!is_migration_entry(entry) ||
-	    migration_entry_to_page(entry) != old)
+	    migration_entry_to_page(entry) != old)  /*如果页表项不是迁移类型，或者不是指向旧页，说明有问题，退出*/
 		goto unlock;
 
 	get_page(new);
-	pte = pte_mkold(mk_pte(new, vma->vm_page_prot));
+	pte = pte_mkold(mk_pte(new, vma->vm_page_prot));  /*创建新页的页表项*/
 	if (is_write_migration_entry(entry))
 		pte = pte_mkwrite(pte);
 #ifdef CONFIG_HUGETLB_PAGE
@@ -166,7 +166,7 @@ static int remove_migration_pte(struct page *new, struct vm_area_struct *vma,
 	}
 #endif
 	flush_dcache_page(new);
-	set_pte_at(mm, addr, ptep, pte);
+	set_pte_at(mm, addr, ptep, pte);    /*将页表项指向新页，这时替换就完成了*/
 
 	if (PageHuge(new)) {
 		if (PageAnon(new))
@@ -174,7 +174,7 @@ static int remove_migration_pte(struct page *new, struct vm_area_struct *vma,
 		else
 			page_dup_rmap(new);
 	} else if (PageAnon(new))
-		page_add_anon_rmap(new, vma, addr);
+		page_add_anon_rmap(new, vma, addr);   /*page->_mapcount++,如果是第一次引用需要关联av*/
 	else
 		page_add_file_rmap(new);
 
@@ -192,7 +192,7 @@ out:
  */
 static void remove_migration_ptes(struct page *old, struct page *new)
 {
-	rmap_walk(new, remove_migration_pte, old);
+	rmap_walk(new, remove_migration_pte, old);  /*遍历反向映射的所有引用旧页的进程*/
 }
 
 /*
@@ -228,7 +228,7 @@ static void __migration_entry_wait(struct mm_struct *mm, pte_t *ptep,
 	if (!get_page_unless_zero(page))
 		goto out;
 	pte_unmap_unlock(ptep, ptl);
-	wait_on_page_locked(page);
+	wait_on_page_locked(page);    /*等待页迁移完成释放PG_locked锁，会进行调度，完成之后页迁移就完成了。此时page指向的还是就业*/
 	put_page(page);
 	return;
 out:
@@ -356,12 +356,12 @@ static int migrate_page_move_mapping(struct address_space *mapping,
 	 * Now we know that no one else is looking at the page.
 	 */
 	get_page(newpage);	/* add cache reference */
-	if (PageSwapCache(page)) {
+	if (PageSwapCache(page)) {  /*如果是swapcache，需要设置私有成员*/
 		SetPageSwapCache(newpage);
 		set_page_private(newpage, page_private(page));
 	}
 
-	radix_tree_replace_slot(pslot, newpage);
+	radix_tree_replace_slot(pslot, newpage);   /*用新页替换旧页*/
 
 	/*
 	 * Drop cache reference from old page by unfreezing
@@ -519,12 +519,12 @@ int migrate_page(struct address_space *mapping,
 
 	BUG_ON(PageWriteback(page));	/* Writeback must be complete */
 
-	rc = migrate_page_move_mapping(mapping, newpage, page, NULL, mode);
+	rc = migrate_page_move_mapping(mapping, newpage, page, NULL, mode); /*用新页替换基数树中的旧页*/
 
 	if (rc != MIGRATEPAGE_SUCCESS)
 		return rc;
 
-	migrate_page_copy(newpage, page);
+	migrate_page_copy(newpage, page);   /*拷贝页数据和页属性*/
 	return MIGRATEPAGE_SUCCESS;
 }
 EXPORT_SYMBOL(migrate_page);
@@ -670,13 +670,13 @@ static int move_to_new_page(struct page *newpage, struct page *page,
 {
 	struct address_space *mapping;
 	int rc;
-
+	/*到这里旧页以及umap过，页表项设置成指向旧页的swp_entry_t*/
 	/*
 	 * Block others from accessing the page when we get around to
 	 * establishing additional references. We are the only one
 	 * holding a reference to the new page at this point.
 	 */
-	if (!trylock_page(newpage))
+	if (!trylock_page(newpage))  /*新页肯定能够获取到锁*/
 		BUG();
 
 	/* Prepare mapping for the new page.*/
@@ -685,16 +685,16 @@ static int move_to_new_page(struct page *newpage, struct page *page,
 	if (PageSwapBacked(page))
 		SetPageSwapBacked(newpage);
 
-	mapping = page_mapping(page);
+	mapping = page_mapping(page);    /*获取旧页的地址空间，匿名页为NULL*/
 	if (!mapping)
-		rc = migrate_page(mapping, newpage, page, mode);
+		rc = migrate_page(mapping, newpage, page, mode); /*匿名页，并且没有加入swapcache。拷贝页数据和属性到新页*/
 	else if (mapping->a_ops->migratepage)
 		/*
 		 * Most pages have a mapping and most filesystems provide a
 		 * migratepage callback. Anonymous pages are part of swap
 		 * space which also has its own migratepage callback. This
 		 * is the most common path for page migration.
-		 */
+		 */ /*文件页和匿名swap过的页走这里。对匿名页调用的是swap_aops->migrate_page()，实际上就是上面那个*/
 		rc = mapping->a_ops->migratepage(mapping,
 						newpage, page, mode);
 	else
@@ -704,7 +704,7 @@ static int move_to_new_page(struct page *newpage, struct page *page,
 		newpage->mapping = NULL;
 	} else {
 		if (remap_swapcache)
-			remove_migration_ptes(page, newpage);
+			remove_migration_ptes(page, newpage);  /*将旧页的页表项改为新页的*/
 		page->mapping = NULL;
 	}
 
@@ -721,8 +721,8 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 	struct mem_cgroup *mem;
 	struct anon_vma *anon_vma = NULL;
 
-	if (!trylock_page(page)) {
-		if (!force || mode == MIGRATE_ASYNC)
+	if (!trylock_page(page)) { /*同步的关键，加上PG_locked锁*/
+		if (!force || mode == MIGRATE_ASYNC)  /*异步模式如果没有拿到锁就返回*/
 			goto out;
 
 		/*
@@ -741,7 +741,7 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 		if (current->flags & PF_MEMALLOC)
 			goto out;
 
-		lock_page(page);
+		lock_page(page);  /*同步模式等待获取锁*/
 	}
 
 	/* charge against new page */
@@ -754,13 +754,13 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 		 * the retry loop is too short and in the sync-light case,
 		 * the overhead of stalling is too much
 		 */
-		if (mode != MIGRATE_SYNC) {
+		if (mode != MIGRATE_SYNC) { /*轻同步和异步模式都不会等待回写*/ 
 			rc = -EBUSY;
 			goto uncharge;
 		}
 		if (!force)
 			goto uncharge;
-		wait_on_page_writeback(page);
+		wait_on_page_writeback(page); /*同步模式等待页回写完成*/
 	}
 	/*
 	 * By try_to_unmap(), page->mapcount goes down to 0 here. In this case,
@@ -793,7 +793,7 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 			 * migrated but are not remapped when migration
 			 * completes
 			 */
-			remap_swapcache = 0;
+			remap_swapcache = 0;   /*说明已经没有进程映射这个匿名页了*/
 		} else {
 			goto uncharge;
 		}
@@ -823,7 +823,7 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 	 * invisible to the vm, so the page can not be migrated.  So try to
 	 * free the metadata, so the page can be freed.
 	 */
-	if (!page->mapping) {
+	if (!page->mapping) {/*有两种情况会为空:1匿名页加入swap-cache，并且umap了。2一些特殊的页，信息在private中*/
 		VM_BUG_ON(PageAnon(page));
 		if (page_has_private(page)) {
 			try_to_free_buffers(page);
@@ -833,7 +833,7 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 	}
 
 	/* Establish migration ptes or remove ptes */
-	try_to_unmap(page, TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS);
+	try_to_unmap(page, TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS);  /*修改所有引用旧页的页表项，修改为swap类型。TTU_MIGRATION会建立swap类型的页表项*/
 
 skip_unmap:
 	if (!page_mapped(page))
@@ -844,7 +844,7 @@ skip_unmap:
 
 	/* Drop an anon_vma reference if we took one */
 	if (anon_vma)
-		put_anon_vma(anon_vma);
+		put_anon_vma(anon_vma);  /*减少对av的计数*/
 
 uncharge:
 	mem_cgroup_end_migration(mem, page, newpage,
@@ -869,7 +869,7 @@ static int unmap_and_move(new_page_t get_new_page, unsigned long private,
 	if (!newpage)
 		return -ENOMEM;
 
-	if (page_count(page) == 1) {
+	if (page_count(page) == 1) {  /*移动以前再看下引用计数，为1说明可以释放，不用移动了*/
 		/* page was freed from under us. So we are done. */
 		goto out;
 	}
@@ -878,7 +878,7 @@ static int unmap_and_move(new_page_t get_new_page, unsigned long private,
 		if (unlikely(split_huge_page(page)))
 			goto out;
 
-	rc = __unmap_and_move(page, newpage, force, mode);
+	rc = __unmap_and_move(page, newpage, force, mode);  /*进行页交换*/
 
 	if (unlikely(rc == MIGRATEPAGE_BALLOON_SUCCESS)) {
 		/*
@@ -892,7 +892,7 @@ static int unmap_and_move(new_page_t get_new_page, unsigned long private,
 		return MIGRATEPAGE_SUCCESS;
 	}
 out:
-	if (rc != -EAGAIN) {
+	if (rc != -EAGAIN) {   /*如果也移动成功了，把旧页放到lru中，旧页是空闲页了*/
 		/*
 		 * A page that has been migrated has all references
 		 * removed and will be freed. A page that has not been
@@ -908,7 +908,7 @@ out:
 	 * Move the new page to the LRU. If migration was not successful
 	 * then this will free the page.
 	 */
-	putback_lru_page(newpage);
+	putback_lru_page(newpage);   /*把新页也放回lru中。此时移动成功新页是有数据的，失败的话就会释放*/
 	if (result) {
 		if (rc)
 			*result = rc;
@@ -1022,11 +1022,11 @@ int migrate_pages(struct list_head *from, new_page_t get_new_page,
 	for(pass = 0; pass < 10 && retry; pass++) {
 		retry = 0;
 
-		list_for_each_entry_safe(page, page2, from, lru) {
+		list_for_each_entry_safe(page, page2, from, lru) {  /*从移动链表中取出页来*/
 			cond_resched();
 
 			rc = unmap_and_move(get_new_page, private,
-						page, pass > 2, mode);
+						page, pass > 2, mode);     /*交换页*/
 
 			switch(rc) {
 			case -ENOMEM:

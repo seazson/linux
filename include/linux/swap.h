@@ -105,7 +105,7 @@ union swap_header {
  /* A swap entry has to fit into a "unsigned long", as
   * the entry is hidden in the "index" field of the
   * swapper address space.
-  */
+  */ /*当页缓存到磁盘后，用于替代页表项，在换入的时候可以找到swap磁盘上的页*/
 typedef struct {
 	unsigned long val;
 } swp_entry_t;

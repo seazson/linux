@@ -168,7 +168,7 @@ int add_to_swap(struct page *page, struct list_head *list)
 	VM_BUG_ON(!PageLocked(page));
 	VM_BUG_ON(!PageUptodate(page));
 
-	entry = get_swap_page();
+	entry = get_swap_page();   /*从swap分区中分配一个页对应的空间*/
 	if (!entry.val)
 		return 0;
 
@@ -190,10 +190,10 @@ int add_to_swap(struct page *page, struct list_head *list)
 	 * Add it to the swap cache and mark it dirty
 	 */
 	err = add_to_swap_cache(page, entry,
-			__GFP_HIGH|__GFP_NOMEMALLOC|__GFP_NOWARN);
-
+			__GFP_HIGH|__GFP_NOMEMALLOC|__GFP_NOWARN); /*修改page标志，加上swapcache，同时将entry存到page的私有变量上。将page加入在page_cache的地址空间中*/
+                                                       /*后面进程umap操作的时候，会将entry写入页表项中。(文件页的页表项是直接清除的)*/
 	if (!err) {	/* Success */
-		SetPageDirty(page);
+		SetPageDirty(page);           /*现在匿名页已经映射到swap地址空间里，将页标记为脏，以便后面回写*/
 		return 1;
 	} else {	/* -ENOMEM radix-tree allocation failure */
 		/*

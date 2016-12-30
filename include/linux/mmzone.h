@@ -358,8 +358,8 @@ struct zone {
 	bool			compact_blockskip_flush;
 
 	/* pfns where compaction scanners should start */
-	unsigned long		compact_cached_free_pfn;
-	unsigned long		compact_cached_migrate_pfn;
+	unsigned long		compact_cached_free_pfn;    /*用于内存压缩扫描时的空闲指针，起始从空闲尾部*/
+	unsigned long		compact_cached_migrate_pfn; /*用于内存压缩扫描时的可移动指针，起始从头开始*/
 #endif
 #ifdef CONFIG_MEMORY_HOTPLUG
 	/* see spanned/present_pages for more description */
@@ -381,9 +381,9 @@ struct zone {
 	 * are skipped before trying again. The number attempted since
 	 * last failure is tracked with compact_considered.
 	 */
-	unsigned int		compact_considered;
-	unsigned int		compact_defer_shift;
-	int			compact_order_failed;
+	unsigned int		compact_considered;      /*内存压缩推迟计数*/
+	unsigned int		compact_defer_shift;     /*内存压缩推迟阈值，当推迟的次数超过1<<compact_defer_shift,就不再推迟了*/
+	int			compact_order_failed;            /*内存压缩失败的时候的最大order值*/
 #endif
 
 	ZONE_PADDING(_pad1_)   /*填充字段，确保lock、lru_lock处于自身的高速缓存行中*/
@@ -392,7 +392,7 @@ struct zone {
 	spinlock_t		lru_lock;
 	struct lruvec		lruvec;           /*最近最少用链表，用于内存回收*/
 
-	unsigned long		pages_scanned;	   /* since last reclaim */ /*上一次换出一页以来，有多少页未能成功扫描*/
+	unsigned long		pages_scanned;	   /* since last reclaim */ /*上一次换出一页以来，有多少页未能成功扫描。页回收时扫描了多少页*/
 	unsigned long		flags;		   /* zone flags, see below */
 
 	/* Zone statistics */
@@ -402,7 +402,7 @@ struct zone {
 	 * The target ratio of ACTIVE_ANON to INACTIVE_ANON pages on
 	 * this zone's LRU.  Maintained by the pageout code.
 	 */
-	unsigned int inactive_ratio;
+	unsigned int inactive_ratio;          /*用于判断是否需要从活动匿名链表移到非活动链表 active>in_active*inactive_ratio */
 
 
 	ZONE_PADDING(_pad2_)

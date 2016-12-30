@@ -612,7 +612,7 @@ static void lru_deactivate_fn(struct page *page, struct lruvec *lruvec,
  * Drain pages out of the cpu's pagevecs.
  * Either "cpu" is the current CPU, and preemption has already been
  * disabled; or "cpu" is being hot-unplugged, and is already dead.
- */
+ */ /*push lru»º´æµ½lruÁ´±íÖĞ*/
 void lru_add_drain_cpu(int cpu)
 {
 	struct pagevec *pvec = &per_cpu(lru_add_pvec, cpu);

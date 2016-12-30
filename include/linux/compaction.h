@@ -2,11 +2,11 @@
 #define _LINUX_COMPACTION_H
 
 /* Return values for compact_zone() and try_to_compact_pages() */
-/* compaction didn't start as it was not possible or direct reclaim was more suitable */
+/* compaction didn't start as it was not possible or direct reclaim was more suitable 内存太少以至于不能开启压缩*/
 #define COMPACT_SKIPPED		0
-/* compaction should continue to another pageblock */
+/* compaction should continue to another pageblock 内存不够，需要继续压缩*/
 #define COMPACT_CONTINUE	1
-/* direct compaction partially compacted a zone and there are suitable pages */
+/* direct compaction partially compacted a zone and there are suitable pages 表示内存够用了*/
 #define COMPACT_PARTIAL		2
 /* The full zone was compacted */
 #define COMPACT_COMPLETE	3
