@@ -98,8 +98,8 @@ struct page {
 					 * never succeed on tail
 					 * pages.
 					 */
-					atomic_t _mapcount;  /*表示有多少项指向该页，也用于逆向映射搜索。用于表示有多少进程共享该页*/
-
+					atomic_t _mapcount;  /*表示有页表项指向该页，也用于逆向映射搜索。用于表示有多少进程共享该页*/
+                                         /*没有进程映射的时候是-1，有一个进程是0*/
 					struct { /* SLUB */
 						unsigned inuse:16;
 						unsigned objects:15;

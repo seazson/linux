@@ -84,7 +84,7 @@ static inline int current_is_kswapd(void)
  * areas somewhat tricky on machines that support multiple page sizes.
  * For 2.5 we'll probably want to move the magic to just beyond the
  * bootbits...
- */
+ */ /*存在交换区的第一个槽位，用以表示交换区的特征信息*/
 union swap_header {
 	struct {
 		char reserved[PAGE_SIZE - 10];
@@ -97,7 +97,7 @@ union swap_header {
 		__u32		nr_badpages;
 		unsigned char	sws_uuid[16];
 		unsigned char	sws_volume[16];
-		__u32		padding[117];
+		__u32		_extent[117];
 		__u32		badpages[1];
 	} info;
 };
@@ -105,7 +105,7 @@ union swap_header {
  /* A swap entry has to fit into a "unsigned long", as
   * the entry is hidden in the "index" field of the
   * swapper address space.
-  */ /*当页缓存到磁盘后，用于替代页表项，在换入的时候可以找到swap磁盘上的页*/
+  */ /*当页缓存到磁盘后，用于替代页表项，在换入的时候可以找到swap分区对应的槽位，以便将数据换入到页中。是linux通用的*/
 typedef struct {
 	unsigned long val;
 } swp_entry_t;
@@ -132,7 +132,7 @@ struct zone;
  * from setup, they're handled identically.
  *
  * We always assume that blocks are of size PAGE_SIZE.
- */
+ */ /*用于解决交换区是文件时，在磁盘不连续的访问问题*/
 struct swap_extent {
 	struct list_head list;
 	pgoff_t start_page;
@@ -183,26 +183,26 @@ enum {
 
 /*
  * The in-memory structure used to track swap areas.
- */
+ */  /*用于表示一个交换分区*/
 struct swap_info_struct {
 	unsigned long	flags;		/* SWP_USED etc: see above */
-	signed short	prio;		/* swap priority of this type */
+	signed short	prio;		/* swap priority of this type */   /*优先级越高说明交换分区越重要*/
 	signed char	type;		/* strange name for an index */
-	signed char	next;		/* next type on the swap list */
+	signed char	next;		/* next type on the swap list */       /*下一个交换分区对应的数组下标，用于实现按优先级访问swap_info_struct数组*/
 	unsigned int	max;		/* extent of the swap_map */
 	unsigned char *swap_map;	/* vmalloc'ed array of usage counts */
-	unsigned int lowest_bit;	/* index of first free in swap_map */
+	unsigned int lowest_bit;	/* index of first free in swap_map */ /*用以标记已使用槽位。在lowest_bit以下和highest_bit没有空闲槽位*/
 	unsigned int highest_bit;	/* index of last free in swap_map */
-	unsigned int pages;		/* total of usable pages of swap */
+	unsigned int pages;		/* total of usable pages of swap */    /*总共有多少个槽位，也就是能够保存多少个页*/
 	unsigned int inuse_pages;	/* number of those currently in use */
-	unsigned int cluster_next;	/* likely index for next allocation */
+	unsigned int cluster_next;	/* likely index for next allocation */ /*用以实现聚集的功能*/
 	unsigned int cluster_nr;	/* countdown to next cluster search */
 	unsigned int lowest_alloc;	/* while preparing discard cluster */
 	unsigned int highest_alloc;	/* while preparing discard cluster */
 	struct swap_extent *curr_swap_extent;
-	struct swap_extent first_swap_extent;
-	struct block_device *bdev;	/* swap device or bdev of swap file */
-	struct file *swap_file;		/* seldom referenced */
+	struct swap_extent first_swap_extent;    /*交换区是文件时，不一定在磁盘上连续存储。需要用链表来访问*/
+	struct block_device *bdev;	/* swap device or bdev of swap file */  /*指向所属的块设备*/
+	struct file *swap_file;		/* seldom referenced */       /*交换区对应的文件或者分区的file*/
 	unsigned int old_block_size;	/* seldom referenced */
 #ifdef CONFIG_FRONTSWAP
 	unsigned long *frontswap_map;	/* frontswap in-use, one bit per page */
@@ -223,7 +223,7 @@ struct swap_info_struct {
 };
 
 struct swap_list_t {
-	int head;	/* head of priority-ordered swapfile list */
+	int head;	/* head of priority-ordered swapfile list */  /*指向优先级最高的交换分区下标*/
 	int next;	/* swapfile to be used next */
 };
 

@@ -412,7 +412,7 @@ no_page:
 	si->flags -= SWP_SCANNING;
 	return 0;
 }
-
+/*从交换分区中获取一个可用的槽位*/
 swp_entry_t get_swap_page(void)
 {
 	struct swap_info_struct *si;
@@ -422,7 +422,7 @@ swp_entry_t get_swap_page(void)
 	int hp_index;
 
 	spin_lock(&swap_lock);
-	if (atomic_long_read(&nr_swap_pages) <= 0)
+	if (atomic_long_read(&nr_swap_pages) <= 0)   /*首先确保交换分区里面有槽位可以分配*/
 		goto noswap;
 	atomic_long_dec(&nr_swap_pages);
 
@@ -447,7 +447,7 @@ swp_entry_t get_swap_page(void)
 			swap_list.next = type;
 		}
 
-		si = swap_info[type];
+		si = swap_info[type];   /*获取到了高优先级的交换分区*/
 		next = si->next;
 		if (next < 0 ||
 		    (!wrapped && si->prio != swap_info[next]->prio)) {
@@ -469,7 +469,7 @@ swp_entry_t get_swap_page(void)
 
 		spin_unlock(&swap_lock);
 		/* This is called for allocating swap entry for cache */
-		offset = scan_swap_map(si, SWAP_HAS_CACHE);
+		offset = scan_swap_map(si, SWAP_HAS_CACHE);    /*从交换分区获取一个空槽位*/
 		spin_unlock(&si->lock);
 		if (offset)
 			return swp_entry(type, offset);
@@ -707,7 +707,7 @@ int try_to_free_swap(struct page *page)
 		return 0;
 	if (PageWriteback(page))
 		return 0;
-	if (page_swapcount(page))
+	if (page_swapcount(page))    /*所有引用page的进程都换入了该page*/
 		return 0;
 
 	/*
@@ -1496,7 +1496,7 @@ add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
  * search location in `curr_swap_extent', and start new searches from there.
  * This is extremely effective.  The average number of iterations in
  * map_swap_page() has been measured at about 0.3 per page.  - akpm.
- */
+ */ /*创建区间链表。对于开设备区间肯定是连续的，添加一次就行。而文件不一定是连续的，需要一段段链接起来*/
 static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
 {
 	struct file *swap_file = sis->swap_file;
@@ -1504,13 +1504,13 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
 	struct inode *inode = mapping->host;
 	int ret;
 
-	if (S_ISBLK(inode->i_mode)) {
+	if (S_ISBLK(inode->i_mode)) {   /*用块设备作交换区*/
 		ret = add_swap_extent(sis, 0, sis->max, 0);
 		*span = sis->pages;
 		return ret;
 	}
 
-	if (mapping->a_ops->swap_activate) {
+	if (mapping->a_ops->swap_activate) { /*用文件作交换区*/
 		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
 		if (!ret) {
 			sis->flags |= SWP_FILE;

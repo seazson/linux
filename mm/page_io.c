@@ -329,7 +329,7 @@ int swap_readpage(struct page *page)
 		goto out;
 	}
 
-	if (sis->flags & SWP_FILE) {
+	if (sis->flags & SWP_FILE) {    /*如果交换区是文件使用文件系统的读入操作*/
 		struct file *swap_file = sis->swap_file;
 		struct address_space *mapping = swap_file->f_mapping;
 
@@ -339,14 +339,14 @@ int swap_readpage(struct page *page)
 		return ret;
 	}
 
-	bio = get_swap_bio(GFP_KERNEL, page, end_swap_bio_read);
+	bio = get_swap_bio(GFP_KERNEL, page, end_swap_bio_read);   /*否则使用块设备操作读入，因为是异步读取，读取完设置update标志*/
 	if (bio == NULL) {
 		unlock_page(page);
 		ret = -ENOMEM;
 		goto out;
 	}
 	count_vm_event(PSWPIN);
-	submit_bio(READ, bio);
+	submit_bio(READ, bio);  /*发起异步读取操作*/
 out:
 	return ret;
 }

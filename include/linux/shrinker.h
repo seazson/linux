@@ -26,7 +26,7 @@ struct shrink_control {
  *
  * Note that 'shrink' will be passed nr_to_scan == 0 when the VM is
  * querying the cache size, so a fastpath for that case is appropriate.
- */
+ */ /*传说中的收缩器，目前只有slab有用到*/
 struct shrinker {
 	int (*shrink)(struct shrinker *, struct shrink_control *sc);
 	int seeks;	/* seeks to recreate an obj */

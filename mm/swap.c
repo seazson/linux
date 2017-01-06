@@ -37,7 +37,7 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/pagemap.h>
 
-/* How many pages do we try to swap or page in/out together? */
+/* How many pages do we try to swap or page in/out together? */ /*每次预读的页数4/8*/
 int page_cluster;
 
 static DEFINE_PER_CPU(struct pagevec, lru_add_pvec);   /*当一个页要加入lru的缓存*/

@@ -44,7 +44,7 @@ static inline unsigned swp_type(swp_entry_t entry)
 /*
  * Extract the `offset' field from a swp_entry_t.  The swp_entry_t is in
  * arch-independent format
- */
+ */ /*得到页表项对应的槽位在交换分区的偏移*/
 static inline pgoff_t swp_offset(swp_entry_t entry)
 {
 	return entry.val & SWP_OFFSET_MASK(entry);
@@ -61,7 +61,7 @@ static inline int is_swap_pte(pte_t pte)
 /*
  * Convert the arch-dependent pte representation of a swp_entry_t into an
  * arch-independent swp_entry_t.
- */
+ */ /*将pte类型的页表转换成标准swap类型的。这是pte实际上已经是swap类型的，只是跟体系结构相关*/
 static inline swp_entry_t pte_to_swp_entry(pte_t pte)
 {
 	swp_entry_t arch_entry;
@@ -69,8 +69,8 @@ static inline swp_entry_t pte_to_swp_entry(pte_t pte)
 	BUG_ON(pte_file(pte));
 	if (pte_swp_soft_dirty(pte))
 		pte = pte_swp_clear_soft_dirty(pte);
-	arch_entry = __pte_to_swp_entry(pte);
-	return swp_entry(__swp_type(arch_entry), __swp_offset(arch_entry));
+	arch_entry = __pte_to_swp_entry(pte);  /*得到的是体系结构相关的页表项内容，也就是实际存在页表里面的*/
+	return swp_entry(__swp_type(arch_entry), __swp_offset(arch_entry));  /*将体系结构相关的页表项转换成linux通用的页表项*/
 }
 
 /*

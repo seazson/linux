@@ -75,7 +75,7 @@ struct scan_control {
 	int may_unmap;
 
 	/* Can pages be swapped as part of reclaim? */
-	int may_swap;
+	int may_swap;   /*回收的时候允许页交换吗?只有两种情况不允许:1:软件挂起机制在执行回收(相当于win休眠).2NUMA系统中显示设置*/
 
 	int order;
 
@@ -491,7 +491,7 @@ static int __remove_mapping(struct address_space *mapping, struct page *page)
 
 	if (PageSwapCache(page)) {
 		swp_entry_t swap = { .val = page_private(page) };
-		__delete_from_swap_cache(page);
+		__delete_from_swap_cache(page);    /*解除page与swap_cache的关联*/
 		spin_unlock_irq(&mapping->tree_lock);
 		swapcache_free(swap, page);
 	} else {
@@ -499,7 +499,7 @@ static int __remove_mapping(struct address_space *mapping, struct page *page)
 
 		freepage = mapping->a_ops->freepage;
 
-		__delete_from_page_cache(page);
+		__delete_from_page_cache(page); 
 		spin_unlock_irq(&mapping->tree_lock);
 		mem_cgroup_uncharge_cache_page(page);
 
@@ -621,7 +621,7 @@ static enum page_references page_check_references(struct page *page,
 
 	referenced_ptes = page_referenced(page, 1, sc->target_mem_cgroup,
 					  &vm_flags);    /*有多少个进程最近访问了page*/
-	referenced_page = TestClearPageReferenced(page);
+	referenced_page = TestClearPageReferenced(page);  /*获取并清除page的referenced标志*/
 
 	/*
 	 * Mlock lost the isolation race with us.  Let try_to_unmap()
@@ -647,9 +647,9 @@ static enum page_references page_check_references(struct page *page,
 		 * so that recently deactivated but used pages are
 		 * quickly recovered.
 		 */
-		SetPageReferenced(page);
+		SetPageReferenced(page);    /*置位page的referenced标志，表示此页最近有被访问*/
 
-		if (referenced_page || referenced_ptes > 1)  /*最近有一个访问并且软件referenced置位了，或者多个进程访问过，放到活动链表上*/
+		if (referenced_page || referenced_ptes > 1)  /*最近有一个访问并且软件referenced置位了(说明上次也访问了这个页)，或者多个进程访问过，放到活动链表上*/
 			return PAGEREF_ACTIVATE;
 
 		/*
@@ -736,7 +736,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		page = lru_to_page(page_list);
 		list_del(&page->lru);
 
-		if (!trylock_page(page))
+		if (!trylock_page(page))                 /*如果page不能上锁，说明有人在用，跳过这个page*/
 			goto keep;
 
 		VM_BUG_ON(PageActive(page));
@@ -851,32 +851,32 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			}
 		}
 
-		if (!force_reclaim)                     /*在回收之前再检查下最近是否被访问过了，已决定要返回到那种lru上*/
+		if (!force_reclaim)                     /*在回收之前再检查下最近是否被访问过了，以决定要返回到那种lru上*/
 			references = page_check_references(page, sc);
 
 		switch (references) {
-		case PAGEREF_ACTIVATE:
+		case PAGEREF_ACTIVATE:       /*页移到活动链表上*/
 			goto activate_locked;
-		case PAGEREF_KEEP:
+		case PAGEREF_KEEP:           /*页保持不变还是放在非活动链表上*/
 			goto keep_locked;
 		case PAGEREF_RECLAIM:        /*这两个状态表示能够回收*/
 		case PAGEREF_RECLAIM_CLEAN:
 			; /* try to reclaim the page below */
 		}
-
+        /*往下是可以回收的流程*/
 		/*
 		 * Anonymous process memory has backing store?
 		 * Try to allocate it some swap space here.
-		 */
+		 */ /*回收的是匿名页，需要swap了*/
 		if (PageAnon(page) && !PageSwapCache(page)) { /*匿名页还未加入swap_cache中，现在加入*/
 			if (!(sc->gfp_mask & __GFP_IO))  /*如果本次禁止IO操作，就不swap了*/
 				goto keep_locked;
 			if (!add_to_swap(page, page_list))
-				goto activate_locked;
-			may_enter_fs = 1;
+				goto activate_locked;        /*交换区分配失败，还给活动链表*/
+			may_enter_fs = 1;                /*表示需要io回写操作*/
 
 			/* Adding to swap updated mapping */
-			mapping = page_mapping(page);
+			mapping = page_mapping(page);    /*返回swapcache对应的地址空间*/
 		}
 
 		/*
@@ -896,7 +896,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			}
 		}
 
-		if (PageDirty(page)) {  /*脏页需要进行回写操作，只有kswapd能进行回写操作*/
+		if (PageDirty(page)) {  /*脏页需要进行回写操作，只有kswapd能进行文件页回写操作*/
 			/*
 			 * Only kswapd can writeback filesystem pages to
 			 * avoid risk of stack overflow but only writeback
@@ -904,7 +904,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			 */
 			if (page_is_file_cache(page) &&
 					(!current_is_kswapd() ||
-					 !zone_is_reclaim_dirty(zone))) {
+					 !zone_is_reclaim_dirty(zone))) {  /*对于文件类型的页，如果不是kswapd，不能进行回写，保持在非活动链表中，但是置位了可回收标志*/
 				/*
 				 * Immediately reclaim when written back.
 				 * Similar in principal to deactivate_page()
@@ -925,7 +925,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 				goto keep_locked;
 
 			/* Page is dirty, try to write it out here */
-			switch (pageout(page, mapping, sc)) {   /*页回写*/
+			switch (pageout(page, mapping, sc)) {   /*页回写实际操作*/
 			case PAGE_KEEP:
 				goto keep_locked;
 			case PAGE_ACTIVATE:
@@ -1022,15 +1022,15 @@ cull_mlocked:
 
 activate_locked:  /*设置active标记*/
 		/* Not a candidate for swapping, so reclaim swap space. */
-		if (PageSwapCache(page) && vm_swap_full())
+		if (PageSwapCache(page) && vm_swap_full())  /*如果页已经在交换缓存中，并且交换区已满，就释放掉*/
 			try_to_free_swap(page);
 		VM_BUG_ON(PageActive(page));
-		SetPageActive(page);
+		SetPageActive(page);             /*将页划分到活动链表*/
 		pgactivate++;
 keep_locked: /*保持inactive*/
 		unlock_page(page);
 keep:
-		list_add(&page->lru, &ret_pages);
+		list_add(&page->lru, &ret_pages);  /*将页放到ret_pages，准备放回对应的链表*/
 		VM_BUG_ON(PageLRU(page) || PageUnevictable(page));
 	}
 
@@ -1190,7 +1190,7 @@ static unsigned long isolate_lru_pages(unsigned long nr_to_scan,
 		case 0:
 			nr_pages = hpage_nr_pages(page);
 			mem_cgroup_update_lru_size(lruvec, lru, -nr_pages);
-			list_move(&page->lru, dst);
+			list_move(&page->lru, dst);   /*将page移动到临时链表里*/
 			nr_taken += nr_pages;
 			break;
 
@@ -1515,7 +1515,7 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
  * The downside is that we have to touch page->_count against each page.
  * But we had to alter page->flags anyway.
  */
-/*移动lru的表头*/
+/*移动页到lru的表头*/
 static void move_active_pages_to_lru(struct lruvec *lruvec,
 				     struct list_head *list,
 				     struct list_head *pages_to_free,
@@ -1538,17 +1538,17 @@ static void move_active_pages_to_lru(struct lruvec *lruvec,
 		list_move(&page->lru, &lruvec->lists[lru]);
 		pgmoved += nr_pages;
 
-		if (put_page_testzero(page)) {
+		if (put_page_testzero(page)) {   /*如果此时page没有引用计数了*/
 			__ClearPageLRU(page);
 			__ClearPageActive(page);
-			del_page_from_lru_list(page, lruvec, lru);
+			del_page_from_lru_list(page, lruvec, lru); 
 
 			if (unlikely(PageCompound(page))) {
 				spin_unlock_irq(&zone->lru_lock);
 				(*get_compound_page_dtor(page))(page);
 				spin_lock_irq(&zone->lru_lock);
 			} else
-				list_add(&page->lru, pages_to_free);
+				list_add(&page->lru, pages_to_free);  /*从lru中再移出来，放到空闲链表，准备后面删除*/
 		}
 	}
 	__mod_zone_page_state(zone, NR_LRU_BASE + lru, pgmoved);
@@ -1580,7 +1580,7 @@ static void shrink_active_list(unsigned long nr_to_scan,
 		isolate_mode |= ISOLATE_UNMAPPED;      /*不隔离有进程映射的页*/
 	if (!sc->may_writepage)
 		isolate_mode |= ISOLATE_CLEAN;         /*不隔离脏页或者回写的页*/
-
+/*因为这里上锁了，所以要尽快完成，用临时链表*/
 	spin_lock_irq(&zone->lru_lock);
 
 	nr_taken = isolate_lru_pages(nr_to_scan, lruvec, &l_hold,
@@ -1596,9 +1596,9 @@ static void shrink_active_list(unsigned long nr_to_scan,
 	spin_unlock_irq(&zone->lru_lock);
 
 	while (!list_empty(&l_hold)) {
-		cond_resched();
+		cond_resched();                     /*之所以要创建临时缓存，是为了防止竞争影响系统性能，隔离完成之后就可以执行调度了*/
 		page = lru_to_page(&l_hold);
-		list_del(&page->lru);
+		list_del(&page->lru);               /*从l_hold中删除page*/
 
 		if (unlikely(!page_evictable(page))) {          /*将page移动到不可移动lru中*/
 			putback_lru_page(page);
@@ -1978,7 +1978,7 @@ static void shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
 		 * than it is to properly age the LRU lists.
 		 */
 		if (global_reclaim(sc) && !current_is_kswapd())         /*如果不是kswapd就退出了。走到这说明回收到了足够页面。对于快速内存回收就到此返回了*/
-			break;                                              /*慢速内存分配继续往下，可以调整nr值和当前lru链表，进行进一步优化扫描。*/
+			break;                                              /*慢速内存分配继续往下，可以调整nr值和当前lru链表，进行进一步优化扫描,增加或减少需要继续扫描的数量。*/
 
 		/*
 		 * For kswapd and memcg, reclaim at least the number of pages
@@ -2815,10 +2815,10 @@ static bool kswapd_shrink_zone(struct zone *zone,
 						balance_gap, classzone_idx))
 		return true;
 
-	shrink_zone(zone, sc);
+	shrink_zone(zone, sc);    /*收缩zone*/
 
 	reclaim_state->reclaimed_slab = 0;
-	nr_slab = shrink_slab(&shrink, sc->nr_scanned, lru_pages);
+	nr_slab = shrink_slab(&shrink, sc->nr_scanned, lru_pages);  /*收缩slab*/
 	sc->nr_reclaimed += reclaim_state->reclaimed_slab;
 
 	/* Account for the number of pages attempted to reclaim */
@@ -2883,7 +2883,7 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 	};
 	count_vm_event(PAGEOUTRUN);
 
-	do {
+	do {/*最外层的循环按照优先级有高到低递减*/
 		unsigned long lru_pages = 0;
 		unsigned long nr_attempted = 0;
 		bool raise_priority = true;
@@ -2895,14 +2895,14 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 		 * Scan in the highmem->dma direction for the highest
 		 * zone which needs scanning
 		 */
-		for (i = pgdat->nr_zones - 1; i >= 0; i--) {
+		for (i = pgdat->nr_zones - 1; i >= 0; i--) {  /*从最高的zone开始扫描*/
 			struct zone *zone = pgdat->node_zones + i;
 
-			if (!populated_zone(zone))
+			if (!populated_zone(zone))              /*zone里面必须有页*/
 				continue;
 
 			if (zone->all_unreclaimable &&
-			    sc.priority != DEF_PRIORITY)
+			    sc.priority != DEF_PRIORITY)        /*zone里面的页都不能回收*/
 				continue;
 
 			/*
@@ -2938,7 +2938,7 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 		if (i < 0)
 			goto out;
 
-		for (i = 0; i <= end_zone; i++) {
+		for (i = 0; i <= end_zone; i++) {  /*再从低到高扫描zone*/
 			struct zone *zone = pgdat->node_zones + i;
 
 			if (!populated_zone(zone))
@@ -2961,7 +2961,7 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 		/*
 		 * If we're getting trouble reclaiming, start doing writepage
 		 * even in laptop mode.
-		 */
+		 */ /*如果扫描出现问题，尝试开启回写功能*/
 		if (sc.priority < DEF_PRIORITY - 2)
 			sc.may_writepage = 1;
 
@@ -2974,7 +2974,7 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 		 * pages behind kswapd's direction of progress, which would
 		 * cause too much scanning of the lower zones.
 		 */
-		for (i = 0; i <= end_zone; i++) {
+		for (i = 0; i <= end_zone; i++) { /*从低到高开始回收zone*/
 			struct zone *zone = pgdat->node_zones + i;
 
 			if (!populated_zone(zone))
@@ -3210,7 +3210,7 @@ static int kswapd(void *p)
 			trace_mm_vmscan_kswapd_wake(pgdat->node_id, order);
 			balanced_classzone_idx = classzone_idx;
 			balanced_order = balance_pgdat(pgdat, order,
-						&balanced_classzone_idx);
+						&balanced_classzone_idx);    /*执行内存回收操作*/
 		}
 	}
 

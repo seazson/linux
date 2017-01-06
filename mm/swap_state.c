@@ -320,7 +320,7 @@ struct page *read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 		 * Get a new page to read into from swap.
 		 */
 		if (!new_page) {
-			new_page = alloc_page_vma(gfp_mask, vma, addr);
+			new_page = alloc_page_vma(gfp_mask, vma, addr);   /*分配一个新页*/
 			if (!new_page)
 				break;		/* Out of memory */
 		}
@@ -363,25 +363,25 @@ struct page *read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 
 		/* May fail (-ENOMEM) if radix-tree node allocation failed. */
 		__set_page_locked(new_page);
-		SetPageSwapBacked(new_page);
-		err = __add_to_swap_cache(new_page, entry);
+		SetPageSwapBacked(new_page);                  /*将页设为换入状态*/
+		err = __add_to_swap_cache(new_page, entry);   /*将页加入swap_cache*/
 		if (likely(!err)) {
 			radix_tree_preload_end();
 			/*
 			 * Initiate read into locked page and return.
 			 */
-			lru_cache_add_anon(new_page);
-			swap_readpage(new_page);
+			lru_cache_add_anon(new_page);            /*将页加入lru缓存*/
+			swap_readpage(new_page);                 /*将交换区的数据读入到页中,异步的*/
 			return new_page;
 		}
 		radix_tree_preload_end();
-		ClearPageSwapBacked(new_page);
+		ClearPageSwapBacked(new_page);               /*清除换入状态*/
 		__clear_page_locked(new_page);
 		/*
 		 * add_to_swap_cache() doesn't return -EEXIST, so we can safely
 		 * clear SWAP_HAS_CACHE flag.
 		 */
-		swapcache_free(entry, NULL);
+		swapcache_free(entry, NULL);      /*减少swap_map中的计数，当计数到零的时候，说明所有引用该页的进程到换入了此页，就可以在页缓存中释放该页?*/
 	} while (err != -ENOMEM);
 
 	if (new_page)
@@ -424,7 +424,7 @@ struct page *swapin_readahead(swp_entry_t entry, gfp_t gfp_mask,
 		start_offset++;
 
 	blk_start_plug(&plug);
-	for (offset = start_offset; offset <= end_offset ; offset++) {
+	for (offset = start_offset; offset <= end_offset ; offset++) {  /*一次预读4或8页*/
 		/* Ok, do the async read-ahead now */
 		page = read_swap_cache_async(swp_entry(swp_type(entry), offset),
 						gfp_mask, vma, addr);
@@ -434,6 +434,6 @@ struct page *swapin_readahead(swp_entry_t entry, gfp_t gfp_mask,
 	}
 	blk_finish_plug(&plug);
 
-	lru_add_drain();	/* Push any new pages onto the LRU now */
+	lru_add_drain();	/* Push any new pages onto the LRU now */  /*push lru缓存里的页*/
 	return read_swap_cache_async(entry, gfp_mask, vma, addr);
 }

@@ -3011,7 +3011,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	entry = pte_to_swp_entry(orig_pte);
 	if (unlikely(non_swap_entry(entry))) {   /*说明不是常规的swap entry*/
 		if (is_migration_entry(entry)) {
-			migration_entry_wait(mm, pmd, address);  /*说明正在访问的页正在页迁移*/
+			migration_entry_wait(mm, pmd, address);  /*说明正在访问的页正在页迁移，会引发一次调度*/
 		} else if (is_hwpoison_entry(entry)) {
 			ret = VM_FAULT_HWPOISON;
 		} else {
@@ -3021,10 +3021,10 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		goto out;
 	}
 	delayacct_set_flag(DELAYACCT_PF_SWAPIN);
-	page = lookup_swap_cache(entry);       /*对于页迁移来说，再一次查找就能找到新页了*/
-	if (!page) {
+	page = lookup_swap_cache(entry);       /*对于页迁移来说，再一次查找就能找到新页了*/  /*对于页交换来说，如果此时页还未释放后者被其他进程换入也是能找到的*/
+	if (!page) {  /*没有找到说明页已经释放了*/
 		page = swapin_readahead(entry,
-					GFP_HIGHUSER_MOVABLE, vma, address);
+					GFP_HIGHUSER_MOVABLE, vma, address);  /*分配并预读页，并将页加入到lru缓存和swap_cache中*/
 		if (!page) {
 			/*
 			 * Back out if somebody else faulted in this pte
@@ -3032,7 +3032,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 			 */
 			page_table = pte_offset_map_lock(mm, pmd, address, &ptl);
 			if (likely(pte_same(*page_table, orig_pte)))
-				ret = VM_FAULT_OOM;
+				ret = VM_FAULT_OOM;                       /*分配失败需要oom*/
 			delayacct_clear_flag(DELAYACCT_PF_SWAPIN);
 			goto unlock;
 		}
@@ -3041,7 +3041,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		ret = VM_FAULT_MAJOR;
 		count_vm_event(PGMAJFAULT);
 		mem_cgroup_count_vm_event(mm, PGMAJFAULT);
-	} else if (PageHWPoison(page)) {
+	} else if (PageHWPoison(page)) {                /*页是坏的返回*/
 		/*
 		 * hwpoisoned dirty swapcache pages are kept for killing
 		 * owner processes (which may be unknown at hwpoison time)
@@ -3089,7 +3089,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	if (unlikely(!pte_same(*page_table, orig_pte)))
 		goto out_nomap;
 
-	if (unlikely(!PageUptodate(page))) {
+	if (unlikely(!PageUptodate(page))) {   /*到这里页里面的数据必须已经读入了*/
 		ret = VM_FAULT_SIGBUS;
 		goto out_nomap;
 	}
@@ -3120,17 +3120,17 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	flush_icache_page(vma, page);
 	if (pte_swp_soft_dirty(orig_pte))
 		pte = pte_mksoft_dirty(pte);
-	set_pte_at(mm, address, page_table, pte);
+	set_pte_at(mm, address, page_table, pte);                  /*更新引用该页的进程的页表项*/
 	if (page == swapcache)
-		do_page_add_anon_rmap(page, vma, address, exclusive);
+		do_page_add_anon_rmap(page, vma, address, exclusive);  /*第一次读入的话需要将页与第一个读取它的av关联*/
 	else /* ksm created a completely new copy */
 		page_add_new_anon_rmap(page, vma, address);
 	/* It's better to call commit-charge after rmap is established */
 	mem_cgroup_commit_charge_swapin(page, ptr);
 
-	swap_free(entry);
+	swap_free(entry);                                          /*在交换分区中删除对应槽位*/
 	if (vm_swap_full() || (vma->vm_flags & VM_LOCKED) || PageMlocked(page))
-		try_to_free_swap(page);
+		try_to_free_swap(page);                                /*如果swap_cache中的页太多且所有引用该页的进程都换入了该页，从swap_cache中删除该页*/
 	unlock_page(page);
 	if (page != swapcache) {
 		/*
@@ -3145,7 +3145,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		page_cache_release(swapcache);
 	}
 
-	if (flags & FAULT_FLAG_WRITE) {
+	if (flags & FAULT_FLAG_WRITE) {    /*如果换入的页可写，需要写时复制?*/
 		ret |= do_wp_page(mm, vma, address, page_table, pmd, ptl, pte);
 		if (ret & VM_FAULT_ERROR)
 			ret &= VM_FAULT_ERROR;
@@ -3153,7 +3153,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	}
 
 	/* No need to invalidate - it was non-present before */
-	update_mmu_cache(vma, address, page_table);
+	update_mmu_cache(vma, address, page_table);    
 unlock:
 	pte_unmap_unlock(page_table, ptl);
 out:
