@@ -744,8 +744,8 @@ static struct page *compaction_alloc(struct page *migratepage,
 	struct page *freepage;
 
 	/* Isolate free pages if necessary */
-	if (list_empty(&cc->freepages)) {
-		isolate_freepages(cc->zone, cc);   /*从伙伴系统中取的空页*/
+	if (list_empty(&cc->freepages)) { 
+		isolate_freepages(cc->zone, cc);   /*只有freelist为空的时候，一次扫描一个pageblock，从伙伴系统中取的空页*/
 
 		if (list_empty(&cc->freepages))
 			return NULL;

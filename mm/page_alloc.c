@@ -2167,7 +2167,7 @@ __alloc_pages_direct_compact(gfp_t gfp_mask, unsigned int order,
 	if (!order)
 		return NULL;
 
-	if (compaction_deferred(preferred_zone, order)) {
+	if (compaction_deferred(preferred_zone, order)) {   /*压缩是否推迟，如果此次分配的order小于失败ooder是不需要推迟的*/
 		*deferred_compaction = true;
 		return NULL;
 	}
@@ -2191,10 +2191,10 @@ __alloc_pages_direct_compact(gfp_t gfp_mask, unsigned int order,
 				preferred_zone, migratetype);
 		if (page) {
 			preferred_zone->compact_blockskip_flush = false;
-			preferred_zone->compact_considered = 0;
+			preferred_zone->compact_considered = 0;                 /*只有当压缩成功了，才会重置推迟变量*/
 			preferred_zone->compact_defer_shift = 0;
 			if (order >= preferred_zone->compact_order_failed)
-				preferred_zone->compact_order_failed = order + 1;
+				preferred_zone->compact_order_failed = order + 1;   /*因为此次分配成功了，最大失败order加1*/
 			count_vm_event(COMPACTSUCCESS);
 			return page;
 		}
@@ -2486,7 +2486,7 @@ rebalance:
 	 * Try direct compaction. The first pass is asynchronous. Subsequent
 	 * attempts after direct reclaim are synchronous
 	 */
-	page = __alloc_pages_direct_compact(gfp_mask, order,             /*第四次尝试:压缩pages，再尝试分配*/
+	page = __alloc_pages_direct_compact(gfp_mask, order,             /*第四次尝试:异步压缩pages，再尝试分配*/
 					zonelist, high_zoneidx,
 					nodemask,
 					alloc_flags, preferred_zone,
@@ -2496,7 +2496,7 @@ rebalance:
 					&did_some_progress);
 	if (page)
 		goto got_pg;
-	sync_migration = true;
+	sync_migration = true;               /*后面一次压缩使用同步模式*/
 
 	/*
 	 * If compaction is deferred for high-order allocations, it is because
@@ -2564,7 +2564,7 @@ rebalance:
 						pages_reclaimed)) {
 		/* Wait for some write requests to complete then retry */
 		wait_iff_congested(preferred_zone, BLK_RW_ASYNC, HZ/50);
-		goto rebalance;                                              /*返回从第二次再重新开始尝试*/
+		goto rebalance;                                              /*有些分配不允许失败，尝试等待回写完成，返回从第二次再重新开始尝试*/
 	} else {
 		/*
 		 * High-order allocations do not necessarily loop after

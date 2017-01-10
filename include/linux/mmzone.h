@@ -37,7 +37,7 @@
 
 enum {
 	MIGRATE_UNMOVABLE,         /*不可移动页*/
-	MIGRATE_RECLAIMABLE,       /*不可移动，但可删除页*/
+	MIGRATE_RECLAIMABLE,       /*不可移动，但可回收的页*/
 	MIGRATE_MOVABLE,           /*可移动页*/
 	MIGRATE_PCPTYPES,	/* the number of types on the pcp lists */
 	MIGRATE_RESERVE = MIGRATE_PCPTYPES,   /*保留用于紧急分配的页*/

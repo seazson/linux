@@ -994,7 +994,7 @@ static void __page_set_anon_rmap(struct page *page,
 	 * page mapping!
 	 */
 	if (!exclusive)
-		anon_vma = anon_vma->root;
+		anon_vma = anon_vma->root;    /*需要关联到根进程的av，用于在创建一个新页保留原来的映射关系的时候*/
 
 	anon_vma = (void *) anon_vma + PAGE_MAPPING_ANON;
 	page->mapping = (struct address_space *) anon_vma;  /*匿名页的mapping会指向第一次访问它的vma的anon_vma*/
@@ -1268,7 +1268,7 @@ int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 			BUG_ON(TTU_ACTION(flags) != TTU_MIGRATION);
 			entry = make_migration_entry(page, pte_write(pteval));  /*构造一个用于页迁移的页表项*/
 		}
-		swp_pte = swp_entry_to_pte(entry);  /*这个entry可能是page的private，也可能是上面创建的migration*/
+		swp_pte = swp_entry_to_pte(entry);  /*这个entry可能是page的private，也可能是上面创建的migration，转换成硬件页表项*/
 		if (pte_soft_dirty(pteval))
 			swp_pte = pte_swp_mksoft_dirty(swp_pte);
 		set_pte_at(mm, address, pte, swp_pte);             /*修改页表项的值*/

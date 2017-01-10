@@ -3018,10 +3018,10 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 			print_bad_pte(vma, address, orig_pte, NULL);
 			ret = VM_FAULT_SIGBUS;
 		}
-		goto out;
+		goto out;   /*页交换到此说明页表项已经修改完成，可以正确访问虚拟地址，只是映射到的是新页*/
 	}
 	delayacct_set_flag(DELAYACCT_PF_SWAPIN);
-	page = lookup_swap_cache(entry);       /*对于页迁移来说，再一次查找就能找到新页了*/  /*对于页交换来说，如果此时页还未释放后者被其他进程换入也是能找到的*/
+	page = lookup_swap_cache(entry);       /*对于页交换来说，如果此时页还未释放后者被其他进程换入也是能找到的*/
 	if (!page) {  /*没有找到说明页已经释放了*/
 		page = swapin_readahead(entry,
 					GFP_HIGHUSER_MOVABLE, vma, address);  /*分配并预读页，并将页加入到lru缓存和swap_cache中*/
@@ -3053,7 +3053,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	}
 
 	swapcache = page;
-	locked = lock_page_or_retry(page, mm, flags);
+	locked = lock_page_or_retry(page, mm, flags);    /*页已经ok了，还需要额外处理，所以要锁住*/
 
 	delayacct_clear_flag(DELAYACCT_PF_SWAPIN);
 	if (!locked) {

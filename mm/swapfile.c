@@ -707,7 +707,7 @@ int try_to_free_swap(struct page *page)
 		return 0;
 	if (PageWriteback(page))
 		return 0;
-	if (page_swapcount(page))    /*所有引用page的进程都换入了该page*/
+	if (page_swapcount(page))    /*所有引用page的进程都换入了该page,COUNT_CONTINUED可以标识超过一个字节的引用*/
 		return 0;
 
 	/*

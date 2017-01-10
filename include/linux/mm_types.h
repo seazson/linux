@@ -51,7 +51,7 @@ struct page {
 					 */
 	/* Second double word */
 	struct {
-		union {
+		union {                                                   /*如果page加入了swap_cache则代表slot号*/
 			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量。例如打开一个文件，表示在文件中的偏移量。偏移量是对整个地址空间，而不是相对于所属vma*/
 			void *freelist;		/* slub/slob first free object */
 			bool pfmemalloc;	/* If set by the page allocator,
