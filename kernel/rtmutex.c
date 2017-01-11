@@ -159,7 +159,7 @@ int max_lock_depth = 1024;
  * @top_task: the current top waiter
  *
  * Returns 0 or -EDEADLK.
- */
+ */ /*top_task要获取一个orig_lock锁被task阻塞在，而task自身也被某个锁阻塞在*/
 static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 				      int deadlock_detect,
 				      struct rt_mutex *orig_lock,
@@ -181,7 +181,7 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 	 * carefully whether things change under us.
 	 */
  again:
-	if (++depth > max_lock_depth) {
+	if (++depth > max_lock_depth) {   /*锁查找的深度不能太深*/
 		static int prev_max;
 
 		/*
@@ -236,7 +236,7 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 	if (!detect_deadlock && waiter->list_entry.prio == task->prio)
 		goto out_unlock_pi;
 
-	lock = waiter->lock;
+	lock = waiter->lock;    /*锁的持有者被阻塞在这个锁上*/
 	if (!raw_spin_trylock(&lock->wait_lock)) {
 		raw_spin_unlock_irqrestore(&task->pi_lock, flags);
 		cpu_relax();
@@ -251,12 +251,12 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 		goto out_unlock_pi;
 	}
 
-	top_waiter = rt_mutex_top_waiter(lock);
+	top_waiter = rt_mutex_top_waiter(lock);  /*锁的持有者又被阻塞的锁-远锁，上最高优先级任务*/
 
 	/* Requeue the waiter */
-	plist_del(&waiter->list_entry, &lock->wait_list);
+	plist_del(&waiter->list_entry, &lock->wait_list);  /*将当前持有锁的进程从它想要获取的锁中移除，修改提升优先级后在插入*/
 	waiter->list_entry.prio = task->prio;
-	plist_add(&waiter->list_entry, &lock->wait_list);
+	plist_add(&waiter->list_entry, &lock->wait_list);  
 
 	/* Release the task */
 	raw_spin_unlock_irqrestore(&task->pi_lock, flags);
@@ -274,20 +274,20 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 	put_task_struct(task);
 
 	/* Grab the next task */
-	task = rt_mutex_owner(lock);
+	task = rt_mutex_owner(lock);   /*当前持有者想要获取的远锁的持有者*/
 	get_task_struct(task);
 	raw_spin_lock_irqsave(&task->pi_lock, flags);
 
-	if (waiter == rt_mutex_top_waiter(lock)) {
+	if (waiter == rt_mutex_top_waiter(lock)) {  /*近锁持有者提升优先级后是那个远锁的最高等待者*/
 		/* Boost the owner */
-		plist_del(&top_waiter->pi_list_entry, &task->pi_waiters);
+		plist_del(&top_waiter->pi_list_entry, &task->pi_waiters); /*将原来最高优先级的从远锁持有者的PI中删除*/
 		waiter->pi_list_entry.prio = waiter->list_entry.prio;
-		plist_add(&waiter->pi_list_entry, &task->pi_waiters);
-		__rt_mutex_adjust_prio(task);
+		plist_add(&waiter->pi_list_entry, &task->pi_waiters); /*将当前持有者插入到远锁持有者的PI中*/
+		__rt_mutex_adjust_prio(task);  /*提升远锁持有者的优先级*/
 
-	} else if (top_waiter == waiter) {
+	} else if (top_waiter == waiter) { /*原来最高的等待者是近锁持有者，而近锁持有者现在不是最高那个*/
 		/* Deboost the owner */
-		plist_del(&waiter->pi_list_entry, &task->pi_waiters);
+		plist_del(&waiter->pi_list_entry, &task->pi_waiters);  /*相当于删除最高优先级那个?*/
 		waiter = rt_mutex_top_waiter(lock);
 		waiter->pi_list_entry.prio = waiter->list_entry.prio;
 		plist_add(&waiter->pi_list_entry, &task->pi_waiters);
@@ -320,7 +320,7 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
  * @lock:   the lock to be acquired.
  * @task:   the task which wants to acquire the lock
  * @waiter: the waiter that is queued to the lock's wait list. (could be NULL)
- */
+ */ /*waiter表示是否已经添加到等待优先级队列里面了*/
 static int try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
 		struct rt_mutex_waiter *waiter)
 {
@@ -345,7 +345,7 @@ static int try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
 	 */
 	mark_rt_mutex_waiters(lock);
 
-	if (rt_mutex_owner(lock))
+	if (rt_mutex_owner(lock))   /*锁目前必须没有人用*/
 		return 0;
 
 	/*
@@ -355,7 +355,7 @@ static int try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
 	 * 3) it is top waiter
 	 */
 	if (rt_mutex_has_waiters(lock)) {
-		if (task->prio >= rt_mutex_top_waiter(lock)->list_entry.prio) {
+		if (task->prio >= rt_mutex_top_waiter(lock)->list_entry.prio) { /*当前需要获取锁的进程优先级比之前添加到等待队列里的都高*/
 			if (!waiter || waiter != rt_mutex_top_waiter(lock))
 				return 0;
 		}
@@ -369,7 +369,7 @@ static int try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
 
 		/* remove the queued waiter. */
 		if (waiter) {
-			plist_del(&waiter->list_entry, &lock->wait_list);
+			plist_del(&waiter->list_entry, &lock->wait_list);   /*task即将获取到锁，从等待链表移除*/
 			task->pi_blocked_on = NULL;
 		}
 
@@ -379,7 +379,7 @@ static int try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
 		 */
 		if (rt_mutex_has_waiters(lock)) {
 			top = rt_mutex_top_waiter(lock);
-			top->pi_list_entry.prio = top->list_entry.prio;
+			top->pi_list_entry.prio = top->list_entry.prio;     /*将下一个优先级的进程链接到task上*/
 			plist_add(&top->pi_list_entry, &task->pi_waiters);
 		}
 		raw_spin_unlock_irqrestore(&task->pi_lock, flags);
@@ -401,7 +401,7 @@ static int try_to_take_rt_mutex(struct rt_mutex *lock, struct task_struct *task,
  * Prepare waiter and propagate pi chain
  *
  * This must be called with lock->wait_lock held.
- */
+ */ /*当前task想要获取lock，waiter属于task*/
 static int task_blocks_on_rt_mutex(struct rt_mutex *lock,
 				   struct rt_mutex_waiter *waiter,
 				   struct task_struct *task,
@@ -413,7 +413,7 @@ static int task_blocks_on_rt_mutex(struct rt_mutex *lock,
 	int chain_walk = 0, res;
 
 	raw_spin_lock_irqsave(&task->pi_lock, flags);
-	__rt_mutex_adjust_prio(task);
+	__rt_mutex_adjust_prio(task);    /*临时设置当前要获取锁的进程的优先级为该进程PI链上最高的*/
 	waiter->task = task;
 	waiter->lock = lock;
 	plist_node_init(&waiter->list_entry, task->prio);
@@ -421,8 +421,8 @@ static int task_blocks_on_rt_mutex(struct rt_mutex *lock,
 
 	/* Get the top priority waiter on the lock */
 	if (rt_mutex_has_waiters(lock))
-		top_waiter = rt_mutex_top_waiter(lock);
-	plist_add(&waiter->list_entry, &lock->wait_list);
+		top_waiter = rt_mutex_top_waiter(lock);   /*阻塞在当前mutex上优先级最高的进程*/
+	plist_add(&waiter->list_entry, &lock->wait_list);  /*将当前进程加入到mutex的waiter中*/
 
 	task->pi_blocked_on = waiter;
 
@@ -431,13 +431,13 @@ static int task_blocks_on_rt_mutex(struct rt_mutex *lock,
 	if (!owner)
 		return 0;
 
-	if (waiter == rt_mutex_top_waiter(lock)) {
+	if (waiter == rt_mutex_top_waiter(lock)) {    /*当前要获取锁的进程就是mutex上优先级最高的那个进程*/
 		raw_spin_lock_irqsave(&owner->pi_lock, flags);
-		plist_del(&top_waiter->pi_list_entry, &owner->pi_waiters);
-		plist_add(&waiter->pi_list_entry, &owner->pi_waiters);
+		plist_del(&top_waiter->pi_list_entry, &owner->pi_waiters);  /*之前占有锁的进程的pi链上的最高优先级进程需要被当前这个更高优先级的进程替换*/
+		plist_add(&waiter->pi_list_entry, &owner->pi_waiters);  /*将当前进程加入到持有进程的PI链上*/
 
-		__rt_mutex_adjust_prio(owner);
-		if (owner->pi_blocked_on)
+		__rt_mutex_adjust_prio(owner);   /*提升持有进程的优先级*/
+		if (owner->pi_blocked_on)        /*如果持有进程也阻塞在某个锁上，说明需要进行链的遍历*/
 			chain_walk = 1;
 		raw_spin_unlock_irqrestore(&owner->pi_lock, flags);
 	}
@@ -457,7 +457,7 @@ static int task_blocks_on_rt_mutex(struct rt_mutex *lock,
 	raw_spin_unlock(&lock->wait_lock);
 
 	res = rt_mutex_adjust_prio_chain(owner, detect_deadlock, lock, waiter,
-					 task);
+					 task);   /*如果持有者也阻塞在某个信号上，对持有者进行一次遍历*/
 
 	raw_spin_lock(&lock->wait_lock);
 
@@ -478,7 +478,7 @@ static void wakeup_next_waiter(struct rt_mutex *lock)
 
 	raw_spin_lock_irqsave(&current->pi_lock, flags);
 
-	waiter = rt_mutex_top_waiter(lock);
+	waiter = rt_mutex_top_waiter(lock); 
 
 	/*
 	 * Remove it from current->pi_waiters. We do not adjust a
@@ -486,7 +486,7 @@ static void wakeup_next_waiter(struct rt_mutex *lock)
 	 * boosted mode and go back to normal after releasing
 	 * lock->wait_lock.
 	 */
-	plist_del(&waiter->pi_list_entry, &current->pi_waiters);
+	plist_del(&waiter->pi_list_entry, &current->pi_waiters); /*将本进程上的PI链中的等到这个锁的那个最高进程删除，因为马上就会释放锁给它*/
 
 	rt_mutex_set_owner(lock, NULL);
 
@@ -642,7 +642,7 @@ rt_mutex_slowlock(struct rt_mutex *lock, int state,
 	raw_spin_lock(&lock->wait_lock);
 
 	/* Try to acquire the lock again: */
-	if (try_to_take_rt_mutex(lock, current, NULL)) {
+	if (try_to_take_rt_mutex(lock, current, NULL)) {  /*尝试获取到锁会返回*/
 		raw_spin_unlock(&lock->wait_lock);
 		return 0;
 	}
@@ -656,10 +656,10 @@ rt_mutex_slowlock(struct rt_mutex *lock, int state,
 			timeout->task = NULL;
 	}
 
-	ret = task_blocks_on_rt_mutex(lock, &waiter, current, detect_deadlock);
+	ret = task_blocks_on_rt_mutex(lock, &waiter, current, detect_deadlock);  /*没有获取到锁需要遍历修改优先级*/
 
 	if (likely(!ret))
-		ret = __rt_mutex_slowlock(lock, state, timeout, &waiter);
+		ret = __rt_mutex_slowlock(lock, state, timeout, &waiter);   /*一直等待锁释放*/
 
 	set_current_state(TASK_RUNNING);
 

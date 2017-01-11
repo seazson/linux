@@ -1239,9 +1239,9 @@ struct task_struct {
 
 #ifdef CONFIG_RT_MUTEXES
 	/* PI waiters blocked on a rt_mutex held by this task */
-	struct plist_head pi_waiters;
+	struct plist_head pi_waiters;             /*由于当前进程持有资源而导致其他进程阻塞，由被阻塞进程组成的链表*/
 	/* Deadlock detection and priority inheritance handling */
-	struct rt_mutex_waiter *pi_blocked_on;
+	struct rt_mutex_waiter *pi_blocked_on;    /*表示进程正在等待那个锁*/
 #endif
 
 #ifdef CONFIG_DEBUG_MUTEXES

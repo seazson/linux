@@ -27,7 +27,7 @@ extern int max_lock_depth; /* for sysctl */
  */
 struct rt_mutex {
 	raw_spinlock_t		wait_lock;
-	struct plist_head	wait_list;
+	struct plist_head	wait_list;   /*所有需要获取这个锁的*/
 	struct task_struct	*owner;
 #ifdef CONFIG_DEBUG_RT_MUTEXES
 	int			save_state;

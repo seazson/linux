@@ -45,8 +45,8 @@ extern void schedule_rt_mutex_test(struct rt_mutex *lock);
  * @task:		task reference to the blocked task
  */
 struct rt_mutex_waiter {
-	struct plist_node	list_entry;
-	struct plist_node	pi_list_entry;
+	struct plist_node	list_entry;      /*链接到rt_mutex的*/
+	struct plist_node	pi_list_entry;   /*链接到阻塞本进程的那个进程的PI链表上*/
 	struct task_struct	*task;
 	struct rt_mutex		*lock;
 #ifdef CONFIG_DEBUG_RT_MUTEXES
