@@ -1385,7 +1385,7 @@ serial8250_rx_chars(struct uart_8250_port *up, unsigned char lsr)
 				 * may get masked by ignore_status_mask
 				 * or read_status_mask.
 				 */
-				if (uart_handle_break(port))
+				if (uart_handle_break(port))   /*开启魔术键检测*/
 					goto ignore_char;
 			} else if (lsr & UART_LSR_PE)
 				port->icount.parity++;
@@ -1407,16 +1407,16 @@ serial8250_rx_chars(struct uart_8250_port *up, unsigned char lsr)
 			else if (lsr & UART_LSR_FE)
 				flag = TTY_FRAME;
 		}
-		if (uart_handle_sysrq_char(port, ch))
+		if (uart_handle_sysrq_char(port, ch))   /*处理魔术键*/
 			goto ignore_char;
 
-		uart_insert_char(port, lsr, UART_LSR_OE, ch, flag);
+		uart_insert_char(port, lsr, UART_LSR_OE, ch, flag);   /*将数据存到tty_port的缓冲中*/
 
 ignore_char:
 		lsr = serial_in(up, UART_LSR);
 	} while ((lsr & (UART_LSR_DR | UART_LSR_BI)) && (max_count-- > 0));
 	spin_unlock(&port->lock);
-	tty_flip_buffer_push(&port->state->port);
+	tty_flip_buffer_push(&port->state->port); /*将数据从port缓存中移到线路规程的缓存中*/
 	spin_lock(&port->lock);
 	return lsr;
 }
@@ -1457,7 +1457,7 @@ void serial8250_tx_chars(struct uart_8250_port *up)
 		}
 	} while (--count > 0);
 
-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
+	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)  /*如果剩余的数据小于某个值，可以异步通知应用程序，告诉它快发完了*/
 		uart_write_wakeup(port);
 
 	DEBUG_INTR("THRE...");
@@ -2741,7 +2741,7 @@ void serial8250_set_isa_configurator(
 	serial8250_isa_config = v;
 }
 EXPORT_SYMBOL(serial8250_set_isa_configurator);
-
+/*初始化uart_port,将uart_port与硬件操作参数关联*/
 static void __init serial8250_isa_init_ports(void)
 {
 	struct uart_8250_port *up;
@@ -2823,12 +2823,12 @@ serial8250_register_ports(struct uart_driver *drv, struct device *dev)
 		if (up->port.dev)
 			continue;
 
-		up->port.dev = dev;
+		up->port.dev = dev;   /*关联platform dev和uart_port，这个dev代表父节点*/
 
 		if (up->port.flags & UPF_FIXED_TYPE)
 			serial8250_init_fixed_type_port(up, up->port.type);
 
-		uart_add_one_port(drv, &up->port);
+		uart_add_one_port(drv, &up->port);  /*注册一个串口tty(建立uart_port和uart_drvier的关系)*/
 	}
 }
 
@@ -3323,7 +3323,7 @@ static int __init serial8250_init(void)
 {
 	int ret;
 
-	serial8250_isa_init_ports();
+	serial8250_isa_init_ports();  /*初始化uart_port,将uart_port与硬件操作函数关联*/
 
 	printk(KERN_INFO "Serial: 8250/16550 driver, "
 		"%d ports, IRQ sharing %sabled\n", nr_uarts,
@@ -3333,7 +3333,7 @@ static int __init serial8250_init(void)
 	ret = sunserial_register_minors(&serial8250_reg, UART_NR);
 #else
 	serial8250_reg.nr = UART_NR;
-	ret = uart_register_driver(&serial8250_reg);
+	ret = uart_register_driver(&serial8250_reg); /*分配uart_state,tty_driver,注册tty字符设备，初始化tty_port*/
 #endif
 	if (ret)
 		goto out;
@@ -3343,19 +3343,19 @@ static int __init serial8250_init(void)
 		goto unreg_uart_drv;
 
 	serial8250_isa_devs = platform_device_alloc("serial8250",
-						    PLAT8250_DEV_LEGACY);
+						    PLAT8250_DEV_LEGACY);   
 	if (!serial8250_isa_devs) {
 		ret = -ENOMEM;
 		goto unreg_pnp;
 	}
 
-	ret = platform_device_add(serial8250_isa_devs);
+	ret = platform_device_add(serial8250_isa_devs);  /*注册一个8250的platform设备*/
 	if (ret)
 		goto put_dev;
 
-	serial8250_register_ports(&serial8250_reg, &serial8250_isa_devs->dev);
+	serial8250_register_ports(&serial8250_reg, &serial8250_isa_devs->dev); /*注册tty字符设备驱动*/
 
-	ret = platform_driver_register(&serial8250_isa_driver);
+	ret = platform_driver_register(&serial8250_isa_driver); /*注册8250的platform驱动，这里就会调用probe来设置uart_port的参数了*/
 	if (ret == 0)
 		goto out;
 

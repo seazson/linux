@@ -338,7 +338,7 @@ static void __init samsung_clocksource_init(void)
 	samsung_time_setup(timer_source.source_id, TCNT_MAX);
 	samsung_time_start(timer_source.source_id, PERIODIC);
 
-	setup_sched_clock(samsung_read_sched_clock, TSIZE, clock_rate);
+	setup_sched_clock(samsung_read_sched_clock, TSIZE, clock_rate); /*注册调度时钟*/
 
 	if (clocksource_mmio_init(samsung_timer_reg(), "samsung_clocksource_timer",
 			clock_rate, 250, TSIZE, clocksource_mmio_readl_down)) /*里面会注册时钟源*/

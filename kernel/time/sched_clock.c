@@ -66,15 +66,15 @@ static unsigned long long notrace sched_clock_32(void)
 	 * the middle of an update, and we should repeat the load.
 	 */
 	do {
-		epoch_cyc = cd.epoch_cyc;
+		epoch_cyc = cd.epoch_cyc;  /*上一次的定时器计数*/
 		smp_rmb();
-		epoch_ns = cd.epoch_ns;
+		epoch_ns = cd.epoch_ns;    /*上一次的时间计数(由定时计数转换成纳秒)*/
 		smp_rmb();
 	} while (epoch_cyc != cd.epoch_cyc_copy);
 
 	cyc = read_sched_clock();
 	cyc = (cyc - epoch_cyc) & sched_clock_mask;
-	return epoch_ns + cyc_to_ns(cyc, cd.mult, cd.shift);
+	return epoch_ns + cyc_to_ns(cyc, cd.mult, cd.shift); /*装换成绝对ns数*/
 }
 
 /*
@@ -138,9 +138,9 @@ void __init setup_sched_clock(u32 (*read)(void), int bits, unsigned long rate)
 		r_unit = ' ';
 
 	/* calculate how many ns until we wrap */
-	wrap = cyc_to_ns((1ULL << bits) - 1, cd.mult, cd.shift);
+	wrap = cyc_to_ns((1ULL << bits) - 1, cd.mult, cd.shift); /*计算溢出时间*/
 	do_div(wrap, NSEC_PER_MSEC);
-	w = wrap;
+	w = wrap;   
 
 	/* calculate the ns resolution of this counter */
 	res = cyc_to_ns(1ULL, cd.mult, cd.shift);
@@ -167,7 +167,7 @@ void __init setup_sched_clock(u32 (*read)(void), int bits, unsigned long rate)
 }
 
 unsigned long long __read_mostly (*sched_clock_func)(void) = sched_clock_32;
-
+/*获取调度时间，单调递增的ns*/
 unsigned long long notrace sched_clock(void)
 {
 	return sched_clock_func();

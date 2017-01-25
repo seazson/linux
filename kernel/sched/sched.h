@@ -250,7 +250,7 @@ struct cfs_rq {
 	struct load_weight load;
 	unsigned int nr_running, h_nr_running;
 
-	u64 exec_clock;
+	u64 exec_clock;    /*队列上所有进程总共运行的物理调度时间*/
 	u64 min_vruntime;
 #ifndef CONFIG_64BIT
 	u64 min_vruntime_copy;
@@ -407,7 +407,7 @@ struct rq {
 	 */
 	unsigned int nr_running;
 	#define CPU_LOAD_IDX_MAX 5
-	unsigned long cpu_load[CPU_LOAD_IDX_MAX];
+	unsigned long cpu_load[CPU_LOAD_IDX_MAX];  /*最近几次权重*/
 	unsigned long last_load_update_tick;
 #ifdef CONFIG_NO_HZ_COMMON
 	u64 nohz_stamp;
@@ -450,8 +450,8 @@ struct rq {
 	unsigned long next_balance;
 	struct mm_struct *prev_mm;
 
-	u64 clock;
-	u64 clock_task;
+	u64 clock;         /*rq的物理调度时间，从sched_clock获取，单调递增，单位是ns*/
+	u64 clock_task;    /*rq的物理调度时间*/
 
 	atomic_t nr_iowait;
 
@@ -490,7 +490,7 @@ struct rq {
 #endif
 
 	/* calc_load related fields */
-	unsigned long calc_load_update;
+	unsigned long calc_load_update;    /*下一次更新负载率的时间*/
 	long calc_load_active;
 
 #ifdef CONFIG_SCHED_HRTICK

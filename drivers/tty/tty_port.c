@@ -21,7 +21,7 @@
 void tty_port_init(struct tty_port *port)
 {
 	memset(port, 0, sizeof(*port));
-	tty_buffer_init(port);
+	tty_buffer_init(port);     /*初始化port的缓存和工作队列*/
 	init_waitqueue_head(&port->open_wait);
 	init_waitqueue_head(&port->close_wait);
 	init_waitqueue_head(&port->delta_msr_wait);

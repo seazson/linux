@@ -17,7 +17,7 @@ static inline int tty_insert_flip_char(struct tty_port *port,
 					unsigned char ch, char flag)
 {
 	struct tty_buffer *tb = port->buf.tail;
-	if (tb && tb->used < tb->size) {
+	if (tb && tb->used < tb->size) {   /*可用链表中的buffer上有可用的空间，直接插入*/
 		tb->flag_buf_ptr[tb->used] = flag;
 		tb->char_buf_ptr[tb->used++] = ch;
 		return 1;

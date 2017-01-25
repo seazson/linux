@@ -307,11 +307,11 @@ struct tty_driver {
 
 	/*
 	 * Pointer to the tty data structures
-	 */
+	 */ /*同一个tty驱动下会有多个tty设备*/
 	struct tty_struct **ttys;
 	struct tty_port **ports;
 	struct ktermios **termios;
-	void *driver_state;
+	void *driver_state;    /*uart_driver*/
 
 	/*
 	 * Driver methods

@@ -192,8 +192,8 @@ void sched_init_granularity(void)
 #define SRR(x, y) (((x) + (1UL << ((y) - 1))) >> (y))
 
 /*
- * delta *= weight / lw
- */
+ * delta *= weight / lw  运行的虚拟时间=物理时间 * nice0进程的权重 / 进程权重
+ */ 
 static unsigned long
 calc_delta_mine(unsigned long delta_exec, unsigned long weight,
 		struct load_weight *lw)
@@ -647,17 +647,17 @@ static u64 __sched_period(unsigned long nr_running)
  * proportional to the weight.
  *
  * s = p*P[w/rw]
- */
+ */ /*计算进程应该运行的物理时间片，从6ms中分出来*/
 static u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
-	u64 slice = __sched_period(cfs_rq->nr_running + !se->on_rq);
-
+	u64 slice = __sched_period(cfs_rq->nr_running + !se->on_rq); /*少于8个进程的话时间片是6ms总共*/
+                                                                 /*多于8个进程的话时间片每多一个多0.75ms*/
 	for_each_sched_entity(se) {
 		struct load_weight *load;
 		struct load_weight lw;
 
 		cfs_rq = cfs_rq_of(se);
-		load = &cfs_rq->load;
+		load = &cfs_rq->load;      /*总权重*/
 
 		if (unlikely(!se->on_rq)) {
 			lw = cfs_rq->load;
@@ -665,7 +665,7 @@ static u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 			update_load_add(&lw, se->load.weight);
 			load = &lw;
 		}
-		slice = calc_delta_mine(slice, se->load.weight, load);
+		slice = calc_delta_mine(slice, se->load.weight, load); /*根据权重计算进程应该占有6ms中的多少*/
 	}
 	return slice;
 }
@@ -715,10 +715,10 @@ __update_curr(struct cfs_rq *cfs_rq, struct sched_entity *curr,
 
 	curr->sum_exec_runtime += delta_exec;
 	schedstat_add(cfs_rq, exec_clock, delta_exec);
-	delta_exec_weighted = calc_delta_fair(delta_exec, curr);
+	delta_exec_weighted = calc_delta_fair(delta_exec, curr);  /*计算虚拟运行时间*/
 
 	curr->vruntime += delta_exec_weighted;
-	update_min_vruntime(cfs_rq);
+	update_min_vruntime(cfs_rq);   /*更新rq上最小运行时间*/
 }
 
 static void update_curr(struct cfs_rq *cfs_rq)
@@ -735,11 +735,11 @@ static void update_curr(struct cfs_rq *cfs_rq)
 	 * since the last time we changed load (this cannot
 	 * overflow on 32 bits):
 	 */
-	delta_exec = (unsigned long)(now - curr->exec_start);
+	delta_exec = (unsigned long)(now - curr->exec_start); /*进程从这一次运行到现在所用的物理调度时间*/
 	if (!delta_exec)
 		return;
 
-	__update_curr(cfs_rq, curr, delta_exec);
+	__update_curr(cfs_rq, curr, delta_exec);  /*更新进程的虚拟时间，物理调度总时间*/
 	curr->exec_start = now;
 
 	if (entity_is_task(curr)) {
@@ -747,7 +747,7 @@ static void update_curr(struct cfs_rq *cfs_rq)
 
 		trace_sched_stat_runtime(curtask, delta_exec, curr->vruntime);
 		cpuacct_charge(curtask, delta_exec);
-		account_group_exec_runtime(curtask, delta_exec);
+		account_group_exec_runtime(curtask, delta_exec);  /*增加进程组总运行物理调度时间*/
 	}
 
 	account_cfs_rq_runtime(cfs_rq, delta_exec);
@@ -1892,8 +1892,8 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	struct sched_entity *se;
 	s64 delta;
 
-	ideal_runtime = sched_slice(cfs_rq, curr);
-	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime;
+	ideal_runtime = sched_slice(cfs_rq, curr);   /*本次进程需要运行的物理调度时间*/
+	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime; /**/
 	if (delta_exec > ideal_runtime) {
 		resched_task(rq_of(cfs_rq)->curr);
 		/*
@@ -2052,7 +2052,7 @@ entity_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr, int queued)
 #endif
 
 	if (cfs_rq->nr_running > 1)
-		check_preempt_tick(cfs_rq, curr);
+		check_preempt_tick(cfs_rq, curr);   /*检查当前进程是否运行的时间太长需要抢占*/
 }
 
 
@@ -5789,13 +5789,13 @@ static void task_tick_fair(struct rq *rq, struct task_struct *curr, int queued)
 
 	for_each_sched_entity(se) {
 		cfs_rq = cfs_rq_of(se);
-		entity_tick(cfs_rq, se, queued);
+		entity_tick(cfs_rq, se, queued);  /*更新进程运行时间*/
 	}
 
 	if (numabalancing_enabled)
 		task_tick_numa(rq, curr);
 
-	update_rq_runnable_avg(rq, 1);
+	update_rq_runnable_avg(rq, 1);  /*smp会走这里*/
 }
 
 /*

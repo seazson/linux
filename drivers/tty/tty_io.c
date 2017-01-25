@@ -2026,13 +2026,13 @@ retry_open:
 
 	if (tty) {
 		tty_lock(tty);
-		retval = tty_reopen(tty);
+		retval = tty_reopen(tty);     /*如果之前打开过，增加引用计数*/
 		if (retval < 0) {
 			tty_unlock(tty);
 			tty = ERR_PTR(retval);
 		}
 	} else	/* Returns with the tty_lock held for now */
-		tty = tty_init_dev(driver, index);                         /*如果之前没有创建过，这分配一个tty_struct实体并初始化它*/
+		tty = tty_init_dev(driver, index);                         /*如果之前没有创建过，就分配一个tty_struct实体并初始化它,关联并调用线路规程层的open*/
 
 	mutex_unlock(&tty_mutex);
 	if (driver)
@@ -3159,15 +3159,15 @@ struct device *tty_register_device_attr(struct tty_driver *driver,
 		cdev = true;
 	}
 
-	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+	dev = kzalloc(sizeof(*dev), GFP_KERNEL);   /*注意这里分配的dev并没有与tty_struct关联*/
 	if (!dev) {
 		retval = -ENOMEM;
 		goto error;
 	}
 
 	dev->devt = devt;
-	dev->class = tty_class;
-	dev->parent = device;
+	dev->class = tty_class;                    /*class下会有tty节点*/
+	dev->parent = device;                      /*platform下面也会有*/
 	dev->release = tty_device_create_release;
 	dev_set_name(dev, "%s", name);
 	dev->groups = attr_grp;
@@ -3349,13 +3349,13 @@ int tty_register_driver(struct tty_driver *driver)
 		goto err;
 
 	if (driver->flags & TTY_DRIVER_DYNAMIC_ALLOC) {
-		error = tty_cdev_add(driver, dev, 0, driver->num);
+		error = tty_cdev_add(driver, dev, 0, driver->num);  /*注册tty字符设备驱动*/
 		if (error)
 			goto err_unreg_char;
 	}
 
 	mutex_lock(&tty_mutex);
-	list_add(&driver->tty_drivers, &tty_drivers);
+	list_add(&driver->tty_drivers, &tty_drivers);  /*所有tty_driver都在一个链上*/
 	mutex_unlock(&tty_mutex);
 
 	if (!(driver->flags & TTY_DRIVER_DYNAMIC_DEV)) {

@@ -3122,7 +3122,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		pte = pte_mksoft_dirty(pte);
 	set_pte_at(mm, address, page_table, pte);                  /*更新引用该页的进程的页表项*/
 	if (page == swapcache)
-		do_page_add_anon_rmap(page, vma, address, exclusive);  /*第一次读入的话需要将页与第一个读取它的av关联*/
+		do_page_add_anon_rmap(page, vma, address, exclusive);  /*第一次读入的话需要将页与第一个读取它的根av关联*/
 	else /* ksm created a completely new copy */
 		page_add_new_anon_rmap(page, vma, address);
 	/* It's better to call commit-charge after rmap is established */

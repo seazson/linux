@@ -85,13 +85,13 @@ struct n_tty_data {
 	DECLARE_BITMAP(process_char_map, 256);
 	DECLARE_BITMAP(read_flags, N_TTY_BUF_SIZE);
 
-	char *read_buf;
-	int read_head;
+	char *read_buf;    /*读取的缓存4096*/
+	int read_head;    /*已经从tty_port拷贝的数据尾部，存放到这里，下一次从port拷贝时接着往后考*/
 	int read_tail;
-	int read_cnt;
-	int minimum_to_wake;
+	int read_cnt;     /*从tty_port中拷贝累计计数*/
+	int minimum_to_wake;  /*最少读取多少可以唤醒阻塞的read*/
 
-	unsigned char *echo_buf;
+	unsigned char *echo_buf;  /*用于echo的缓存，在读取的时候如果开启的回显，会将写的数据拷贝到这里*/
 	unsigned int echo_pos;
 	unsigned int echo_cnt;
 
@@ -192,7 +192,7 @@ static void put_tty_queue_nolock(unsigned char c, struct n_tty_data *ldata)
  *	read_lock to serialize character addition and also to protect us
  *	against parallel reads or flushes
  */
-
+/*将数据拷贝到线路规程buf中*/
 static void put_tty_queue(unsigned char c, struct n_tty_data *ldata)
 {
 	unsigned long flags;
@@ -1153,7 +1153,7 @@ static inline void n_tty_receive_char(struct tty_struct *tty, unsigned char c)
 	int parmrk;
 
 	if (ldata->raw) {
-		put_tty_queue(c, ldata);
+		put_tty_queue(c, ldata);  /*将数据存放到线路规程缓存中*/
 		return;
 	}
 
@@ -1314,7 +1314,7 @@ send_signal:
 			goto handle_newline;
 		}
 		if ((c == EOL_CHAR(tty)) ||
-		    (c == EOL2_CHAR(tty) && L_IEXTEN(tty))) {
+		    (c == EOL2_CHAR(tty) && L_IEXTEN(tty))) {  /*收到一个回车的时候也会唤醒read*/
 			parmrk = (c == (unsigned char) '\377' && I_PARMRK(tty))
 				 ? 1 : 0;
 			if (ldata->read_cnt >= (N_TTY_BUF_SIZE - parmrk)) {
@@ -1418,17 +1418,17 @@ static void n_tty_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 	char	buf[64];
 	unsigned long cpuflags;
 
-	if (ldata->real_raw) {
+	if (ldata->real_raw) {/*原始读写，一次可以读一个字节*/
 		raw_spin_lock_irqsave(&ldata->read_lock, cpuflags);
 		i = min(N_TTY_BUF_SIZE - ldata->read_cnt,
 			N_TTY_BUF_SIZE - ldata->read_head);
 		i = min(count, i);
-		memcpy(ldata->read_buf + ldata->read_head, cp, i);
+		memcpy(ldata->read_buf + ldata->read_head, cp, i);  /*拷贝数据*/
 		ldata->read_head = (ldata->read_head + i) & (N_TTY_BUF_SIZE-1);
 		ldata->read_cnt += i;
 		cp += i;
 		count -= i;
-
+/*再一次拷贝，一次考不完吗?*/
 		i = min(N_TTY_BUF_SIZE - ldata->read_cnt,
 			N_TTY_BUF_SIZE - ldata->read_head);
 		i = min(count, i);
@@ -1442,17 +1442,17 @@ static void n_tty_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 				flags = *f++;
 			switch (flags) {
 			case TTY_NORMAL:
-				n_tty_receive_char(tty, *p);
+				n_tty_receive_char(tty, *p); /*标准处理*/
 				break;
 			case TTY_BREAK:
-				n_tty_receive_break(tty);
+				n_tty_receive_break(tty);    /*发送SIGINT信号，在字符前加上特殊的数字返回并唤醒read*/
 				break;
 			case TTY_PARITY:
 			case TTY_FRAME:
-				n_tty_receive_parity_error(tty, *p);
+				n_tty_receive_parity_error(tty, *p);   /*在字符前加上特殊的数字返回并唤醒read*/
 				break;
 			case TTY_OVERRUN:
-				n_tty_receive_overrun(tty);
+				n_tty_receive_overrun(tty);   /*更新溢出计数*/
 				break;
 			default:
 				printk(KERN_ERR "%s: unknown flag %d\n",
@@ -1460,17 +1460,17 @@ static void n_tty_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 				break;
 			}
 		}
-		if (tty->ops->flush_chars)
+		if (tty->ops->flush_chars)         /*调用start_tx*/
 			tty->ops->flush_chars(tty);
 	}
 
-	set_room(tty);
+	set_room(tty);  /*更新线路规程剩余空间计数*/
 
 	if ((!ldata->icanon && (ldata->read_cnt >= ldata->minimum_to_wake)) ||
-		L_EXTPROC(tty)) {
-		kill_fasync(&tty->fasync, SIGIO, POLL_IN);
+		L_EXTPROC(tty)) { /*不是标准模式，并且大于1*/
+		kill_fasync(&tty->fasync, SIGIO, POLL_IN);   /*发送异步信号*/
 		if (waitqueue_active(&tty->read_wait))
-			wake_up_interruptible(&tty->read_wait);
+			wake_up_interruptible(&tty->read_wait);  /*唤醒read调用*/
 	}
 
 	/*
@@ -1482,7 +1482,7 @@ static void n_tty_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 		tty_set_flow_change(tty, TTY_THROTTLE_SAFE);
 		if (tty->receive_room >= TTY_THRESHOLD_THROTTLE)
 			break;
-		if (!tty_throttle_safe(tty))
+		if (!tty_throttle_safe(tty))   /*剩余空间太小，进行流控*/
 			break;
 	}
 	__tty_set_flow_change(tty, 0);
@@ -1639,7 +1639,7 @@ static int n_tty_open(struct tty_struct *tty)
 	raw_spin_lock_init(&ldata->read_lock);
 
 	/* These are ugly. Currently a malloc failure here can panic */
-	ldata->read_buf = kzalloc(N_TTY_BUF_SIZE, GFP_KERNEL);
+	ldata->read_buf = kzalloc(N_TTY_BUF_SIZE, GFP_KERNEL);   /*分配接收空间*/
 	ldata->echo_buf = kzalloc(N_TTY_BUF_SIZE, GFP_KERNEL);
 	if (!ldata->read_buf || !ldata->echo_buf)
 		goto err_free_bufs;
@@ -1647,7 +1647,7 @@ static int n_tty_open(struct tty_struct *tty)
 	tty->disc_data = ldata;
 	reset_buffer_flags(tty->disc_data);
 	ldata->column = 0;
-	ldata->minimum_to_wake = 1;
+	ldata->minimum_to_wake = 1;             /*最少一个字节就能唤醒*/
 	tty->closing = 0;
 	/* indicate buffer work may resume */
 	clear_bit(TTY_LDISC_HALTED, &tty->flags);
@@ -1810,7 +1810,7 @@ do_it_again:
 
 	minimum = time = 0;
 	timeout = MAX_SCHEDULE_TIMEOUT;
-	if (!ldata->icanon) {
+	if (!ldata->icanon) {   /*icanon代表标准模式，非标准模式需要设置最小唤醒数*/
 		minimum = MIN_CHAR(tty);
 		if (minimum) {
 			time = (HZ / 10) * TIME_CHAR(tty);
@@ -1865,7 +1865,7 @@ do_it_again:
 		    ((minimum - (b - buf)) >= 1))
 			ldata->minimum_to_wake = (minimum - (b - buf));
 
-		if (!input_available_p(tty, 0)) {
+		if (!input_available_p(tty, 0)) {   /*判断当前线路规程的缓冲中有没有数据*/
 			if (test_bit(TTY_OTHER_CLOSED, &tty->flags)) {
 				retval = -EIO;
 				break;
@@ -1921,7 +1921,7 @@ do_it_again:
 				raw_spin_unlock_irqrestore(&ldata->read_lock, flags);
 
 				if (!eol || (c != __DISABLED_CHAR)) {
-					if (tty_put_user(tty, c, b++)) {
+					if (tty_put_user(tty, c, b++)) {     /*一次只传输一个到用户空间*/
 						retval = -EFAULT;
 						b--;
 						raw_spin_lock_irqsave(&ldata->read_lock, flags);
@@ -1939,7 +1939,7 @@ do_it_again:
 			raw_spin_unlock_irqrestore(&ldata->read_lock, flags);
 			if (retval)
 				break;
-		} else {
+		} else {  /*直接将数据从ldata->read_buf拷贝到用户空间*/
 			int uncopied;
 			/* The copy function takes the read lock and handles
 			   locking internally for this case */
@@ -2032,7 +2032,7 @@ static ssize_t n_tty_write(struct tty_struct *tty, struct file *file,
 	}
 
 	/* Write out any echoed characters that are still pending */
-	process_echoes(tty);
+	process_echoes(tty);   /*优先处理回显的操作*/
 
 	add_wait_queue(&tty->write_wait, &wait);
 	while (1) {

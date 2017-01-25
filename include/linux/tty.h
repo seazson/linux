@@ -30,12 +30,12 @@
 
 struct tty_buffer {
 	struct tty_buffer *next;
-	char *char_buf_ptr;
+	char *char_buf_ptr;    /*指向存放的数据*/
 	unsigned char *flag_buf_ptr;
-	int used;
-	int size;
-	int commit;
-	int read;
+	int used;             /*buffer已经使用的大小，用来标记数据来的时候插入的位置*/
+	int size;             /*buffer空间的总大小*/
+	int commit;           /*当前buffer提交的时候的数据位置，之后新来数据会存到下一个buffer中*/
+	int read;             /*标示拷贝给线路规程的时候，当前读到哪里了*/
 	/* Data points here */
 	unsigned long data[0];
 };
@@ -54,11 +54,11 @@ struct tty_buffer {
 struct tty_bufhead {
 	struct work_struct work;
 	spinlock_t lock;
-	struct tty_buffer *head;	/* Queue head */
-	struct tty_buffer *tail;	/* Active buffer */
-	struct tty_buffer *free;	/* Free queue head */
+	struct tty_buffer *head;	/* Queue head */    /*指向已经存入数据的buffer*/
+	struct tty_buffer *tail;	/* Active buffer */ /*指向可以使用的buffer，与上面在一个链表上*/
+	struct tty_buffer *free;	/* Free queue head */ /*需要释放的buffer链表*/
 	int memory_used;		/* Buffer space used excluding
-								free queue */
+								free queue */       /*所有buffer占用的空间，包括已使用的和可使用的，不包括空闲的*/
 };
 /*
  * When a break, frame error, or parity error happens, these codes are
@@ -188,7 +188,7 @@ struct tty_port_operations {
 };
 	
 struct tty_port {
-	struct tty_bufhead	buf;		/* Locked internally */
+	struct tty_bufhead	buf;		/* Locked internally */ /*用于存放读取的数据*/
 	struct tty_struct	*tty;		/* Back pointer */
 	struct tty_struct	*itty;		/* internal back ptr */
 	const struct tty_port_operations *ops;	/* Port operations */
@@ -256,18 +256,18 @@ struct tty_struct {
 	struct winsize winsize;		/* termios mutex */
 	unsigned char stopped:1, hw_stopped:1, flow_stopped:1, packet:1;
 	unsigned char ctrl_status;	/* ctrl_lock */
-	unsigned int receive_room;	/* Bytes free for queue */
+	unsigned int receive_room;	/* Bytes free for queue */  /*当前线路规程缓冲区有多少空闲*/
 	int flow_change;
 
 	struct tty_struct *link;
 	struct fasync_struct *fasync;
 	int alt_speed;		/* For magic substitution of 38400 bps */
-	wait_queue_head_t write_wait;
-	wait_queue_head_t read_wait;
+	wait_queue_head_t write_wait;    /*写操作的等待*/
+	wait_queue_head_t read_wait;     /*读操作的等待*/
 	struct work_struct hangup_work;
-	void *disc_data;
-	void *driver_data;
-	struct list_head tty_files;
+	void *disc_data;            /*线路规程缓存，用于读取的时候存放缓存数据*/
+	void *driver_data;          /*uart_state*/
+	struct list_head tty_files; /*链接到file私有结构tty_file_private的list上，用于跟踪当前file打开了多少终端*/
 
 #define N_TTY_BUF_SIZE 4096
 

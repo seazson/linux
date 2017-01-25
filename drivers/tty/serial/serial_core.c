@@ -141,7 +141,7 @@ static int uart_port_startup(struct tty_struct *tty, struct uart_state *state,
 	 * Initialise and allocate the transmit and temporary
 	 * buffer.
 	 */
-	if (!state->xmit.buf) { /*未发送分配空间*/
+	if (!state->xmit.buf) { /*给发送环形缓冲区分配空间*/
 		/* This is protected by the per port mutex */
 		page = get_zeroed_page(GFP_KERNEL);
 		if (!page)
@@ -2152,7 +2152,7 @@ uart_configure_port(struct uart_driver *drv, struct uart_state *state,
 		 * successfully registered yet, try to re-register it.
 		 * It may be that the port was not available.
 		 */
-		if (port->cons && !(port->cons->flags & CON_ENABLED)) /*如果有console，并且还为使能则重新注册*/
+		if (port->cons && !(port->cons->flags & CON_ENABLED)) /*如果有console，并且还未使能则重新注册*/
 			register_console(port->cons);
 
 		/*
@@ -2287,7 +2287,7 @@ static const struct tty_port_operations uart_port_ops = {
  *
  *	drv->port should be NULL, and the per-port structures should be
  *	registered using uart_add_one_port after this call has succeeded.
- */
+ */ /*分配一个tty_drvier(里面有n个tty_struct，tty_port，cdevs的指针)，n个uart_state*/
 int uart_register_driver(struct uart_driver *drv)
 {
 	struct tty_driver *normal;
@@ -2325,7 +2325,7 @@ int uart_register_driver(struct uart_driver *drv)
 	/*
 	 * Initialise the UART state(s).
 	 */
-	for (i = 0; i < drv->nr; i++) {
+	for (i = 0; i < drv->nr; i++) {       /*初始化tty_port*/
 		struct uart_state *state = drv->state + i;
 		struct tty_port *port = &state->port;
 
@@ -2335,7 +2335,7 @@ int uart_register_driver(struct uart_driver *drv)
 		port->closing_wait    = 30 * HZ;/* 30 seconds */
 	}
 
-	retval = tty_register_driver(normal);
+	retval = tty_register_driver(normal); /*分配字符设备号,注册字符设备，由于前面设置了TTY_DRIVER_DYNAMIC_DEV，不会在这里注册device*/
 	if (retval >= 0)
 		return retval;
 
@@ -2586,7 +2586,7 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 		goto out;
 	}
 
-	state->uart_port = uport;
+	state->uart_port = uport;      /*uart_port与uart_state关联*/
 	state->pm_state = UART_PM_STATE_UNDEFINED;
 
 	uport->cons = drv->cons;       /*s3c24xx_serial_console*/
@@ -2601,14 +2601,14 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 		lockdep_set_class(&uport->lock, &port_lock_key);
 	}
 
-	uart_configure_port(drv, state, uport);
+	uart_configure_port(drv, state, uport);   /*需要的话会注册console*/
 
 	/*
 	 * Register the port whether it's detected or not.  This allows
 	 * setserial to be used to alter this ports parameters.
 	 */
 	tty_dev = tty_port_register_device_attr(port, drv->tty_driver,
-			uport->line, uport->dev, port, tty_dev_attr_groups);          /*注册tty字符设备*/
+			uport->line, uport->dev, port, tty_dev_attr_groups);          /*注册uart设备模型。只需要知道tty_drvier和设备的序号即可，会调用串口设备的驱动probe*/
 	if (likely(!IS_ERR(tty_dev))) {
 		device_set_wakeup_capable(tty_dev, 1);
 	} else {
@@ -2789,7 +2789,7 @@ void uart_insert_char(struct uart_port *port, unsigned int status,
 	struct tty_port *tport = &port->state->port;
 
 	if ((status & port->ignore_status_mask & ~overrun) == 0)
-		if (tty_insert_flip_char(tport, ch, flag) == 0)
+		if (tty_insert_flip_char(tport, ch, flag) == 0)   /*可以看到实际是插入到tty_port中*/
 			++port->icount.buf_overrun;
 
 	/*

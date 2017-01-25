@@ -113,7 +113,7 @@ DEFINE_MUTEX(sched_domains_mutex);
 DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
 
 static void update_rq_clock_task(struct rq *rq, s64 delta);
-
+/*更新rq上的时钟*/
 void update_rq_clock(struct rq *rq)
 {
 	s64 delta;
@@ -6523,7 +6523,7 @@ void __init sched_init(void)
 		atomic_set(&rq->nr_iowait, 0);
 	}
 
-	set_load_weight(&init_task);
+	set_load_weight(&init_task);    /*设置init进程的权重*/
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&init_task.preempt_notifiers);

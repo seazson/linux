@@ -56,12 +56,12 @@ void tty_buffer_free_all(struct tty_port *port)
  *
  *	Locking: Caller must hold tty->buf.lock
  */
-
+/*重新分配一个tty buffer*/
 static struct tty_buffer *tty_buffer_alloc(struct tty_port *port, size_t size)
 {
 	struct tty_buffer *p;
 
-	if (port->buf.memory_used + size > 65536)
+	if (port->buf.memory_used + size > 65536)  /*分给这个串口的总空间不能大于65536*/
 		return NULL;
 	p = kmalloc(sizeof(struct tty_buffer) + 2 * size, GFP_ATOMIC);
 	if (p == NULL)
@@ -96,9 +96,9 @@ static void tty_buffer_free(struct tty_port *port, struct tty_buffer *b)
 	buf->memory_used -= b->size;
 	WARN_ON(buf->memory_used < 0);
 
-	if (b->size >= 512)
+	if (b->size >= 512)   /*要释放的空间大于512就直接释放*/
 		kfree(b);
-	else {
+	else {                /*否则的话放到空闲链表*/
 		b->next = buf->free;
 		buf->free = b;
 	}
@@ -174,11 +174,11 @@ void tty_buffer_flush(struct tty_struct *tty)
  *
  *	Locking: Caller must hold tty->buf.lock
  */
-
+/*从frre链表上查找一个buffer，或者重新分配buffer*/
 static struct tty_buffer *tty_buffer_find(struct tty_port *port, size_t size)
 {
 	struct tty_buffer **tbh = &port->buf.free;
-	while ((*tbh) != NULL) {
+	while ((*tbh) != NULL) {         /*首先利用free链表上的buffer*/
 		struct tty_buffer *t = *tbh;
 		if (t->size >= size) {
 			*tbh = t->next;
@@ -193,7 +193,7 @@ static struct tty_buffer *tty_buffer_find(struct tty_port *port, size_t size)
 	}
 	/* Round the buffer size out */
 	size = (size + 0xFF) & ~0xFF;
-	return tty_buffer_alloc(port, size);
+	return tty_buffer_alloc(port, size);  /*如果free链上也没有了，只有重新分配了，最少一次分配256字节*/
 	/* Should possibly check if this fails for the largest buffer we
 	   have queued and recycle that ? */
 }
@@ -223,11 +223,11 @@ int tty_buffer_request_room(struct tty_port *port, size_t size)
 	else
 		left = 0;
 
-	if (left < size) {
+	if (left < size) { /*当前buffer的可用大小不足*/
 		/* This is the slow path - looking for new buffers to use */
-		if ((n = tty_buffer_find(port, size)) != NULL) {
+		if ((n = tty_buffer_find(port, size)) != NULL) {/*从frre链表上查找一个buffer，或者重新分配buffer*/
 			if (b != NULL) {
-				b->next = n;
+				b->next = n;            /*新分配的放到b后面。同时将b提交*/
 				b->commit = b->used;
 			} else
 				buf->head = n;
@@ -296,8 +296,8 @@ int tty_insert_flip_string_flags(struct tty_port *port,
 {
 	int copied = 0;
 	do {
-		int goal = min_t(size_t, size - copied, TTY_BUFFER_PAGE);
-		int space = tty_buffer_request_room(port, goal);
+		int goal = min_t(size_t, size - copied, TTY_BUFFER_PAGE); /*一次最大也只能分配TTY_BUFFER_PAGE这么大，最小256*/
+		int space = tty_buffer_request_room(port, goal);   /*在tty_port可用链中寻找合适的大小，没有的话分配*/
 		struct tty_buffer *tb = port->buf.tail;
 		/* If there is no space then tb may be NULL */
 		if (unlikely(space == 0)) {
@@ -434,7 +434,7 @@ static void flush_to_ldisc(struct work_struct *work)
 
 	spin_lock_irqsave(&buf->lock, flags);
 
-	if (!test_and_set_bit(TTYP_FLUSHING, &port->iflags)) {
+	if (!test_and_set_bit(TTYP_FLUSHING, &port->iflags)) { /*设置TTYP_FLUSHING状态*/
 		struct tty_buffer *head;
 		while ((head = buf->head) != NULL) {
 			int count;
@@ -442,7 +442,7 @@ static void flush_to_ldisc(struct work_struct *work)
 			unsigned char *flag_buf;
 
 			count = head->commit - head->read;
-			if (!count) {
+			if (!count) {                      /*当前的buf是空的，释放，并找下一个buf*/
 				if (head->next == NULL)
 					break;
 				buf->head = head->next;
@@ -458,7 +458,7 @@ static void flush_to_ldisc(struct work_struct *work)
 			head->read += count;
 			spin_unlock_irqrestore(&buf->lock, flags);
 			disc->ops->receive_buf(tty, char_buf,
-							flag_buf, count);
+							flag_buf, count);     /*n_tty_receive_buf这里开始拷贝数据，一次拷贝一个buf，buf的具体长度不一定*/
 			spin_lock_irqsave(&buf->lock, flags);
 			/* Ldisc or user is trying to flush the buffers.
 			   We may have a deferred request to flush the
@@ -486,7 +486,7 @@ static void flush_to_ldisc(struct work_struct *work)
  *	Push the terminal flip buffers to the line discipline.
  *
  *	Must not be called from IRQ context.
- */
+ */ /*将数据push到线路规程层的缓冲中*/
 void tty_flush_to_ldisc(struct tty_struct *tty)
 {
 	if (!tty->port->low_latency)
@@ -514,7 +514,7 @@ void tty_flip_buffer_push(struct tty_port *port)
 
 	spin_lock_irqsave(&buf->lock, flags);
 	if (buf->tail != NULL)
-		buf->tail->commit = buf->tail->used;
+		buf->tail->commit = buf->tail->used;   /*提交这个buffer*/
 	spin_unlock_irqrestore(&buf->lock, flags);
 
 	if (port->low_latency)

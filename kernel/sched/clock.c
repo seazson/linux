@@ -351,7 +351,7 @@ void sched_clock_init(void)
 {
 	sched_clock_running = 1;
 }
-
+/*获取调度时间，单调递增的ns*/
 u64 sched_clock_cpu(int cpu)
 {
 	if (unlikely(!sched_clock_running))

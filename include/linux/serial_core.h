@@ -113,7 +113,7 @@ struct uart_icount {
 };
 
 typedef unsigned int __bitwise__ upf_t;
-
+/*代表一个物理串口*/
 struct uart_port {
 	spinlock_t		lock;			/* port lock */
 	unsigned long		iobase;			/* in/out[bwl] */
@@ -227,7 +227,7 @@ enum uart_pm_state {
 
 /*
  * This is the state information which is persistent across opens.
- */
+ */ /*关联uart_port和tty_port,同时还有一个环形发送缓冲区*/
 struct uart_state {
 	struct tty_port		port;
 
