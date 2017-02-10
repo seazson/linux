@@ -43,7 +43,7 @@ struct mq_attr;
 struct mqstat;
 struct audit_watch;
 struct audit_tree;
-
+/*内核内部使用的规则，用户态的规则通过audit_rule_data传下来后经过解析后的*/
 struct audit_krule {
 	int			vers_ops;
 	u32			flags;

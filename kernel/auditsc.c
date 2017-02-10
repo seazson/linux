@@ -942,7 +942,7 @@ int audit_alloc(struct task_struct *tsk)
 	if (likely(!audit_ever_enabled))
 		return 0; /* Return if not auditing. */
 
-	state = audit_filter_task(tsk, &key);
+	state = audit_filter_task(tsk, &key);     /*检查是否要对当前的进程开启审计*/
 	if (state == AUDIT_DISABLED)
 		return 0;
 
@@ -954,7 +954,7 @@ int audit_alloc(struct task_struct *tsk)
 	context->filterkey = key;
 
 	tsk->audit_context  = context;
-	set_tsk_thread_flag(tsk, TIF_SYSCALL_AUDIT);
+	set_tsk_thread_flag(tsk, TIF_SYSCALL_AUDIT);  /*设置这个标志中断代码在进入和退出时才会调用审计相关函数*/
 	return 0;
 }
 
@@ -1442,8 +1442,8 @@ void __audit_free(struct task_struct *tsk)
 
 /**
  * audit_syscall_entry - fill in an audit record at syscall entry
- * @arch: architecture type
- * @major: major syscall type (function)
+ * @arch: architecture type  处理器平台
+ * @major: major syscall type (function) 系统调用号
  * @a1: additional syscall register 1
  * @a2: additional syscall register 2
  * @a3: additional syscall register 3
@@ -1484,7 +1484,7 @@ void __audit_syscall_entry(int arch, int major,
 	context->dummy = !audit_n_rules;
 	if (!context->dummy && state == AUDIT_BUILD_CONTEXT) {
 		context->prio = 0;
-		state = audit_filter_syscall(tsk, context, &audit_filter_list[AUDIT_FILTER_ENTRY]);
+		state = audit_filter_syscall(tsk, context, &audit_filter_list[AUDIT_FILTER_ENTRY]); /*通过审计过滤器来判断是否需要审计*/
 	}
 	if (state == AUDIT_DISABLED)
 		return;
@@ -1522,7 +1522,7 @@ void __audit_syscall_exit(int success, long return_code)
 		return;
 
 	if (context->in_syscall && context->current_state == AUDIT_RECORD_CONTEXT)
-		audit_log_exit(context, tsk);
+		audit_log_exit(context, tsk);  /*创建一个审计记录*/
 
 	context->in_syscall = 0;
 	context->prio = context->state == AUDIT_RECORD_CONTEXT ? ~0ULL : 0;

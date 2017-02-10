@@ -1061,12 +1061,12 @@ int audit_receive_filter(int type, int pid, int seq, void *data, size_t datasz)
 		}
 		break;
 	case AUDIT_ADD_RULE:
-		entry = audit_data_to_entry(data, datasz);
+		entry = audit_data_to_entry(data, datasz);   /*将用户态规则转换成内核态*/
 		if (IS_ERR(entry))
 			return PTR_ERR(entry);
 
-		err = audit_add_rule(entry);
-		audit_log_rule_change("add rule", &entry->rule, !err);
+		err = audit_add_rule(entry);                 /*添加一个规则*/
+		audit_log_rule_change("add rule", &entry->rule, !err); /*发送一个审计记录消息给用户空间*/
 		if (err)
 			audit_free_rule(entry);
 		break;

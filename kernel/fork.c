@@ -1317,7 +1317,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	retval = perf_event_init_task(p);
 	if (retval)
 		goto bad_fork_cleanup_policy;
-	retval = audit_alloc(p);
+	retval = audit_alloc(p);       /*分配审计上下文*/
 	if (retval)
 		goto bad_fork_cleanup_policy;
 	/* copy all the process information */

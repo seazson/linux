@@ -929,7 +929,7 @@ static int tracehook_report_syscall(struct pt_regs *regs,
 	return current_thread_info()->syscall;
 }
 
-asmlinkage int syscall_trace_enter(struct pt_regs *regs, int scno)
+asmlinkage int syscall_trace_enter(struct pt_regs *regs, int scno)  /*¸ú×ÙÉó¼Æ*/
 {
 	current_thread_info()->syscall = scno;
 

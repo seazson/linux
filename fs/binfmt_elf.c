@@ -623,7 +623,7 @@ static void dump_elfphdr(struct elf_phdr *elf_ex)
 
 static int load_elf_binary(struct linux_binprm *bprm)
 {
-	struct file *interpreter = NULL; /* to shut gcc up */
+	struct file *interpreter = NULL; /* to shut gcc up */ /*表示打开的动态链接器*/
  	unsigned long load_addr = 0, load_bias = 0;
 	int load_addr_set = 0;
 	char * elf_interpreter = NULL;
@@ -640,8 +640,8 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	unsigned long def_flags = 0;
 	struct pt_regs *regs = current_pt_regs();
 	struct {
-		struct elfhdr elf_ex;
-		struct elfhdr interp_elf_ex;
+		struct elfhdr elf_ex;               /*保存要执行的文件的elf头*/
+		struct elfhdr interp_elf_ex;        /*保存动态链接器的头*/
 	} *loc;
 
 	loc = kmalloc(sizeof(*loc), GFP_KERNEL);
@@ -697,7 +697,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	/*需要动态链接的处理*/
 	for (i = 0; i < loc->elf_ex.e_phnum; i++) {
 		dump_elfphdr(elf_ppnt);
-		if (elf_ppnt->p_type == PT_INTERP) {
+		if (elf_ppnt->p_type == PT_INTERP) {   /*有这个段，表示使用了动态链接器*/
 			/* This is the program interpreter used for
 			 * shared libraries - for now assume that this
 			 * is an a.out format binary
@@ -715,7 +715,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 
 			retval = kernel_read(bprm->file, elf_ppnt->p_offset,
 					     elf_interpreter,
-					     elf_ppnt->p_filesz);
+					     elf_ppnt->p_filesz);    /*读取动态链接器的路径*/
 			if (retval != elf_ppnt->p_filesz) {
 				if (retval >= 0)
 					retval = -EIO;
@@ -726,7 +726,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			if (elf_interpreter[elf_ppnt->p_filesz - 1] != '\0')
 				goto out_free_interp;
 
-			interpreter = open_exec(elf_interpreter);
+			interpreter = open_exec(elf_interpreter); /*打开动态链接器ld.so*/
 			retval = PTR_ERR(interpreter);
 			if (IS_ERR(interpreter))
 				goto out_free_interp;
@@ -739,7 +739,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			would_dump(bprm, interpreter);
 
 			retval = kernel_read(interpreter, 0, bprm->buf,
-					     BINPRM_BUF_SIZE);
+					     BINPRM_BUF_SIZE);            /*读取动态链接器的头信息*/
 			if (retval != BINPRM_BUF_SIZE) {
 				if (retval >= 0)
 					retval = -EIO;
@@ -764,7 +764,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 		}
 
 	/* Some simple consistency checks for the interpreter */
-	if (elf_interpreter) {
+	if (elf_interpreter) {          /*如果是用了动态链接器，检查动态链接器是否可用*/
 		retval = -ELIBBAD;
 		/* Not an ELF interpreter */
 		if (memcmp(loc->interp_elf_ex.e_ident, ELFMAG, SELFMAG) != 0)
@@ -954,13 +954,13 @@ static int load_elf_binary(struct linux_binprm *bprm)
 		goto out_free_dentry;
 	}
 
-	if (elf_interpreter) {
+	if (elf_interpreter) { /*有动态链接器需要加载动态链接器*/
 		unsigned long interp_map_addr = 0;
 
 		elf_entry = load_elf_interp(&loc->interp_elf_ex,
 					    interpreter,
 					    &interp_map_addr,
-					    load_bias);
+					    load_bias);   /*执行完成之后动态链接器就映射到内存中了*/
 		if (!IS_ERR((void *)elf_entry)) {
 			/*
 			 * load_elf_interp() returns relocation
@@ -1048,7 +1048,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	ELF_PLAT_INIT(regs, reloc_func_desc);
 #endif
 
-	start_thread(regs, elf_entry, bprm->p);
+	start_thread(regs, elf_entry, bprm->p);   /*这里可能是运行的进程，也可能是动态链接器*/
 	retval = 0;
 out:
 	kfree(loc);
@@ -1078,7 +1078,7 @@ static int load_elf_library(struct file *file)
 	struct elfhdr elf_ex;
 
 	error = -ENOEXEC;
-	retval = kernel_read(file, 0, (char *)&elf_ex, sizeof(elf_ex));
+	retval = kernel_read(file, 0, (char *)&elf_ex, sizeof(elf_ex));   /*读取elf头*/
 	if (retval != sizeof(elf_ex))
 		goto out;
 

@@ -110,10 +110,10 @@ struct audit_names {
 struct audit_context {
 	int		    dummy;	/* must be the first element */
 	int		    in_syscall;	/* 1 if task is in a syscall */
-	enum audit_state    state, current_state;
+	enum audit_state    state, current_state;   /*审计状态*/
 	unsigned int	    serial;     /* serial number for record */
 	int		    major;      /* syscall number */
-	struct timespec	    ctime;      /* time of syscall entry */
+	struct timespec	    ctime;      /* time of syscall entry */ /*进入系统调用的时间*/
 	unsigned long	    argv[4];    /* syscall arguments */
 	long		    return_code;/* syscall return code */
 	u64		    prio;
@@ -129,13 +129,13 @@ struct audit_context {
 	struct audit_names  preallocated_names[AUDIT_NAMES];
 	int		    name_count; /* total records in names_list */
 	struct list_head    names_list;	/* struct audit_names->list anchor */
-	char		    *filterkey;	/* key for rule that triggered record */
+	char		    *filterkey;	/* key for rule that triggered record */ /*触发该审计记录的键*/
 	struct path	    pwd;
-	struct audit_aux_data *aux;
+	struct audit_aux_data *aux;   /*用于辅助数据*/
 	struct audit_aux_data *aux_pids;
 	struct sockaddr_storage *sockaddr;
 	size_t sockaddr_len;
-				/* Save things to print about task_struct */
+				/* Save things to print about task_struct */ /*下面的这些pid，gid是从task_struct中复制过来的，为了方便使用*/
 	pid_t		    pid, ppid;
 	kuid_t		    uid, euid, suid, fsuid;
 	kgid_t		    gid, egid, sgid, fsgid;

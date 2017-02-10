@@ -71,25 +71,25 @@ typedef __s64	Elf64_Sxword;
 
 /* This is the info that is needed to parse the dynamic section of the file */
 #define DT_NULL		0
-#define DT_NEEDED	1
+#define DT_NEEDED	1            /*依赖的共享对象文件名*/
 #define DT_PLTRELSZ	2
 #define DT_PLTGOT	3
-#define DT_HASH		4
-#define DT_STRTAB	5
-#define DT_SYMTAB	6
-#define DT_RELA		7
+#define DT_HASH		4            /*动态链接hash表.hash的地址*/
+#define DT_STRTAB	5            /*动态链接字符串表.dynstr的地址*/
+#define DT_SYMTAB	6            /*动态链接符号表.dynsym的地址*/
+#define DT_RELA		7            /*动态链接重定位表的地址*/
 #define DT_RELASZ	8
 #define DT_RELAENT	9
-#define DT_STRSZ	10
+#define DT_STRSZ	10           /*动态链接字符串表大小*/
 #define DT_SYMENT	11
-#define DT_INIT		12
-#define DT_FINI		13
+#define DT_INIT		12           /*初始化代码地址*/
+#define DT_FINI		13           /*结束代码地址*/
 #define DT_SONAME	14
-#define DT_RPATH 	15
+#define DT_RPATH 	15           /*动态链接共享对象的搜索路径*/
 #define DT_SYMBOLIC	16
 #define DT_REL	        17
 #define DT_RELSZ	18
-#define DT_RELENT	19
+#define DT_RELENT	19           /*动态重读位表的入口数量*/
 #define DT_PLTREL	20
 #define DT_DEBUG	21
 #define DT_TEXTREL	22

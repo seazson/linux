@@ -377,7 +377,7 @@ struct audit_tty_status {
 /* audit_rule_data supports filter rules with both integer and string
  * fields.  It corresponds with AUDIT_ADD_RULE, AUDIT_DEL_RULE and
  * AUDIT_LIST_RULES requests.
- */
+ *//*用于从用户空间向内核传递规则*/
 struct audit_rule_data {
 	__u32		flags;	/* AUDIT_PER_{TASK,CALL}, AUDIT_PREPEND */
 	__u32		action;	/* AUDIT_NEVER, AUDIT_POSSIBLE, AUDIT_ALWAYS */

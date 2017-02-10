@@ -640,14 +640,14 @@ static int audit_receive_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 	char			*ctx = NULL;
 	u32			len;
 
-	err = audit_netlink_ok(skb, msg_type);
+	err = audit_netlink_ok(skb, msg_type);    /*验证发送者能否执行该请求*/
 	if (err)
 		return err;
 
 	/* As soon as there's any sign of userspace auditd,
 	 * start kauditd to talk to it */
 	if (!kauditd_task) {
-		kauditd_task = kthread_run(kauditd_thread, NULL, "kauditd");
+		kauditd_task = kthread_run(kauditd_thread, NULL, "kauditd");  /*第一次调用的时候才会启动内核线程*/
 		if (IS_ERR(kauditd_task)) {
 			err = PTR_ERR(kauditd_task);
 			kauditd_task = NULL;
@@ -731,7 +731,7 @@ static int audit_receive_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 			audit_log_end(ab);
 		}
 		break;
-	case AUDIT_ADD_RULE:
+	case AUDIT_ADD_RULE:    /*添加审计规则*/
 	case AUDIT_DEL_RULE:
 		if (nlmsg_len(nlh) < sizeof(struct audit_rule_data))
 			return -EINVAL;
@@ -1109,7 +1109,7 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 	else
 		reserve = 5; /* Allow atomic callers to go up to five
 				entries over the normal backlog limit */
-
+/*检查积压队列长度和发送数据的速率限制*/
 	while (audit_backlog_limit
 	       && skb_queue_len(&audit_skb_queue) > audit_backlog_limit + reserve) {
 		if (gfp_mask & __GFP_WAIT && audit_backlog_wait_time) {
@@ -1133,16 +1133,16 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 		return NULL;
 	}
 
-	ab = audit_buffer_alloc(ctx, gfp_mask, type);
+	ab = audit_buffer_alloc(ctx, gfp_mask, type);   /*分配一个audit_buffer*/
 	if (!ab) {
 		audit_log_lost("out of memory in audit_log_start");
 		return NULL;
 	}
 
-	audit_get_stamp(ab->ctx, &t, &serial);
+	audit_get_stamp(ab->ctx, &t, &serial);  /*分配一个唯一的序列号*/
 
 	audit_log_format(ab, "audit(%lu.%03lu:%u): ",
-			 t.tv_sec, t.tv_nsec/1000000, serial);
+			 t.tv_sec, t.tv_nsec/1000000, serial);  /*写入一条消息记录*/
 	return ab;
 }
 
@@ -1663,15 +1663,15 @@ void audit_log_end(struct audit_buffer *ab)
 {
 	if (!ab)
 		return;
-	if (!audit_rate_check()) {
-		audit_log_lost("rate limit exceeded");
+	if (!audit_rate_check()) { /*如果发送太频繁，消息就会丢失，取而代之的是如下超速的消息*/
+		audit_log_lost("rate limit exceeded"); 
 	} else {
 		struct nlmsghdr *nlh = nlmsg_hdr(ab->skb);
 		nlh->nlmsg_len = ab->skb->len - NLMSG_HDRLEN;
 
 		if (audit_pid) {
 			skb_queue_tail(&audit_skb_queue, ab->skb);
-			wake_up_interruptible(&kauditd_wait);
+			wake_up_interruptible(&kauditd_wait);  /*正常的话加入等待队列并唤醒守护进程*/
 		} else {
 			audit_printk_skb(ab->skb);
 		}

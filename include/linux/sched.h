@@ -1220,7 +1220,7 @@ struct task_struct {
 	sigset_t *notifier_mask;
 	struct callback_head *task_works;
 
-	struct audit_context *audit_context;
+	struct audit_context *audit_context;  /*审计上下文*/
 #ifdef CONFIG_AUDITSYSCALL
 	kuid_t loginuid;
 	unsigned int sessionid;
