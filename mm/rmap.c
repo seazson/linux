@@ -1112,7 +1112,7 @@ void page_add_file_rmap(struct page *page)
 	unsigned long flags;
 
 	if(DO_PR_SEA_INT)
-		pr_sea_mem("%s %lu %lu\n",current->comm,global_page_state(NR_FILE_MAPPED),global_page_state(NR_FILE_PAGES));
+		pr_sea_mem("%s Mapped pages %lu, FILE pages %lu\n",current->comm,global_page_state(NR_FILE_MAPPED),global_page_state(NR_FILE_PAGES));
 	
 	mem_cgroup_begin_update_page_stat(page, &locked, &flags);
 	if (atomic_inc_and_test(&page->_mapcount)) {

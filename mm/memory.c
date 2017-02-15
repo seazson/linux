@@ -2618,6 +2618,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	unsigned long mmun_start = 0;	/* For mmu_notifiers */
 	unsigned long mmun_end = 0;	/* For mmu_notifiers */
 
+	pr_sea_mem("copy an write at 0x%08lx\n",address);
 	old_page = vm_normal_page(vma, address, orig_pte);  /*根据pte得到对应page，未使用的page会返回零页*/
 	if (!old_page) {
 		/*
@@ -2650,19 +2651,19 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 			}
 			page_cache_release(old_page);
 		}
-		if (reuse_swap_page(old_page)) {
+		if (reuse_swap_page(old_page)) { /*匿名page只有一个计数，说明没有进程用，可以拿来使用，不用新建*/
 			/*
 			 * The page is all ours.  Move it to our anon_vma so
 			 * the rmap code will not search our parent or siblings.
 			 * Protected against the rmap code by the page lock.
 			 */
-			page_move_anon_rmap(old_page, vma, address);
+			page_move_anon_rmap(old_page, vma, address); /*将page加入到当前进程的逆向映射空间*/
 			unlock_page(old_page);
-			goto reuse;
+			goto reuse;       /*继续使用旧页*/
 		}
 		unlock_page(old_page);
 	} else if (unlikely((vma->vm_flags & (VM_WRITE|VM_SHARED)) ==
-					(VM_WRITE|VM_SHARED))) {               /*是文件页，并且是共享可写的，不会copy*/
+					(VM_WRITE|VM_SHARED))) {               /*共享可写的，不会copy，执行可写操作page_mkwrite*/
 		/*
 		 * Only catch write-faults on shared writable pages,
 		 * read-only shared pages can get COWed by
@@ -2723,7 +2724,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		dirty_page = old_page;
 		get_page(dirty_page);
 
-reuse: /*对可写的共享页来说，不需要重新分配一个新页，标记为脏和可写*/
+reuse: /*说明不需要重新分配页，还是使用旧页。标记为脏和可写，最近有访问过*/
 		flush_cache_page(vma, address, pte_pfn(orig_pte));
 		entry = pte_mkyoung(orig_pte);
 		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
@@ -2771,12 +2772,12 @@ reuse: /*对可写的共享页来说，不需要重新分配一个新页，标记为脏和可写*/
 
 	/*
 	 * Ok, we need to copy. Oh, well..
-	 */
+	 */ /*私有页或者引用计数大于1的匿名页，到这里说明必须要拷贝一份了*/
 	page_cache_get(old_page);
 gotten:
 	pte_unmap_unlock(page_table, ptl);
 
-	if (unlikely(anon_vma_prepare(vma)))   /*准备建立逆向映射*/
+	if (unlikely(anon_vma_prepare(vma)))   /*准备建立逆向映射。COW都是匿名页?*/
 		goto oom;
 
 	if (is_zero_pfn(pte_pfn(orig_pte))) {
@@ -2784,7 +2785,7 @@ gotten:
 		if (!new_page)
 			goto oom;
 	} else {
-		new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, address);
+		new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, address); /*分配一个新页*/
 		if (!new_page)
 			goto oom;
 		cow_user_page(new_page, old_page, address, vma);   /*拷贝数据到新分配的页面上*/
@@ -2804,7 +2805,7 @@ gotten:
 	page_table = pte_offset_map_lock(mm, pmd, address, &ptl);
 	if (likely(pte_same(*page_table, orig_pte))) {
 		if (old_page) {
-			if (!PageAnon(old_page)) {
+			if (!PageAnon(old_page)) {                     /*old_page如果是文件页，会转到匿名页?*/
 				dec_mm_counter_fast(mm, MM_FILEPAGES);
 				inc_mm_counter_fast(mm, MM_ANONPAGES);
 			}
@@ -3226,7 +3227,7 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		return VM_FAULT_SIGBUS;
 
 	/* Use the zero-page for reads */
-	if (!(flags & FAULT_FLAG_WRITE)) {      /*只是读的话从zero page分配*/
+	if (!(flags & FAULT_FLAG_WRITE)) {      /*只是读的话使用零页，此时未调用pte_mkwrite，对零页的写还会进来真正分配一页*/
 		entry = pte_mkspecial(pfn_pte(my_zero_pfn(address),
 						vma->vm_page_prot));
 		page_table = pte_offset_map_lock(mm, pmd, address, &ptl);
@@ -3309,17 +3310,17 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 
 	struct task_struct *task = container_of(mm, struct task_struct, mm);
 	if(DO_PR_SEA_INT)
-		pr_sea_mem("%s address : 0x%08lx %lx\n",current->comm,address,pgoff);
+		pr_sea_mem("%s address : 0x%08lx, file off %lx\n",current->comm,address,pgoff);
 	/*
 	 * If we do COW later, allocate page befor taking lock_page()
 	 * on the file cache page. This will reduce lock holding time.
-	 */
+	 */ /*走到这里是因为页还未被读过就开始写操作*/
 	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED)) {    /*如果有写的请求处于性能考虑立即分配页,减少锁占用时间*/
 
-		if (unlikely(anon_vma_prepare(vma)))
+		if (unlikely(anon_vma_prepare(vma)))   /*建立逆向映射*/
 			return VM_FAULT_OOM;
 
-		cow_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, address);
+		cow_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, address);  /*分配一个新页用于写*/
 		if (!cow_page)
 			return VM_FAULT_OOM;
 
@@ -3363,8 +3364,8 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	if (flags & FAULT_FLAG_WRITE) {
 		if (!(vma->vm_flags & VM_SHARED)) {    /*写时复制的话需要将之间映射的page拷贝给新分配的page*/
 			page = cow_page;
-			anon = 1;
-			copy_user_highpage(page, vmf.page, address, vma);
+			anon = 1;                          /*写时复制的页虽然是从文件页来的，但是会转化成匿名页，因为写时复制的页不能回写的*/
+			copy_user_highpage(page, vmf.page, address, vma);    /*将页缓存的内容拷贝到新页上*/
 			__SetPageUptodate(page);
 		} else {
 			/*
@@ -3377,7 +3378,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 
 				unlock_page(page);
 				vmf.flags = FAULT_FLAG_WRITE|FAULT_FLAG_MKWRITE;
-				tmp = vma->vm_ops->page_mkwrite(vma, &vmf);
+				tmp = vma->vm_ops->page_mkwrite(vma, &vmf);    /*共享页的话，通知页可写了*/
 				if (unlikely(tmp &
 					  (VM_FAULT_ERROR | VM_FAULT_NOPAGE))) {
 					ret = tmp;
@@ -3425,7 +3426,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			inc_mm_counter_fast(mm, MM_FILEPAGES);
 			page_add_file_rmap(page);                     /*增加文件页计数*/
 			if (flags & FAULT_FLAG_WRITE) {
-				dirty_page = page;
+				dirty_page = page;                        /*共享文件页,有写操作，将页标记为脏页*/
 				get_page(dirty_page);
 			}
 		}
@@ -3710,15 +3711,18 @@ int handle_pte_fault(struct mm_struct *mm,
 	pte_t entry;
 	spinlock_t *ptl;
 
+	if(DO_PR_SEA_INT)
+		pr_sea_mem("%s address : 0x%08lx, entry 0x%08lx, flags %lx\n",current->comm, address, (unsigned long)*pte, flags);
+
 	entry = *pte;  /*addr对应二级页表项内容*/
 	if (!pte_present(entry)) {    /*页不在物理内存中*/
-		if (pte_none(entry)) {    /*页表项存在，但是内容为空*/
+		if (pte_none(entry)) {    /*页表项内容为空，说明还未创建映射*/
 			if (vma->vm_ops) {
 				if (likely(vma->vm_ops->fault))
-					return do_linear_fault(mm, vma, address,  /*按需分配页，线性映射*/
+					return do_linear_fault(mm, vma, address,  /*按需分配页，线性映射。文件页和共享匿名页会走这里*/
 						pte, pmd, flags, entry);
 			}
-			return do_anonymous_page(mm, vma, address,     /*创建匿名页*/
+			return do_anonymous_page(mm, vma, address,     /*创建私有匿名页*/
 						 pte, pmd, flags);
 		}
 		/*页表项有值，但是缺页了，说明是非线性映射过的(线性映射页回收后会清掉页表项值)。非线性映射一定是文件类型映射*/

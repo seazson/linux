@@ -369,15 +369,15 @@ unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
 	}
 	return ret;
 }
-
+/*addr是0的话，会自动分配一个合适的地址*/
 unsigned long vm_mmap(struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot,
 	unsigned long flag, unsigned long offset)
 {
-	pr_sea_mem("addr=0x%lx len=0x%lx offset=0x%lx\n",addr, len, offset);
+	pr_sea_mem("map file %s[0x%lx] to 0x%08lx-0x%08lx\n",file->f_path.dentry->d_name.name, offset, addr, len);
 	if (unlikely(offset + PAGE_ALIGN(len) < offset))
 		return -EINVAL;
-	if (unlikely(offset & ~PAGE_MASK))
+	if (unlikely(offset & ~PAGE_MASK))   /*offset必须是页对齐的*/
 		return -EINVAL;
 
 	return vm_mmap_pgoff(file, addr, len, prot, flag, offset >> PAGE_SHIFT);

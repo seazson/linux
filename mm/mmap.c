@@ -1194,8 +1194,8 @@ static inline unsigned long round_hint_to_min(unsigned long hint)
 
 /*
  * The caller must hold down_write(&current->mm->mmap_sem).
- */
-
+ */ /*将file中从pgoff偏移处的len长度内容映射到虚拟地址addr处*/
+/*addr是要映射到的虚拟地址(为0的话系统自动分配)，pgoff是在文件中的偏移<<pageshift, file代表要映射的文件，没有的话就是匿名映射*/
 unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 			unsigned long len, unsigned long prot,
 			unsigned long flags, unsigned long pgoff,
@@ -1221,7 +1221,7 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 		return -EINVAL;
 
 	if (!(flags & MAP_FIXED))
-		addr = round_hint_to_min(addr);
+		addr = round_hint_to_min(addr); /*所分配的虚拟起始地址不能太小了，太小内核会自动往上加*/
 
 	/* Careful about overflows.. */
 	len = PAGE_ALIGN(len);    /*长度按页对齐分配*/
@@ -1233,13 +1233,13 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
                return -EOVERFLOW;
 
 	/* Too many mappings? */
-	if (mm->map_count > sysctl_max_map_count)
+	if (mm->map_count > sysctl_max_map_count)  /*一个进程可以map的数量是有限制的*/
 		return -ENOMEM;
 
 	/* Obtain the address to map to. we verify (or select) it and ensure
 	 * that it represents a valid section of the address space.
 	 */
-	addr = get_unmapped_area(file, addr, len, pgoff, flags);   /*获取一个大小满足要求的未用地址空间*/
+	addr = get_unmapped_area(file, addr, len, pgoff, flags);   /*获取一个大小满足要求的未用地址空间，addr可以指定也可以不指定*/
 	if (addr & ~PAGE_MASK)
 		return addr;
 
@@ -1267,7 +1267,7 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 
 	inode = file ? file_inode(file) : NULL;           /*判断是否是文件，以区分匿名映射*/
 
-	if (file) {
+	if (file) {   /*MAP_SHARED和MAP_PRIVATE必须要设置一个*/
 		switch (flags & MAP_TYPE) {
 		case MAP_SHARED:
 			if ((prot&PROT_WRITE) && !(file->f_mode&FMODE_WRITE))
@@ -1546,7 +1546,7 @@ munmap_back:
 
 	error = -EINVAL;	/* when rejecting VM_GROWSDOWN|VM_GROWSUP */
 
-	if (file) {  	/*将文件和vma关联起来*/
+	if (file) {  	/*文件页:无论共享还是私有，只需跟vma关联起来*/
 		if (vm_flags & (VM_GROWSDOWN|VM_GROWSUP))
 			goto free_vma;
 		if (vm_flags & VM_DENYWRITE) {
@@ -1556,7 +1556,7 @@ munmap_back:
 			correct_wcount = 1;
 		}
 		vma->vm_file = get_file(file);
-		error = file->f_op->mmap(file, vma);  /*调用file的mmap*/
+		error = file->f_op->mmap(file, vma);  /*调用file的mmap，通用generic_file_mmap实际上就是设置缺页处理函数*/
 		if (error)
 			goto unmap_and_free_vma;
 
@@ -1572,7 +1572,7 @@ munmap_back:
 		addr = vma->vm_start;
 		pgoff = vma->vm_pgoff;
 		vm_flags = vma->vm_flags;
-	} else if (vm_flags & VM_SHARED) {
+	} else if (vm_flags & VM_SHARED) {/*匿名页:共享的情况需要使用到shmem的文件系统来模拟一个文件*/
 		if (unlikely(vm_flags & (VM_GROWSDOWN|VM_GROWSUP)))
 			goto free_vma;
 		error = shmem_zero_setup(vma);
@@ -1933,7 +1933,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
 	return addr;
 }
 #endif
-/*获取一个未使用的区域，如果没有设置FIX标志，addr被用了会分配其他地址，返回可用的地址*/
+/*获取一个未使用的区域，如果没有设置FIX标志，addr被用了会分配其他地址，返回可用的地址。此函数只是查找能用的地址，并未分配*/
 unsigned long
 get_unmapped_area(struct file *file, unsigned long addr, unsigned long len,
 		unsigned long pgoff, unsigned long flags)
@@ -1952,7 +1952,7 @@ get_unmapped_area(struct file *file, unsigned long addr, unsigned long len,
 	get_area = current->mm->get_unmapped_area;
 	if (file && file->f_op && file->f_op->get_unmapped_area)
 		get_area = file->f_op->get_unmapped_area;
-	addr = get_area(file, addr, len, pgoff, flags);
+	addr = get_area(file, addr, len, pgoff, flags); /*arch_get_unmapped_area_topdown,最新mmap从上往下分配*/
 	if (IS_ERR_VALUE(addr))
 		return addr;
 
@@ -1963,7 +1963,6 @@ get_unmapped_area(struct file *file, unsigned long addr, unsigned long len,
 
 	addr = arch_rebalance_pgtables(addr, len);
 	error = security_mmap_addr(addr);
-//	printk("get_unmapped_area %x\n",addr);
 	return error ? error : addr;
 }
 
@@ -2577,7 +2576,7 @@ static inline void verify_mm_writelocked(struct mm_struct *mm)
  *  this is really a simplified "do_mmap".  it only handles
  *  anonymous maps.  eventually we may be able to do some
  *  brk-specific accounting here.
- */
+ *//*新加一个addr~len的虚拟地址空间*/
 static unsigned long do_brk(unsigned long addr, unsigned long len)
 {
 	struct mm_struct * mm = current->mm;
@@ -2666,7 +2665,7 @@ out:
 		mm->locked_vm += (len >> PAGE_SHIFT);
 	return addr;
 }
-
+/*映射addr后面len长度到虚拟地址空间*/
 unsigned long vm_brk(unsigned long addr, unsigned long len)
 {
 	struct mm_struct *mm = current->mm;

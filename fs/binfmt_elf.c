@@ -326,7 +326,7 @@ create_elf_tables(struct linux_binprm *bprm, struct elfhdr *exec,
 }
 
 #ifndef elf_map
-
+/*addr是要映射到的虚拟地址，为0的话内核自动分配一个地址。off代表要映射的文件内偏移*/
 static unsigned long elf_map(struct file *filep, unsigned long addr,
 		struct elf_phdr *eppnt, int prot, int type,
 		unsigned long total_size)
@@ -349,7 +349,7 @@ static unsigned long elf_map(struct file *filep, unsigned long addr,
 	* position with the ELF binary image. (since size < total_size)
 	* So we first map the 'big' image - and unmap the remainder at
 	* the end. (which unmap is needed for ELF images with holes.)
-	*/
+	*/ /*加载动态链接器时，第一个加载的段需要知道整个文件的可加载段大小，防止后面空间不够覆盖，这个大小由total_size传入*/
 	if (total_size) {
 		total_size = ELF_PAGEALIGN(total_size);
 		map_addr = vm_mmap(filep, addr, total_size, prot, type, off);
@@ -357,12 +357,12 @@ static unsigned long elf_map(struct file *filep, unsigned long addr,
 			vm_munmap(map_addr+size, total_size-size);
 	} else
 		map_addr = vm_mmap(filep, addr, size, prot, type, off);
-
+	pr_sea_elf("map from file off 0x%lx to 0x%08lx(want 0x%08lx)+0x%08lx\n",off,map_addr,addr,size);
 	return(map_addr);
 }
 
 #endif /* !elf_map */
-
+/*获取所有可加载的程序段总大小*/
 static unsigned long total_mapping_size(struct elf_phdr *cmds, int nr)
 {
 	int i, first_idx = -1, last_idx = -1;
@@ -386,7 +386,7 @@ static unsigned long total_mapping_size(struct elf_phdr *cmds, int nr)
    so we keep this separate.  Technically the library read function
    is only provided so that we can read a.out libraries that have
    an ELF header */
-
+/*加载动态链接器的代码段数据段和bss*/
 static unsigned long load_elf_interp(struct elfhdr *interp_elf_ex,
 		struct file *interpreter, unsigned long *interp_map_addr,
 		unsigned long no_base)
@@ -399,7 +399,7 @@ static unsigned long load_elf_interp(struct elfhdr *interp_elf_ex,
 	unsigned long error = ~0UL;
 	unsigned long total_size;
 	int retval, i, size;
-
+/*首先检查动态链接器的文件头是否正常*/
 	/* First of all, some simple consistency checks */
 	if (interp_elf_ex->e_type != ET_EXEC &&
 	    interp_elf_ex->e_type != ET_DYN)
@@ -428,7 +428,7 @@ static unsigned long load_elf_interp(struct elfhdr *interp_elf_ex,
 		goto out;
 
 	retval = kernel_read(interpreter, interp_elf_ex->e_phoff,
-			     (char *)elf_phdata, size);
+			     (char *)elf_phdata, size);    /*读取动态链接器的所有程序头到elf_phdata*/
 	error = -EIO;
 	if (retval != size) {
 		if (retval < 0)
@@ -436,7 +436,7 @@ static unsigned long load_elf_interp(struct elfhdr *interp_elf_ex,
 		goto out_close;
 	}
 
-	total_size = total_mapping_size(elf_phdata, interp_elf_ex->e_phnum);
+	total_size = total_mapping_size(elf_phdata, interp_elf_ex->e_phnum); /*获取所有可加载的程序段总大小*/
 	if (!total_size) {
 		error = -EINVAL;
 		goto out_close;
@@ -463,17 +463,17 @@ static unsigned long load_elf_interp(struct elfhdr *interp_elf_ex,
 				load_addr = -vaddr;
 
 			map_addr = elf_map(interpreter, load_addr + vaddr,
-					eppnt, elf_prot, elf_type, total_size);
+					eppnt, elf_prot, elf_type, total_size); /*动态链接器第一个段的加载地址有内核分配load_addr，之后段的地址相对于这个地址*/
 			total_size = 0;
 			if (!*interp_map_addr)
-				*interp_map_addr = map_addr;
+				*interp_map_addr = map_addr;   /*interp_map_addr保存的是加载器加载到的最小的地址*/
 			error = map_addr;
 			if (BAD_ADDR(map_addr))
 				goto out_close;
 
 			if (!load_addr_set &&
 			    interp_elf_ex->e_type == ET_DYN) {
-				load_addr = map_addr - ELF_PAGESTART(vaddr);
+				load_addr = map_addr - ELF_PAGESTART(vaddr); /*load_addr用于保存加载的地址*/
 				load_addr_set = 1;
 			}
 
@@ -509,7 +509,7 @@ static unsigned long load_elf_interp(struct elfhdr *interp_elf_ex,
 		}
 	}
 
-	if (last_bss > elf_bss) {
+	if (last_bss > elf_bss) { /*elf_bss代表数据段的最后，last_bss代表包含bss实际大小的最后,last_bss - elf_bss就是bss实际占用大小*/
 		/*
 		 * Now fill out the bss section.  First pad the last page up
 		 * to the page boundary, and then perform a mmap to make sure
@@ -725,7 +725,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			retval = -ENOEXEC;
 			if (elf_interpreter[elf_ppnt->p_filesz - 1] != '\0')
 				goto out_free_interp;
-
+			pr_sea_elf("use ld : %s\n",elf_interpreter);
 			interpreter = open_exec(elf_interpreter); /*打开动态链接器ld.so*/
 			retval = PTR_ERR(interpreter);
 			if (IS_ERR(interpreter))
@@ -747,7 +747,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			}
 
 			/* Get the exec headers */
-			loc->interp_elf_ex = *((struct elfhdr *)bprm->buf);
+			loc->interp_elf_ex = *((struct elfhdr *)bprm->buf); /*保存动态链接器的头信息*/
 			break;
 		}
 		elf_ppnt++;
@@ -814,7 +814,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 		if (elf_ppnt->p_type != PT_LOAD)
 			continue;
 
-		if (unlikely (elf_brk > elf_bss)) {              /*前一个段中有bss，起始这里不应该叫bss，应该叫匿名空间，bss在循环结束后分配*/
+		if (unlikely (elf_brk > elf_bss)) {              /*前一个段中占用内存的大小大于文件中实际大小，说明有bss，其实这里不应该叫bss，应该叫匿名空间，bss在循环结束后分配*/
 			unsigned long nbyte;
 	            /*p_memsz > p_filesz说明段中有bss*/
 			/* There was a PT_LOAD segment with p_memsz > p_filesz
@@ -961,13 +961,14 @@ static int load_elf_binary(struct linux_binprm *bprm)
 					    interpreter,
 					    &interp_map_addr,
 					    load_bias);   /*执行完成之后动态链接器就映射到内存中了*/
+		pr_sea_elf("interp_map_addr=0x%08lx, load_bias=0x%08lx, elf_entry=0x%08lx\n",interp_map_addr,load_bias,elf_entry);
 		if (!IS_ERR((void *)elf_entry)) {
 			/*
 			 * load_elf_interp() returns relocation
 			 * adjustment
 			 */
-			interp_load_addr = elf_entry;
-			elf_entry += loc->interp_elf_ex.e_entry;
+			interp_load_addr = elf_entry;      /*interp_load_addr保存的是链接器加载到的地址*/
+			elf_entry += loc->interp_elf_ex.e_entry; /*elf_entry是链接器入口函数地址*/
 		}
 		if (BAD_ADDR(elf_entry)) {
 			force_sig(SIGSEGV, current);
@@ -988,6 +989,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			goto out_free_dentry;
 		}
 	}
+	pr_sea_elf("elf_entry 0x%08lx\n",elf_entry);
 
 	kfree(elf_phdata);
 
@@ -1048,7 +1050,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	ELF_PLAT_INIT(regs, reloc_func_desc);
 #endif
 
-	start_thread(regs, elf_entry, bprm->p);   /*这里可能是运行的进程，也可能是动态链接器*/
+	start_thread(regs, elf_entry, bprm->p);   /*这里运行的可能是进程，也可能是动态链接器*/
 	retval = 0;
 out:
 	kfree(loc);

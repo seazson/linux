@@ -21,7 +21,7 @@ static int load_script(struct linux_binprm *bprm)
 	struct file *file;
 	char interp[BINPRM_BUF_SIZE];
 	int retval;
-
+	pr_sea_elf("\n");
 	if ((bprm->buf[0] != '#') || (bprm->buf[1] != '!'))
 		return -ENOEXEC;
 	/*
@@ -55,7 +55,7 @@ static int load_script(struct linux_binprm *bprm)
 		*cp++ = '\0';
 	if (*cp)
 		i_arg = cp;
-	strcpy (interp, i_name);
+	strcpy (interp, i_name); /*这里就获取到了要加载的shell的名称*/
 	/*
 	 * OK, we've parsed out the interpreter name and
 	 * (optional) argument.
