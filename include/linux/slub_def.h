@@ -44,10 +44,10 @@ enum stat_item {
 	NR_SLUB_STAT_ITEMS };
 
 struct kmem_cache_cpu {
-	void **freelist;	/* Pointer to next available object */
-	unsigned long tid;	/* Globally unique transaction id */
-	struct page *page;	/* The slab from which we are allocating */
-	struct page *partial;	/* Partially allocated frozen slabs */
+	void **freelist;	/* Pointer to next available object */ /*指向下一个空闲对象*/
+	unsigned long tid;	/* Globally unique transaction id */   /*用于同步*/
+	struct page *page;	/* The slab from which we are allocating */ /*page指向当前正在分配的slab缓存头页*/
+	struct page *partial;	/* Partially allocated frozen slabs */ /*部分空链表会冻结*/
 #ifdef CONFIG_SLUB_STATS
 	unsigned stat[NR_SLUB_STAT_ITEMS];
 #endif
@@ -64,29 +64,29 @@ struct kmem_cache_order_objects {
 
 /*
  * Slab cache management.
- */
+ */ /*meta data是一片区域用来存放除了数据之外的其他东西，包括警戒区，调用栈，对齐，指向下一个对象的指针等*/
 struct kmem_cache {
-	struct kmem_cache_cpu __percpu *cpu_slab;
+	struct kmem_cache_cpu __percpu *cpu_slab;  /*cpu级的缓存，优先分配*/
 	/* Used for retriving partial slabs etc */
 	unsigned long flags;
-	unsigned long min_partial;
-	int size;		/* The size of an object including meta data */
-	int object_size;	/* The size of an object without meta data */
-	int offset;		/* Free pointer offset. */
-	int cpu_partial;	/* Number of per cpu partial objects to keep around */
-	struct kmem_cache_order_objects oo;
+	unsigned long min_partial;  /*每个node节点中部分空slab缓冲区数量不能低于这个值*/
+	int size;		/* The size of an object including meta data */ /*对象大小，包括后面的空闲指针，警戒区，调用栈等*/
+	int object_size;	/* The size of an object without meta data */ /*对象大小*/
+	int offset;		/* Free pointer offset. */  /*空闲对象指针偏移量。obj1+offset的地址存放指向下obj2的指针*/
+	int cpu_partial;	/* Number of per cpu partial objects to keep around */ /*每个cpu中的空闲对象数量。每次从node中要取出至少这个数量的一半到cpu*/
+	struct kmem_cache_order_objects oo;    /*一个slab缓存占用多少个页*/
 
 	/* Allocation and freeing of slabs */
 	struct kmem_cache_order_objects max;
-	struct kmem_cache_order_objects min;
+	struct kmem_cache_order_objects min;   /*当以oo分配失败的时候会尝试min最小值*/
 	gfp_t allocflags;	/* gfp flags to use on each alloc */
-	int refcount;		/* Refcount for slab cache destroy */
+	int refcount;		/* Refcount for slab cache destroy */ /*slab有多少重用的*/
 	void (*ctor)(void *);
-	int inuse;		/* Offset to metadata */
+	int inuse;		/* Offset to metadata */  /*元数据相对于它的obj的偏移量*/
 	int align;		/* Alignment */
 	int reserved;		/* Reserved bytes at the end of slabs */
 	const char *name;	/* Name (only for display!) */
-	struct list_head list;	/* List of slab caches */
+	struct list_head list;	/* List of slab caches */   /*链到全局slab_cache链表上*/
 #ifdef CONFIG_SYSFS
 	struct kobject kobj;	/* For sysfs */
 #endif
@@ -101,7 +101,7 @@ struct kmem_cache {
 	 */
 	int remote_node_defrag_ratio;
 #endif
-	struct kmem_cache_node *node[MAX_NUMNODES];
+	struct kmem_cache_node *node[MAX_NUMNODES];   /*每个node上都会有*/
 };
 
 void *kmem_cache_alloc(struct kmem_cache *, gfp_t);

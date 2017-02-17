@@ -173,7 +173,7 @@ kmem_cache_create_memcg(struct mem_cgroup *memcg, const char *name, size_t size,
 	get_online_cpus();
 	mutex_lock(&slab_mutex);
 
-	if (!kmem_cache_sanity_check(memcg, name, size) == 0)
+	if (!kmem_cache_sanity_check(memcg, name, size) == 0)  /*理性检查*/
 		goto out_locked;
 
 	/*
@@ -184,11 +184,11 @@ kmem_cache_create_memcg(struct mem_cgroup *memcg, const char *name, size_t size,
 	 */
 	flags &= CACHE_CREATE_MASK;
 
-	s = __kmem_cache_alias(memcg, name, size, align, flags, ctor);
+	s = __kmem_cache_alias(memcg, name, size, align, flags, ctor); /*只有slub有，slub重用。检查是否有相似大小的对象可以重用，有的话就不需要在重新分配kmem_cache*/
 	if (s)
 		goto out_locked;
 
-	s = kmem_cache_zalloc(kmem_cache, GFP_KERNEL);
+	s = kmem_cache_zalloc(kmem_cache, GFP_KERNEL);  /*分配新的kmem_cache*/
 	if (s) {
 		s->object_size = s->size = size;
 		s->align = calculate_alignment(flags, align, size);
@@ -207,10 +207,10 @@ kmem_cache_create_memcg(struct mem_cgroup *memcg, const char *name, size_t size,
 			goto out_locked;
 		}
 
-		err = __kmem_cache_create(s, flags);
+		err = __kmem_cache_create(s, flags); /*创建实际的slab缓存*/
 		if (!err) {
 			s->refcount = 1;
-			list_add(&s->list, &slab_caches);
+			list_add(&s->list, &slab_caches); /*加入全局链表中*/
 			memcg_cache_list_add(memcg, s);
 		} else {
 			kfree(s->name);
@@ -579,7 +579,7 @@ int cache_show(struct kmem_cache *s, struct seq_file *m)
 	struct slabinfo sinfo;
 
 	memset(&sinfo, 0, sizeof(sinfo));
-	get_slabinfo(s, &sinfo);
+	get_slabinfo(s, &sinfo);   /*slab和slub的获取信息方式不一样*/
 
 	memcg_accumulate_slabinfo(s, &sinfo);
 
@@ -588,10 +588,10 @@ int cache_show(struct kmem_cache *s, struct seq_file *m)
 		   sinfo.objects_per_slab, (1 << sinfo.cache_order));
 
 	seq_printf(m, " : tunables %4u %4u %4u",
-		   sinfo.limit, sinfo.batchcount, sinfo.shared);
+		   sinfo.limit, sinfo.batchcount, sinfo.shared); /*slub这三项固定为0*/
 	seq_printf(m, " : slabdata %6lu %6lu %6lu",
-		   sinfo.active_slabs, sinfo.num_slabs, sinfo.shared_avail);
-	slabinfo_show_stats(m, s);
+		   sinfo.active_slabs, sinfo.num_slabs, sinfo.shared_avail); /*slub最后一项固定为0*/
+	slabinfo_show_stats(m, s);  /*只有slab有，slub没有*/
 	seq_putc(m, '\n');
 	return 0;
 }

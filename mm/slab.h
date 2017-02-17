@@ -96,16 +96,16 @@ struct seq_file;
 struct file;
 
 struct slabinfo {
-	unsigned long active_objs;
-	unsigned long num_objs;
-	unsigned long active_slabs;
-	unsigned long num_slabs;
+	unsigned long active_objs;  /*已经在使用的对象个数*/
+	unsigned long num_objs;     /*本类型的所有slab总共包含多少个对象*/
+	unsigned long active_slabs; /*本类型的slab缓存的个数*/
+	unsigned long num_slabs;    /*本类型的slab缓存的个数，等于上值*/
 	unsigned long shared_avail;
 	unsigned int limit;
 	unsigned int batchcount;
 	unsigned int shared;
-	unsigned int objects_per_slab;
-	unsigned int cache_order;
+	unsigned int objects_per_slab;  /*一个slab缓存包含的对象个数*/
+	unsigned int cache_order;   /*一个slab缓存占用多少个页*/
 };
 
 void get_slabinfo(struct kmem_cache *s, struct slabinfo *sinfo);
@@ -249,8 +249,8 @@ struct kmem_cache_node {
 
 #ifdef CONFIG_SLAB
 	struct list_head slabs_partial;	/*部分空链表*//* partial list first, better asm code */
-	struct list_head slabs_full; /*全满链表*/
-	struct list_head slabs_free; /*全空链表*/
+	struct list_head slabs_full;    /*全满链表*/
+	struct list_head slabs_free;    /*全空链表*/
 	unsigned long free_objects; /*当前可用的obj数量*/
 	unsigned int free_limit;    /*超过这个数值会释放slab，返还给伙伴系统*/
 	unsigned int colour_next;	/* Per-node cache coloring */ /*建立下一个slab的颜色,加到kmem_cache->colour后重0再开始*/
@@ -261,12 +261,12 @@ struct kmem_cache_node {
 #endif
 
 #ifdef CONFIG_SLUB
-	unsigned long nr_partial;
-	struct list_head partial;
+	unsigned long nr_partial;   /*部分空链表中slab的数量*/
+	struct list_head partial;   /*部分空链表*/
 #ifdef CONFIG_SLUB_DEBUG
-	atomic_long_t nr_slabs;
-	atomic_long_t total_objects;
-	struct list_head full;
+	atomic_long_t nr_slabs;     /*slab缓存的数量*/
+	atomic_long_t total_objects;/*对象的数量*/
+	struct list_head full;      /*满链表*/
 #endif
 #endif
 

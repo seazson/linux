@@ -53,7 +53,7 @@ struct page {
 	struct {
 		union {                                                   /*如果page加入了swap_cache则代表slot号*/
 			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量。例如打开一个文件，表示在文件中的偏移量。偏移量是对整个地址空间，而不是相对于所属vma*/
-			void *freelist;		/* slub/slob first free object */
+			void *freelist;		/* slub/slob first free object */ /*指向本page上第一个空闲的对象*/
 			bool pfmemalloc;	/* If set by the page allocator,
 						 * ALLOC_NO_WATERMARKS was set
 						 * and the low watermark was not
@@ -100,9 +100,9 @@ struct page {
 					 */
 					atomic_t _mapcount;  /*表示有页表项指向该页，也用于逆向映射搜索。用于表示有多少进程共享该页*/
                                          /*没有进程映射的时候是-1，有一个进程是0*/
-					struct { /* SLUB */
-						unsigned inuse:16;
-						unsigned objects:15;
+					struct { /* SLUB */        /*只有头页存有这些信息*/
+						unsigned inuse:16;     /*本个slub缓存中(不光本页中)已经使用了多少个slub对象。*/
+						unsigned objects:15;   /*本个slub缓存中(不光本页中)有多少个slub对象*/
 						unsigned frozen:1;
 					};
 					int units;	/* SLOB */
@@ -118,13 +118,13 @@ struct page {
 					 * protected by zone->lru_lock !
 					 */
 		struct {		/* slub per cpu partial pages */
-			struct page *next;	/* Next partial slab */
+			struct page *next;	/* Next partial slab */ /*用于将cpu部分空闲链表链接起来*/
 #ifdef CONFIG_64BIT
 			int pages;	/* Nr of partial slabs left */
 			int pobjects;	/* Approximate # of objects */
 #else
-			short int pages;
-			short int pobjects;
+			short int pages;  /*右边还有多少个page*/
+			short int pobjects; /*右边有多少个对象*/
 #endif
 		};
 
@@ -144,7 +144,7 @@ struct page {
 #if USE_SPLIT_PTLOCKS
 		spinlock_t ptl;
 #endif
-		struct kmem_cache *slab_cache;	/* SL[AU]B: Pointer to slab */
+		struct kmem_cache *slab_cache;	/* SL[AU]B: Pointer to slab */ /*指向所属的slab*/
 		struct page *first_page;	/* Compound tail pages */ /*复合页中指向第一个页*/
 	};
 
