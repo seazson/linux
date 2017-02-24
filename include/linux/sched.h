@@ -975,12 +975,14 @@ struct sched_entity {
 	unsigned int		on_rq;
 
 	u64			exec_start;
-	u64			sum_exec_runtime;
+	u64			sum_exec_runtime;   /*总共运行了多少物理调度时间，以rq上的时钟为基准，不一定是准确时间*/
 	u64			vruntime;
-	u64			prev_sum_exec_runtime;
+	u64			prev_sum_exec_runtime; /*唤醒的开始运行时间点*/
 
 	u64			nr_migrations;
 
+	u64			slice;
+	u64			runatime;
 #ifdef CONFIG_SCHEDSTATS
 	struct sched_statistics statistics;
 #endif
@@ -1169,7 +1171,7 @@ struct task_struct {
 		VTIME_SYS,
 	} vtime_snap_whence;
 #endif
-	unsigned long nvcsw, nivcsw; /* context switch counts */
+	unsigned long nvcsw, nivcsw; /* context switch counts */ /*进程切换的次数*/
 	struct timespec start_time; 		/* monotonic time */
 	struct timespec real_start_time;	/* boot based time */
 /* mm fault and swap info: this can arguably be seen as either mm-specific or thread-specific */

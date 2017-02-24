@@ -1352,14 +1352,14 @@ void update_process_times(int user_tick)
 	int cpu = smp_processor_id();
 
 	/* Note: this timer irq context must be accounted for as well. */
-	account_process_tick(p, user_tick);
-	run_local_timers();
+	account_process_tick(p, user_tick);   /*更新sys，user运行时间*/
+	run_local_timers();                   /*运行定时器*/
 	rcu_check_callbacks(cpu, user_tick);
 #ifdef CONFIG_IRQ_WORK
 	if (in_irq())
 		irq_work_run();
 #endif
-	scheduler_tick();
+	scheduler_tick();                     /*更新进程运行时间*/
 	run_posix_cpu_timers(p);
 }
 

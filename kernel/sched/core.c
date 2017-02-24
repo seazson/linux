@@ -2175,9 +2175,9 @@ void scheduler_tick(void)
 	sched_clock_tick();
 
 	raw_spin_lock(&rq->lock);
-	update_rq_clock(rq);
-	curr->sched_class->task_tick(rq, curr, 0);
-	update_cpu_load_active(rq);
+	update_rq_clock(rq);                       /*更新rq的物理调度时间*/
+	curr->sched_class->task_tick(rq, curr, 0); /*cfs对应task_tick_fair*/
+	update_cpu_load_active(rq);                /*更新cpu负载率*/
 	raw_spin_unlock(&rq->lock);
 
 	perf_event_task_tick();
@@ -2439,11 +2439,11 @@ need_resched:
 
 	pre_schedule(rq, prev);
 
-	if (unlikely(!rq->nr_running))
+	if (unlikely(!rq->nr_running))  /*负载平衡*/
 		idle_balance(cpu, rq);
 
-	put_prev_task(rq, prev);
-	next = pick_next_task(rq);
+	put_prev_task(rq, prev);    /*更新旧进程在红黑叔中的位置put_prev_task_fair*/
+	next = pick_next_task(rq);  /*选择一个新的进程*/
 	clear_tsk_need_resched(prev);
 	rq->skip_clock_update = 0;
 
@@ -2452,7 +2452,7 @@ need_resched:
 		rq->curr = next;
 		++*switch_count;
 
-		context_switch(rq, prev, next); /* unlocks the rq */
+		context_switch(rq, prev, next); /* unlocks the rq */ /*进程切换*/
 		/*
 		 * The context switch have flipped the stack from under us
 		 * and restored the local variables which were saved when

@@ -3011,7 +3011,7 @@ static int calculate_sizes(struct kmem_cache *s, int forced_order)
 		s->allocflags |= __GFP_RECLAIMABLE;
 
 	/*
-	 * Determine the number of objects per slab        /*确定分配oo*/
+	 * Determine the number of objects per slab        确定分配oo
 	 */
 	s->oo = oo_make(order, size, s->reserved);
 	s->min = oo_make(get_order(size), size, s->reserved);

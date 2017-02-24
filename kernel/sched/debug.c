@@ -591,6 +591,10 @@ void proc_sched_show_task(struct task_struct *p, struct seq_file *m)
 		SEQ_printf(m, "%-45s:%21Ld\n",
 			   "clock-delta", (long long)(t1-t0));
 	}
+	SEQ_printf(m, "%-45s:%21Ld\n",
+		   "slice", (long long)p->se.slice);
+	SEQ_printf(m, "%-45s:%21Ld\n",
+		   "a run", (long long)p->se.runatime);
 }
 
 void proc_sched_set_task(struct task_struct *p)

@@ -724,7 +724,7 @@ __update_curr(struct cfs_rq *cfs_rq, struct sched_entity *curr,
 static void update_curr(struct cfs_rq *cfs_rq)
 {
 	struct sched_entity *curr = cfs_rq->curr;
-	u64 now = rq_clock_task(rq_of(cfs_rq));
+	u64 now = rq_clock_task(rq_of(cfs_rq));  /*获取rq上的当前物理调度时间。很多地方会更新这个时间，时钟中断里也会更新*/
 	unsigned long delta_exec;
 
 	if (unlikely(!curr))
@@ -1893,9 +1893,11 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	s64 delta;
 
 	ideal_runtime = sched_slice(cfs_rq, curr);   /*本次进程需要运行的物理调度时间*/
-	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime; /**/
-	if (delta_exec > ideal_runtime) {
-		resched_task(rq_of(cfs_rq)->curr);
+	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime; /*实际运行的物理调度时间*/
+	curr->slice = ideal_runtime;
+	curr->runatime = delta_exec;
+	if (delta_exec > ideal_runtime) { /*实际运行时间超过了分给的时间片*/
+		resched_task(rq_of(cfs_rq)->curr);       /*设置需要调度标志*/
 		/*
 		 * The current task ran long enough, ensure it doesn't get
 		 * re-elected due to buddy favours.
@@ -1913,7 +1915,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 		return;
 
 	se = __pick_first_entity(cfs_rq);
-	delta = curr->vruntime - se->vruntime;
+	delta = curr->vruntime - se->vruntime;  /*虚拟运行时间超过最需要运行的进程一个标准nice0的时间，也需要调度*/
 
 	if (delta < 0)
 		return;
@@ -1949,7 +1951,7 @@ set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
 			se->sum_exec_runtime - se->prev_sum_exec_runtime);
 	}
 #endif
-	se->prev_sum_exec_runtime = se->sum_exec_runtime;
+	se->prev_sum_exec_runtime = se->sum_exec_runtime;   /*开始运行的时候更新prev_sum_exec_runtime*/
 }
 
 static int
@@ -1995,7 +1997,7 @@ static struct sched_entity *pick_next_entity(struct cfs_rq *cfs_rq)
 }
 
 static void check_cfs_rq_runtime(struct cfs_rq *cfs_rq);
-
+/*更新在红黑树中的位置*/
 static void put_prev_entity(struct cfs_rq *cfs_rq, struct sched_entity *prev)
 {
 	/*
@@ -2025,11 +2027,11 @@ entity_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr, int queued)
 	/*
 	 * Update run-time statistics of the 'current'.
 	 */
-	update_curr(cfs_rq);
+	update_curr(cfs_rq);    /*更新进程的物理调度时间和虚拟时间*/
 
 	/*
 	 * Ensure that runnable average is periodically updated.
-	 */
+	 */ /*for smp*/
 	update_entity_load_avg(curr, 1);
 	update_cfs_rq_blocked_load(cfs_rq, 1);
 	update_cfs_shares(cfs_rq);
@@ -3658,8 +3660,8 @@ static struct task_struct *pick_next_task_fair(struct rq *rq)
 		return NULL;
 
 	do {
-		se = pick_next_entity(cfs_rq);
-		set_next_entity(cfs_rq, se);
+		se = pick_next_entity(cfs_rq); /*选择一个合适的进程*/
+		set_next_entity(cfs_rq, se);   /*记录进程这次开始运行的时间*/
 		cfs_rq = group_cfs_rq(se);
 	} while (cfs_rq);
 
@@ -5787,7 +5789,7 @@ static void task_tick_fair(struct rq *rq, struct task_struct *curr, int queued)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &curr->se;
 
-	for_each_sched_entity(se) {
+	for_each_sched_entity(se) { /*遍历进程及其父进程们*/
 		cfs_rq = cfs_rq_of(se);
 		entity_tick(cfs_rq, se, queued);  /*更新进程运行时间*/
 	}
