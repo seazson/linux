@@ -516,7 +516,7 @@ struct signal_struct {
 
 	/* ITIMER_REAL timer for the process */
 	struct hrtimer real_timer;
-	struct pid *leader_pid;
+	struct pid *leader_pid;  /*线程组长的pid，或者进程自己的pid*/
 	ktime_t it_real_incr;
 
 	/*
@@ -540,7 +540,7 @@ struct signal_struct {
 	struct pid *tty_old_pgrp;
 
 	/* boolean value for session group leader */
-	int leader;
+	int leader;     /*会话首进程会置1*/
 
 	struct tty_struct *tty; /* NULL if no tty */
 
@@ -972,9 +972,9 @@ struct sched_entity {
 	struct load_weight	load;		/* for load-balancing */
 	struct rb_node		run_node;
 	struct list_head	group_node;
-	unsigned int		on_rq;
+	unsigned int		on_rq;     /*是否已经在就绪队列上*/
 
-	u64			exec_start;
+	u64			exec_start;        /*每次调用update_curr时会更新*/
 	u64			sum_exec_runtime;   /*总共运行了多少物理调度时间，以rq上的时钟为基准，不一定是准确时间*/
 	u64			vruntime;
 	u64			prev_sum_exec_runtime; /*唤醒的开始运行时间点*/
@@ -1029,9 +1029,9 @@ enum perf_event_task_context {
 
 struct task_struct {
 	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
-	void *stack;
+	void *stack;        /*内核栈地址*/
 	atomic_t usage;
-	unsigned int flags;	/* per process flags, defined below */
+	unsigned int flags;	/* per process flags, defined below */ /*创建进程时的flag*/
 	unsigned int ptrace;
 
 #ifdef CONFIG_SMP
@@ -1101,7 +1101,7 @@ struct task_struct {
 #endif
 /* task state */
 	int exit_state;
-	int exit_code, exit_signal;
+	int exit_code, exit_signal;  /*进程退出时需要发给父进程的信号*/
 	int pdeath_signal;  /*  The signal sent when the parent dies  */
 	unsigned int jobctl;	/* JOBCTL_*, siglock protected */
 
@@ -1117,11 +1117,11 @@ struct task_struct {
 	unsigned no_new_privs:1;
 
 	/* Revert to default priority/policy when forking */
-	unsigned sched_reset_on_fork:1;
+	unsigned sched_reset_on_fork:1;           /*表示fork的时候是否需要使用默认的调度类*/
 	unsigned sched_contributes_to_load:1;
 
 	pid_t pid;
-	pid_t tgid;
+	pid_t tgid;  /*线程组id，全局可见。进程的话是自己的pid*/
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 	/* Canary value for the -fstack-protector gcc feature */
@@ -1139,7 +1139,7 @@ struct task_struct {
 	 */
 	struct list_head children;	/* list of my children */
 	struct list_head sibling;	/* linkage in my parent's children list */
-	struct task_struct *group_leader;	/* threadgroup leader */
+	struct task_struct *group_leader;	/* threadgroup leader */  /*代表的是线程组组长，而不是进程组长。如果是进程就是自己*/
 
 	/*
 	 * ptraced is the list of tasks this task is using ptrace on.
@@ -1151,9 +1151,9 @@ struct task_struct {
 
 	/* PID/PID hash table linkage. */
 	struct pid_link pids[PIDTYPE_MAX];
-	struct list_head thread_group;
+	struct list_head thread_group;  /*用于将线程组的成员们链接起来*/
 
-	struct completion *vfork_done;		/* for vfork() */
+	struct completion *vfork_done;		/* for vfork() */ /*子进程持有此结构*/
 	int __user *set_child_tid;		/* CLONE_CHILD_SETTID */
 	int __user *clear_child_tid;		/* CLONE_CHILD_CLEARTID */
 
@@ -1180,7 +1180,7 @@ struct task_struct {
 	struct task_cputime cputime_expires;
 	struct list_head cpu_timers[3];
 
-/* process credentials */
+/* process credentials */  /*身份认证*/
 	const struct cred __rcu *real_cred; /* objective and real subjective task
 					 * credentials (COW) */
 	const struct cred __rcu *cred;	/* effective (overridable) subjective task
@@ -1430,7 +1430,7 @@ static inline struct pid *task_pid(struct task_struct *task)
 {
 	return task->pids[PIDTYPE_PID].pid;
 }
-
+/*线程组长的pid就是进程的tgid*/
 static inline struct pid *task_tgid(struct task_struct *task)
 {
 	return task->group_leader->pids[PIDTYPE_PID].pid;
@@ -2167,7 +2167,7 @@ static inline int get_nr_threads(struct task_struct *tsk)
 }
 
 static inline bool thread_group_leader(struct task_struct *p)
-{
+{/*线程组长或者进程。子线程是-1*/
 	return p->exit_signal >= 0;
 }
 

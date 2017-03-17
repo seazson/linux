@@ -799,7 +799,7 @@ void do_exit(long code)
 	cgroup_exit(tsk, 1);
 
 	if (group_dead)
-		disassociate_ctty(1);
+		disassociate_ctty(1);  /*群发组下的进程，tty终端的特性*/
 
 	module_put(task_thread_info(tsk)->exec_domain->module);
 

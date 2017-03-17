@@ -952,7 +952,7 @@ static inline void check_class_changed(struct rq *rq, struct task_struct *p,
 	} else if (oldprio != p->prio)
 		p->sched_class->prio_changed(rq, p, oldprio);
 }
-
+/*每当唤醒一个进程的时候就要考察是否需要抢占*/
 void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 {
 	const struct sched_class *class;
@@ -962,9 +962,9 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 	} else {
 		for_each_class(class) {
 			if (class == rq->curr->sched_class)
-				break;
+				break;  /*当前运行的进程比要唤醒的class等级高*/
 			if (class == p->sched_class) {
-				resched_task(rq->curr);
+				resched_task(rq->curr);  /*要唤醒的进程class等级比当前运行的高*/
 				break;
 			}
 		}
@@ -1674,7 +1674,7 @@ void sched_fork(struct task_struct *p)
 	unsigned long flags;
 	int cpu = get_cpu();
 
-	__sched_fork(p);
+	__sched_fork(p);    /*初始化与调度相关内容，主要是se*/
 	/*
 	 * We mark the process as running here. This guarantees that
 	 * nobody will actually run it, and a signal or other external
@@ -1685,7 +1685,7 @@ void sched_fork(struct task_struct *p)
 	/*
 	 * Make sure we do not leak PI boosting priority to the child.
 	 */
-	p->prio = current->normal_prio;
+	p->prio = current->normal_prio;   /*继承的是父进程的静态优先级，不会使用父进程动态提升的优先级*/
 
 	/*
 	 * Revert to default priority/policy on fork if requested.
@@ -1998,14 +1998,14 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	 */
 	arch_start_context_switch(prev);
 
-	if (!mm) {
+	if (!mm) { /*说明是内核线程，没有用户空间mm*/
 		next->active_mm = oldmm;
 		atomic_inc(&oldmm->mm_count);
-		enter_lazy_tlb(oldmm, next);
+		enter_lazy_tlb(oldmm, next);  /*通知底层体系结构不需要切换用户部分*/
 	} else
-		switch_mm(oldmm, mm, next);
+		switch_mm(oldmm, mm, next);   /*切换mm。主要是加载页表，刷出到后备缓存，更新mmu信息*/
 
-	if (!prev->mm) {
+	if (!prev->mm) {/*如果前一个是内核线程，需要断开与借用的地址空间的联系*/
 		prev->active_mm = NULL;
 		rq->prev_mm = oldmm;
 	}
@@ -2021,7 +2021,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 
 	context_tracking_task_switch(prev, next);
 	/* Here we just switch the register state and the stack. */
-	switch_to(prev, next, prev);
+	switch_to(prev, next, prev);   /*切换cpu寄存器和内核栈。注意这里prev当做了两个参数，因为返回的prev可能是任意一个进程!*/
 
 	barrier();
 	/*
@@ -2414,11 +2414,11 @@ need_resched:
 	raw_spin_lock_irq(&rq->lock);
 
 	switch_count = &prev->nivcsw;
-	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) {
-		if (unlikely(signal_pending_state(prev->state, prev))) {
+	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) { /*被替换的进程处于运行状态，并且不是处于抢占状态*/
+		if (unlikely(signal_pending_state(prev->state, prev))) { /*如果进程此时还有信号未处理，继续运行*/
 			prev->state = TASK_RUNNING;
 		} else {
-			deactivate_task(rq, prev, DEQUEUE_SLEEP);
+			deactivate_task(rq, prev, DEQUEUE_SLEEP);     /*暂停进程活动，将进程从rq中移除*/
 			prev->on_rq = 0;
 
 			/*
@@ -2444,7 +2444,7 @@ need_resched:
 
 	put_prev_task(rq, prev);    /*更新旧进程在红黑叔中的位置put_prev_task_fair*/
 	next = pick_next_task(rq);  /*选择一个新的进程*/
-	clear_tsk_need_resched(prev);
+	clear_tsk_need_resched(prev); /*清除进程需要调度的标志*/
 	rq->skip_clock_update = 0;
 
 	if (likely(prev != next)) {

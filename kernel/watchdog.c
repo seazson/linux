@@ -29,8 +29,8 @@
 #include <linux/kvm_para.h>
 #include <linux/perf_event.h>
 
-int watchdog_user_enabled = 1;
-int __read_mostly watchdog_thresh = 10;
+int watchdog_user_enabled = 1; 
+int __read_mostly watchdog_thresh = 10;   /*硬件死锁检测时间，软件死锁是它的两倍*/
 static int __read_mostly watchdog_running;
 static u64 __read_mostly sample_period;
 
@@ -39,8 +39,8 @@ static DEFINE_PER_CPU(struct task_struct *, softlockup_watchdog);
 static DEFINE_PER_CPU(struct hrtimer, watchdog_hrtimer);
 static DEFINE_PER_CPU(bool, softlockup_touch_sync);
 static DEFINE_PER_CPU(bool, soft_watchdog_warn);
-static DEFINE_PER_CPU(unsigned long, hrtimer_interrupts);
-static DEFINE_PER_CPU(unsigned long, soft_lockup_hrtimer_cnt);
+static DEFINE_PER_CPU(unsigned long, hrtimer_interrupts);       /*产生定时器中断的次数*/
+static DEFINE_PER_CPU(unsigned long, soft_lockup_hrtimer_cnt);  /*看门狗线程记录的定时器中断次数*/
 #ifdef CONFIG_HARDLOCKUP_DETECTOR
 static DEFINE_PER_CPU(bool, hard_watchdog_warn);
 static DEFINE_PER_CPU(bool, watchdog_nmi_touch);
@@ -112,12 +112,12 @@ static int get_softlockup_thresh(void)
  * Returns seconds, approximately.  We don't need nanosecond
  * resolution, and we don't need to waste time with a big divide when
  * 2^30ns == 1.074s.
- */
+ */ /*获取的是物理调度时间，并转换成秒*/
 static unsigned long get_timestamp(void)
 {
 	return local_clock() >> 30LL;  /* 2^30 ~= 10^9 */
 }
-
+/*设置定时器中断时间间隔=2*watchdog_thresh/5 */
 static void set_sample_period(void)
 {
 	/*
@@ -182,9 +182,9 @@ void touch_softlockup_watchdog_sync(void)
 /* watchdog detector functions */
 static int is_hardlockup(void)
 {
-	unsigned long hrint = __this_cpu_read(hrtimer_interrupts);
+	unsigned long hrint = __this_cpu_read(hrtimer_interrupts);  
 
-	if (__this_cpu_read(hrtimer_interrupts_saved) == hrint)
+	if (__this_cpu_read(hrtimer_interrupts_saved) == hrint)   /*此时hrtimer_interrupts应该比hrtimer_interrupts_saved，否则说明硬件中断无法及时响应了*/
 		return 1;
 
 	__this_cpu_write(hrtimer_interrupts_saved, hrint);
@@ -261,7 +261,7 @@ static void watchdog_interrupt_count(void)
 static int watchdog_nmi_enable(unsigned int cpu);
 static void watchdog_nmi_disable(unsigned int cpu);
 
-/* watchdog kicker functions */
+/* watchdog kicker functions */ /*超时触发看门狗函数*/
 static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 {
 	unsigned long touch_ts = __this_cpu_read(watchdog_touch_ts);
@@ -269,10 +269,10 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 	int duration;
 
 	/* kick the hardlockup detector */
-	watchdog_interrupt_count();
+	watchdog_interrupt_count();      /*定时器中断计数增加*/
 
 	/* kick the softlockup detector */
-	wake_up_process(__this_cpu_read(softlockup_watchdog));
+	wake_up_process(__this_cpu_read(softlockup_watchdog));   /*每一次时钟中断都会唤醒看门狗线程*/
 
 	/* .. and repeat */
 	hrtimer_forward_now(hrtimer, ns_to_ktime(sample_period));
@@ -299,7 +299,7 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 	 * indicate it is getting cpu time.  If it hasn't then
 	 * this is a good indication some task is hogging the cpu
 	 */
-	duration = is_softlockup(touch_ts);
+	duration = is_softlockup(touch_ts);   /*当前时间与之前记录时间对比，如果超过20s，说明软件死锁了*/
 	if (unlikely(duration)) {
 		/*
 		 * If a virtual machine is stopped by the host it can look to
@@ -310,7 +310,7 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 			return HRTIMER_RESTART;
 
 		/* only warn once */
-		if (__this_cpu_read(soft_watchdog_warn) == true)
+		if (__this_cpu_read(soft_watchdog_warn) == true)  /*确保后面的bug信息只打一次*/
 			return HRTIMER_RESTART;
 
 		printk(KERN_EMERG "BUG: soft lockup - CPU#%d stuck for %us! [%s:%d]\n",
@@ -339,23 +339,23 @@ static void watchdog_set_prio(unsigned int policy, unsigned int prio)
 	sched_setscheduler(current, policy, &param);
 }
 
-static void watchdog_enable(unsigned int cpu)
+static void watchdog_enable(unsigned int cpu) /*初始化一个高精度定时器，并将watchdog线程的优先级调为最高*/
 {
 	struct hrtimer *hrtimer = &__raw_get_cpu_var(watchdog_hrtimer);
 
 	/* kick off the timer for the hardlockup detector */
 	hrtimer_init(hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	hrtimer->function = watchdog_timer_fn;
+	hrtimer->function = watchdog_timer_fn;    /*软件死锁检测*/
 
 	/* Enable the perf event */
-	watchdog_nmi_enable(cpu);
+	watchdog_nmi_enable(cpu);    /*里面会初始化硬件死锁检测*/
 
 	/* done here because hrtimer_start can only pin to smp_processor_id() */
 	hrtimer_start(hrtimer, ns_to_ktime(sample_period),
 		      HRTIMER_MODE_REL_PINNED);
 
 	/* initialize timestamp */
-	watchdog_set_prio(SCHED_FIFO, MAX_RT_PRIO - 1);
+	watchdog_set_prio(SCHED_FIFO, MAX_RT_PRIO - 1); 
 	__touch_watchdog();
 }
 
@@ -373,7 +373,7 @@ static void watchdog_cleanup(unsigned int cpu, bool online)
 {
 	watchdog_disable(cpu);
 }
-
+/*表明产生定时器中断之后需要更新一次看门狗*/
 static int watchdog_should_run(unsigned int cpu)
 {
 	return __this_cpu_read(hrtimer_interrupts) !=
@@ -387,7 +387,7 @@ static int watchdog_should_run(unsigned int cpu)
  * default) to reset the softlockup timestamp. If this gets delayed
  * for more than 2*watchdog_thresh seconds then the debug-printout
  * triggers in watchdog_timer_fn().
- */
+ */ /*更新中断次数计数以及时间戳*/
 static void watchdog(unsigned int cpu)
 {
 	__this_cpu_write(soft_lockup_hrtimer_cnt,
@@ -491,7 +491,7 @@ static int watchdog_enable_all_cpus(void)
 	int err = 0;
 
 	if (!watchdog_running) {
-		err = smpboot_register_percpu_thread(&watchdog_threads);
+		err = smpboot_register_percpu_thread(&watchdog_threads);  /*在每个cpu上创建一个独立的看门狗线程*/
 		if (err)
 			pr_err("Failed to create watchdog threads, disabled\n");
 		else

@@ -299,7 +299,7 @@ struct pid *alloc_pid(struct pid_namespace *ns)
 
 	tmp = ns;
 	pid->level = ns->level;
-	for (i = ns->level; i >= 0; i--) {
+	for (i = ns->level; i >= 0; i--) { /*从当前的层级一直往上分配upid，每层命名空间都分配一个局部id*/
 		nr = alloc_pidmap(tmp);
 		if (nr < 0)
 			goto out_free;
@@ -316,14 +316,14 @@ struct pid *alloc_pid(struct pid_namespace *ns)
 
 	get_pid_ns(ns);
 	atomic_set(&pid->count, 1);
-	for (type = 0; type < PIDTYPE_MAX; ++type)
+	for (type = 0; type < PIDTYPE_MAX; ++type)  /*初始化此pid的hash表头*/
 		INIT_HLIST_HEAD(&pid->tasks[type]);
 
 	upid = pid->numbers + ns->level;
 	spin_lock_irq(&pidmap_lock);
 	if (!(ns->nr_hashed & PIDNS_HASH_ADDING))
 		goto out_unlock;
-	for ( ; upid >= pid->numbers; --upid) {
+	for ( ; upid >= pid->numbers; --upid) {     /*将upid加入到全局pid_hash表中*/
 		hlist_add_head_rcu(&upid->pid_chain,
 				&pid_hash[pid_hashfn(upid->nr, upid->ns)]);
 		upid->ns->nr_hashed++;
@@ -373,7 +373,7 @@ EXPORT_SYMBOL_GPL(find_vpid);
 
 /*
  * attach_pid() must be called with the tasklist_lock write-held.
- */
+ */ /*将task加入pid中的散列表中*/
 void attach_pid(struct task_struct *task, enum pid_type type)
 {
 	struct pid_link *link = &task->pids[type];
@@ -404,7 +404,7 @@ void detach_pid(struct task_struct *task, enum pid_type type)
 {
 	__change_pid(task, type, NULL);
 }
-
+/*用新的pid给task的对应类型*/
 void change_pid(struct task_struct *task, enum pid_type type,
 		struct pid *pid)
 {
@@ -419,7 +419,7 @@ void transfer_pid(struct task_struct *old, struct task_struct *new,
 	new->pids[type].pid = old->pids[type].pid;
 	hlist_replace_rcu(&old->pids[type].node, &new->pids[type].node);
 }
-
+/*取pid里的hash表上的第一个task_struct*/
 struct task_struct *pid_task(struct pid *pid, enum pid_type type)
 {
 	struct task_struct *result = NULL;
@@ -491,7 +491,7 @@ pid_t pid_nr_ns(struct pid *pid, struct pid_namespace *ns)
 	struct upid *upid;
 	pid_t nr = 0;
 
-	if (pid && ns->level <= pid->level) {
+	if (pid && ns->level <= pid->level) { /*确保当前命名空间不会看到父进程的*/
 		upid = &pid->numbers[ns->level];
 		if (upid->ns == ns)
 			nr = upid->nr;

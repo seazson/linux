@@ -251,13 +251,13 @@ struct cfs_rq {
 	unsigned int nr_running, h_nr_running;
 
 	u64 exec_clock;    /*队列上所有进程总共运行的物理调度时间*/
-	u64 min_vruntime;
+	u64 min_vruntime;  /*跟踪树中最小虚拟运行时间，可能比最左结点大*/
 #ifndef CONFIG_64BIT
 	u64 min_vruntime_copy;
 #endif
 
-	struct rb_root tasks_timeline;
-	struct rb_node *rb_leftmost;
+	struct rb_root tasks_timeline;   /*红黑树根节点*/
+	struct rb_node *rb_leftmost;     /*最左叶子结点*/
 
 	/*
 	 * 'curr' points to currently running entity on this cfs_rq.

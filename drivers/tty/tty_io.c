@@ -409,7 +409,7 @@ int tty_check_change(struct tty_struct *tty)
 	unsigned long flags;
 	int ret = 0;
 
-	if (current->signal->tty != tty)
+	if (current->signal->tty != tty)  /*如果不是替换当前进程的tty，返回检查*/
 		return 0;
 
 	spin_lock_irqsave(&tty->ctrl_lock, flags);
@@ -427,7 +427,7 @@ int tty_check_change(struct tty_struct *tty)
 		ret = -EIO;
 		goto out;
 	}
-	kill_pgrp(task_pgrp(current), SIGTTOU, 1);
+	kill_pgrp(task_pgrp(current), SIGTTOU, 1); /*发送一个信号*/
 	set_thread_flag(TIF_SIGPENDING);
 	ret = -ERESTARTSYS;
 out:
@@ -2509,12 +2509,12 @@ static int tiocspgrp(struct tty_struct *tty, struct tty_struct *real_tty, pid_t 
 	if (!pgrp)
 		goto out_unlock;
 	retval = -EPERM;
-	if (session_of_pgrp(pgrp) != task_session(current))
+	if (session_of_pgrp(pgrp) != task_session(current)) /*要设置的进程组和当前进程不在一个会话里面是不允许设置的*/
 		goto out_unlock;
 	retval = 0;
 	spin_lock_irqsave(&tty->ctrl_lock, flags);
-	put_pid(real_tty->pgrp);
-	real_tty->pgrp = get_pid(pgrp);
+	put_pid(real_tty->pgrp);        /*去掉对老的进程组的引用*/
+	real_tty->pgrp = get_pid(pgrp); /*tty指向新的进程组*/
 	spin_unlock_irqrestore(&tty->ctrl_lock, flags);
 out_unlock:
 	rcu_read_unlock();

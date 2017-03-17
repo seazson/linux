@@ -384,10 +384,10 @@ static noinline void __init_refok rest_init(void)
 	 * The boot idle thread must execute schedule()
 	 * at least once to get things moving:
 	 */
-	init_idle_bootup_task(current);
+	init_idle_bootup_task(current);  /*将当前进程修改为idle类*/
 	schedule_preempt_disabled();
 	/* Call into cpu_idle with preempt disabled */
-	cpu_startup_entry(CPUHP_ONLINE);
+	cpu_startup_entry(CPUHP_ONLINE); /*进入idle*/
 }
 
 /* Check for early params. */

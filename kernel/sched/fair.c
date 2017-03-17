@@ -611,7 +611,7 @@ int sched_proc_update_handler(struct ctl_table *table, int write,
 
 /*
  * delta /= w
- */
+ */ /*物理时间转换成虚拟时间*/
 static inline unsigned long
 calc_delta_fair(unsigned long delta, struct sched_entity *se)
 {
@@ -1732,8 +1732,8 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 	 * little, place the new task so that it fits in the slot that
 	 * stays open at the end.
 	 */
-	if (initial && sched_feat(START_DEBIT))
-		vruntime += sched_vslice(cfs_rq, se);
+	if (initial && sched_feat(START_DEBIT))  /*只有在新进程加入到系统中时才会设置initial*/
+		vruntime += sched_vslice(cfs_rq, se); /*增加一个周期的进程对应虚拟时间*/
 
 	/* sleeps up to a single latency don't count. */
 	if (!initial) {
@@ -1761,7 +1761,7 @@ enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 	/*
 	 * Update the normalized vruntime before updating min_vruntime
 	 * through calling update_curr().
-	 */
+	 */ /*fork的时候vruntime存的是相对值*/
 	if (!(flags & ENQUEUE_WAKEUP) || (flags & ENQUEUE_WAKING))
 		se->vruntime += cfs_rq->min_vruntime;
 
@@ -1774,14 +1774,14 @@ enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 	update_cfs_shares(cfs_rq);
 
 	if (flags & ENQUEUE_WAKEUP) {
-		place_entity(cfs_rq, se, 0);
+		place_entity(cfs_rq, se, 0);  /*向前亏欠一个周期*/
 		enqueue_sleeper(cfs_rq, se);
 	}
 
 	update_stats_enqueue(cfs_rq, se);
 	check_spread(cfs_rq, se);
 	if (se != cfs_rq->curr)
-		__enqueue_entity(cfs_rq, se);
+		__enqueue_entity(cfs_rq, se);    /*插入到红黑树中*/
 	se->on_rq = 1;
 
 	if (cfs_rq->nr_running == 1) {
@@ -1966,7 +1966,7 @@ wakeup_preempt_entity(struct sched_entity *curr, struct sched_entity *se);
  */
 static struct sched_entity *pick_next_entity(struct cfs_rq *cfs_rq)
 {
-	struct sched_entity *se = __pick_first_entity(cfs_rq);
+	struct sched_entity *se = __pick_first_entity(cfs_rq);    /*选择最左结点*/
 	struct sched_entity *left = se;
 
 	/*
@@ -1974,7 +1974,7 @@ static struct sched_entity *pick_next_entity(struct cfs_rq *cfs_rq)
 	 * be done without getting too unfair.
 	 */
 	if (cfs_rq->skip == se) {
-		struct sched_entity *second = __pick_next_entity(se);
+		struct sched_entity *second = __pick_next_entity(se);  /*如果最左结点是要跳过的，再往后选择一个*/
 		if (second && wakeup_preempt_entity(second, left) < 1)
 			se = second;
 	}
@@ -2866,7 +2866,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_entity *se = &p->se;
 
 	for_each_sched_entity(se) {
-		if (se->on_rq)
+		if (se->on_rq)  /*如果已经在队列上了什么也不做*/  
 			break;
 		cfs_rq = cfs_rq_of(se);
 		enqueue_entity(cfs_rq, se, flags);
@@ -5829,8 +5829,8 @@ static void task_fork_fair(struct task_struct *p)
 	update_curr(cfs_rq);
 
 	if (curr)
-		se->vruntime = curr->vruntime;
-	place_entity(cfs_rq, se, 1);
+		se->vruntime = curr->vruntime;    /*新创建的进程虚拟运行时间等于当前进程的*/
+	place_entity(cfs_rq, se, 1);          /*新创建的进程虚拟运行时间增加一个周期*/
 
 	if (sysctl_sched_child_runs_first && curr && entity_before(curr, se)) {
 		/*
@@ -5841,7 +5841,7 @@ static void task_fork_fair(struct task_struct *p)
 		resched_task(rq->curr);
 	}
 
-	se->vruntime -= cfs_rq->min_vruntime;
+	se->vruntime -= cfs_rq->min_vruntime;    /*fork的时候保存的是一个相对值*/
 
 	raw_spin_unlock_irqrestore(&rq->lock, flags);
 }

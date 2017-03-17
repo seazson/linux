@@ -920,20 +920,20 @@ SYSCALL_DEFINE2(setpgid, pid_t, pid, pid_t, pgid)
 	write_lock_irq(&tasklist_lock);
 
 	err = -ESRCH;
-	p = find_task_by_vpid(pid);
+	p = find_task_by_vpid(pid); /*根据pid的值找到进程*/
 	if (!p)
 		goto out;
 
 	err = -EINVAL;
-	if (!thread_group_leader(p))
+	if (!thread_group_leader(p)) /*pid不是线程组组长不能设置?*/
 		goto out;
 
-	if (same_thread_group(p->real_parent, group_leader)) {
+	if (same_thread_group(p->real_parent, group_leader)) { /*需要修改的进程的父进程和当前进程的线程组长进程具有相同的tgid*/
 		err = -EPERM;
-		if (task_session(p) != task_session(group_leader))
+		if (task_session(p) != task_session(group_leader)) /*不在一个会话中*/
 			goto out;
 		err = -EACCES;
-		if (p->did_exec)
+		if (p->did_exec)    /*执行了exex操作*/
 			goto out;
 	} else {
 		err = -ESRCH;
@@ -942,7 +942,7 @@ SYSCALL_DEFINE2(setpgid, pid_t, pid, pid_t, pgid)
 	}
 
 	err = -EPERM;
-	if (p->signal->leader)
+	if (p->signal->leader) /*有领头信号*/
 		goto out;
 
 	pgrp = task_pid(p);
@@ -951,7 +951,7 @@ SYSCALL_DEFINE2(setpgid, pid_t, pid, pid_t, pgid)
 
 		pgrp = find_vpid(pgid);
 		g = pid_task(pgrp, PIDTYPE_PGID);
-		if (!g || task_session(g) != task_session(group_leader))
+		if (!g || task_session(g) != task_session(group_leader)) /*需要修改的组长于当前进程不在一个会话里面*/
 			goto out;
 	}
 
@@ -959,7 +959,7 @@ SYSCALL_DEFINE2(setpgid, pid_t, pid, pid_t, pgid)
 	if (err)
 		goto out;
 
-	if (task_pgrp(p) != pgrp)
+	if (task_pgrp(p) != pgrp)  /*当前的组长已经是了就不用替换了*/
 		change_pid(p, PIDTYPE_PGID, pgrp);
 
 	err = 0;
@@ -1055,19 +1055,19 @@ SYSCALL_DEFINE0(setsid)
 
 	write_lock_irq(&tasklist_lock);
 	/* Fail if I am already a session leader */
-	if (group_leader->signal->leader)
+	if (group_leader->signal->leader)   /*表示已经是一个会话的首进程*/
 		goto out;
 
 	/* Fail if a process group id already exists that equals the
 	 * proposed session id.
-	 */
+	 */ /*组长不能当会话首进程?*/
 	if (pid_task(sid, PIDTYPE_PGID))
 		goto out;
 
-	group_leader->signal->leader = 1;
-	set_special_pids(sid);
+	group_leader->signal->leader = 1;  /*标记为会话首进程*/
+	set_special_pids(sid);             /*修改当前进程为会话首进程和组长进程*/
 
-	proc_clear_tty(group_leader);
+	proc_clear_tty(group_leader);      /*取消守护进程与tty的关联*/
 
 	err = session;
 out:

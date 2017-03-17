@@ -249,7 +249,7 @@ struct tty_struct {
 	struct ktermios termios, termios_locked;
 	struct termiox *termiox;	/* May be NULL for unsupported */
 	char name[64];
-	struct pid *pgrp;		/* Protected by ctrl lock */
+	struct pid *pgrp;		/* Protected by ctrl lock */ /*指向前台组长进程*/
 	struct pid *session;
 	unsigned long flags;
 	int count;
