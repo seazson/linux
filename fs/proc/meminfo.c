@@ -170,7 +170,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	hugetlb_report_meminfo(m);
 
 	arch_report_meminfo(m);
-
+	show_mem(0);
 	return 0;
 #undef K
 }

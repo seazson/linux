@@ -53,6 +53,8 @@ struct page {
 	struct {
 		union {                                                   /*如果page加入了swap_cache则代表slot号*/
 			pgoff_t index;		/* Our offset within mapping. */  /*页帧在映射内部的偏移量。例如打开一个文件，表示在文件中的偏移量。偏移量是对整个地址空间，而不是相对于所属vma*/
+																  /*如果页在伙伴系统中，表示页的迁移属性。只设置头页。__rmqueue_fallback可能会造成页的迁移属性可能与它所在的大块不一致。*/
+																  
 			void *freelist;		/* slub/slob first free object */ /*指向本page上第一个空闲的对象*/
 			bool pfmemalloc;	/* If set by the page allocator,
 						 * ALLOC_NO_WATERMARKS was set
@@ -138,7 +140,7 @@ struct page {
 					 	 * usually used for buffer_heads
 						 * if PagePrivate set; used for
 						 * swp_entry_t if PageSwapCache;
-						 * indicates order in the buddy
+						 * indicates order in the buddy  如果页在伙伴系统中，则表示页所在的order。只设置头页
 						 * system if PG_buddy is set.
 						 */
 #if USE_SPLIT_PTLOCKS

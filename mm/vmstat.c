@@ -1088,6 +1088,69 @@ static const struct file_operations proc_zoneinfo_file_operations = {
 	.release	= seq_release,
 };
 
+#include <asm/uaccess.h>
+static int allocmem_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static ssize_t allocmem_write(struct file *filp, const char __user *buffer,
+			size_t count, loff_t *ppos)
+{
+	int len;
+	int i=0;
+	char p[100];
+	char *argv[30];
+	int ret=1;
+	
+	int allocorder;
+	int allocflag;
+
+	memset(p,0,sizeof(p));
+	if(copy_from_user(p,buffer,count))
+		return -EFAULT;
+
+/*Ω‚Œˆ√¸¡Ó––*/
+	for(len = 0;len < count;)
+	{
+		if(*(p+len) == ' ')
+			while(*(p + (++len)) != ' ');
+
+		argv[i] = p+len;
+		i++;
+		while(*(p+len) != ' ')
+		{
+			if(*(p+len) == 0)
+			{
+				goto done;
+			}
+			len++;
+			
+		}
+		*(p+(len++)) = 0;
+	}
+	
+done:
+
+	allocorder = simple_strtol(argv[0],NULL,0);
+	allocflag = simple_strtol(argv[1],NULL,0);
+
+	alloc_pages(allocflag,allocorder);
+
+	return ret;
+}
+
+int alloc_release(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static const struct file_operations proc_allocmem_file_operations = {
+	.open		= allocmem_open,
+	.write		= allocmem_write,
+	.release	= alloc_release,
+};
+
 enum writeback_stat_item {
 	NR_DIRTY_THRESHOLD,
 	NR_DIRTY_BG_THRESHOLD,
@@ -1246,6 +1309,7 @@ static int __init setup_vmstat(void)
 	proc_create("vmstat", S_IRUGO, NULL, &proc_vmstat_file_operations);
 	proc_create("zoneinfo", S_IRUGO, NULL, &proc_zoneinfo_file_operations);
 #endif
+	proc_create("allocmem", S_IRUGO, NULL, &proc_allocmem_file_operations);
 	return 0;
 }
 module_init(setup_vmstat)

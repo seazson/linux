@@ -230,10 +230,10 @@ EXPORT_SYMBOL(nr_online_nodes);
 #endif
 
 int page_group_by_mobility_disabled __read_mostly;
-
+/*设置大块的迁移属性*/
 void set_pageblock_migratetype(struct page *page, int migratetype)
 {
-
+	pr_sea_start("set pageblock %d migratetype %d\n",page_to_pfn(page), migratetype);
 	if (unlikely(page_group_by_mobility_disabled))
 		migratetype = MIGRATE_UNMOVABLE;
 
@@ -930,7 +930,7 @@ static int fallbacks[MIGRATE_TYPES][4] = {
  * Move the free pages in a range to the free lists of the requested type.
  * Note that start_page and end_pages are not aligned on a pageblock
  * boundary. If alignment is required, use move_freepages_block()
- */
+ */ /*将这一段地址中的空闲页，移动到相应迁移属性的free_list链表上，并修改页的迁移属性。移动的粒度是page对应的order*/
 int move_freepages(struct zone *zone,
 			  struct page *start_page, struct page *end_page,
 			  int migratetype)
@@ -959,22 +959,22 @@ int move_freepages(struct zone *zone,
 			continue;
 		}
 
-		if (!PageBuddy(page)) {
+		if (!PageBuddy(page)) {/*page不在伙伴系统中是不能移动的*/
 			page++;
 			continue;
 		}
 
 		order = page_order(page);
 		list_move(&page->lru,
-			  &zone->free_area[order].free_list[migratetype]);
-		set_freepage_migratetype(page, migratetype);   /*这里只是修改page自己的迁移属性*/
+			  &zone->free_area[order].free_list[migratetype]); /*只用移动头页*/
+		set_freepage_migratetype(page, migratetype);   /*这里只是修改page头页自己的迁移属性*/
 		page += 1 << order;
 		pages_moved += 1 << order;
 	}
 
 	return pages_moved;
 }
-
+/*将page对应的大块中的空闲页移动到对应的迁移属性free_list[]中*/
 int move_freepages_block(struct zone *zone, struct page *page,
 				int migratetype)
 {
@@ -1023,10 +1023,10 @@ __rmqueue_fallback(struct zone *zone, int order, int start_migratetype)
 			migratetype = fallbacks[start_migratetype][i];     /*fallbacks中存有迁移类型的备用次序*/
 
 			/* MIGRATE_RESERVE handled later if necessary */
-			if (migratetype == MIGRATE_RESERVE)                /*紧急分配的内存最后处理，在次函数返回后*/
+			if (migratetype == MIGRATE_RESERVE)                /*紧急分配的内存最后处理，在此函数返回后*/
 				break;
 
-			area = &(zone->free_area[current_order]);          /*当前大阶没有，往小阶找*/
+			area = &(zone->free_area[current_order]);          /*当前大阶没有，尝试其他迁移类型。优先满足阶数要求*/
 			if (list_empty(&area->free_list[migratetype]))
 				continue;
 
@@ -1051,13 +1051,13 @@ __rmqueue_fallback(struct zone *zone, int order, int start_migratetype)
 			     start_migratetype == MIGRATE_RECLAIMABLE ||         /*可回收页需要频繁迁移*/
 			     page_group_by_mobility_disabled)) {
 				int pages;
-				pages = move_freepages_block(zone, page,              /*将page迁移到期望的迁移类型中，期望一次移动一个大块，实际可能小于一个大块，page返回成功移动的数目*/
+				pages = move_freepages_block(zone, page,              /*将page迁移到期望的迁移类型free_area中，期望一次移动一个大块，实际可能小于一个大块(大块中可能有页已经在使用)，page返回成功移动的数目*/
 								start_migratetype);                   /*这里有一种可能只移了一个大块的一部分*/
 				pr_sea_start("move_freepages_block %x order%d %x to %x\n",pages,order,migratetype,start_migratetype);
 				/* Claim the whole block if over half of it is free */ /*如果超过一半是空闲的，这主张获取整个块的所有权*/
 				if (pages >= (1 << (pageblock_order-1)) ||
 						page_group_by_mobility_disabled)
-					set_pageblock_migratetype(page,                   /*这只是设置当前page在的大块，*/
+					set_pageblock_migratetype(page,                   /*如果移动的页数大于大块的一半，则修改大块的迁移属性。此时大块中的页的迁移属性可能不一样了*/
 								start_migratetype);
 
 				migratetype = start_migratetype;
@@ -1099,7 +1099,7 @@ static struct page *__rmqueue(struct zone *zone, unsigned int order,
 retry_reserve:
 	page = __rmqueue_smallest(zone, order, migratetype);          /*从伙伴系统中取出，如果没有就从上级分裂*/
 
-	if (unlikely(!page) && migratetype != MIGRATE_RESERVE) {
+	if (unlikely(!page) && migratetype != MIGRATE_RESERVE) {      /*保留属性的页是不能直接分配的。如果分配保留类型失败了，就没有必要再从其他类型分配了*/
 		page = __rmqueue_fallback(zone, order, migratetype);      /*尝试其他迁移列表分配，至于迁不迁移还需具体判断*/
 
 		/*
@@ -1107,7 +1107,7 @@ retry_reserve:
 		 * is used because __rmqueue_smallest is an inline function
 		 * and we want just one call site
 		 */
-		if (!page) {
+		if (!page) {                                               /*最后再尝试保留内存*/
 			migratetype = MIGRATE_RESERVE;
 			goto retry_reserve;
 		}
@@ -1863,7 +1863,7 @@ zonelist_scan:
 	 * See also cpuset_zone_allowed() comment in kernel/cpuset.c.
 	 */
 	for_each_zone_zonelist_nodemask(zone, z, zonelist,
-						high_zoneidx, nodemask) {
+						high_zoneidx, nodemask) {   /*遍历zonelist来寻找*/
 		if (IS_ENABLED(CONFIG_NUMA) && zlc_active &&
 			!zlc_zone_worth_trying(zonelist, z, allowednodes))
 				continue;
@@ -1907,7 +1907,7 @@ zonelist_scan:
 
 			mark = zone->watermark[alloc_flags & ALLOC_WMARK_MASK];
 			if (zone_watermark_ok(zone, order, mark,
-				    classzone_idx, alloc_flags))            /*检查剩余内存值，不满足条件的话需要进行内存回收*/
+				    classzone_idx, alloc_flags))            /*检查剩余内存值，不满足条件的话需要进行内存回收，还不满足的话尝试下一个zone*/
 				goto try_this_zone;
 
 			if (IS_ENABLED(CONFIG_NUMA) &&
@@ -2840,7 +2840,7 @@ EXPORT_SYMBOL(free_pages_exact);
  * high watermark within all zones at or below a given zone index.  For each
  * zone, the number of pages is calculated as:
  *     managed_pages - high_pages
- */ /*计算高于高水标的页总数*/
+ */ /*计算所有zone中高于高水标的页总数*/
 static unsigned long nr_free_zone_pages(int offset)
 {
 	struct zoneref *z;
@@ -2867,7 +2867,7 @@ static unsigned long nr_free_zone_pages(int offset)
  *
  * nr_free_buffer_pages() counts the number of pages which are beyond the high
  * watermark within ZONE_DMA and ZONE_NORMAL.
- */
+ */ /*返回所有zone中高于高水标的页总数*/
 unsigned long nr_free_buffer_pages(void)
 {
 	return nr_free_zone_pages(gfp_zone(GFP_USER));
@@ -3833,7 +3833,7 @@ static int pageblock_is_reserved(unsigned long start_pfn, unsigned long end_pfn)
  * the reserve will tend to store contiguous free pages. Setting min_free_kbytes
  * higher will lead to a bigger reserve which will get freed as contiguous
  * blocks as reclaim kicks in
- */
+ */ /*找到一个大块设置为保留类型,并将里面的页移动到对应order的free_list[MIGRATE_RESERVE]中*/
 static void setup_zone_migrate_reserve(struct zone *zone)
 {
 	unsigned long start_pfn, pfn, end_pfn, block_end_pfn;
@@ -3849,10 +3849,9 @@ static void setup_zone_migrate_reserve(struct zone *zone)
 	 */
 	start_pfn = zone->zone_start_pfn;
 	end_pfn = zone_end_pfn(zone);
-	start_pfn = roundup(start_pfn, pageblock_nr_pages);
+	start_pfn = roundup(start_pfn, pageblock_nr_pages);   /*对齐到大块*/
 	reserve = roundup(min_wmark_pages(zone), pageblock_nr_pages) >>
 							pageblock_order;
-
 	/*
 	 * Reserve blocks are generally in place to help high-order atomic
 	 * allocations that are short-lived. A min_free_kbytes value that
@@ -3880,7 +3879,7 @@ static void setup_zone_migrate_reserve(struct zone *zone)
 			 * them.
 			 */
 			block_end_pfn = min(pfn + pageblock_nr_pages, end_pfn);
-			if (pageblock_is_reserved(pfn, block_end_pfn))
+			if (pageblock_is_reserved(pfn, block_end_pfn))   /*检查此大块中是否有保留的页面，有的话跳过*/
 				continue;
 
 			/* If this block is reserved, account for it */
@@ -5378,7 +5377,7 @@ void __init page_alloc_init(void)
 /*
  * calculate_totalreserve_pages - called when sysctl_lower_zone_reserve_ratio
  *	or min_free_kbytes changes.
- */
+ */ /*lowmem_reserve + 高水标的值*/
 static void calculate_totalreserve_pages(void)
 {
 	struct pglist_data *pgdat;
@@ -5416,6 +5415,7 @@ static void calculate_totalreserve_pages(void)
 	}
 	dirty_balance_reserve = reserve_pages;
 	totalreserve_pages = reserve_pages;
+	pr_sea_start("totalreserve_pages %d\n",reserve_pages);
 }
 
 /*
@@ -5445,10 +5445,11 @@ static void setup_per_zone_lowmem_reserve(void)
 				if (sysctl_lowmem_reserve_ratio[idx] < 1)
 					sysctl_lowmem_reserve_ratio[idx] = 1;
 
-				lower_zone = pgdat->node_zones + idx;
+				lower_zone = pgdat->node_zones + idx;    /*得到上一级zone*/
 				lower_zone->lowmem_reserve[j] = managed_pages /
 					sysctl_lowmem_reserve_ratio[idx];
 				managed_pages += lower_zone->managed_pages;
+				pr_sea_start("lowmem_reserve %d\n",lower_zone->lowmem_reserve[j]);
 			}
 		}
 	}
@@ -5456,7 +5457,7 @@ static void setup_per_zone_lowmem_reserve(void)
 	/* update totalreserve_pages */
 	calculate_totalreserve_pages();
 }
-/*计算内存回收水标*/
+/*计算各个zone内存回收水标值，分配保留pageblock，计算总保留内存*/
 static void __setup_per_zone_wmarks(void)
 {
 	unsigned long pages_min = min_free_kbytes >> (PAGE_SHIFT - 10);
@@ -5464,7 +5465,7 @@ static void __setup_per_zone_wmarks(void)
 	struct zone *zone;
 	unsigned long flags;
 
-	/* Calculate total number of !ZONE_HIGHMEM pages */
+	/* Calculate total number of !ZONE_HIGHMEM pages 计算除了高端内存以外，所有zone可管理内存之和*/
 	for_each_zone(zone) {
 		if (!is_highmem(zone))
 			lowmem_pages += zone->managed_pages;
@@ -5489,7 +5490,7 @@ static void __setup_per_zone_wmarks(void)
 			unsigned long min_pages;
 
 			min_pages = zone->managed_pages / 1024;
-			min_pages = clamp(min_pages, SWAP_CLUSTER_MAX, 128UL);
+			min_pages = clamp(min_pages, SWAP_CLUSTER_MAX, 128UL);   /*高端内存的低水标在32~128之间*/
 			zone->watermark[WMARK_MIN] = min_pages;
 		} else {
 			/*
@@ -5502,12 +5503,12 @@ static void __setup_per_zone_wmarks(void)
 		zone->watermark[WMARK_LOW]  = min_wmark_pages(zone) + (tmp >> 2);
 		zone->watermark[WMARK_HIGH] = min_wmark_pages(zone) + (tmp >> 1);
 
-		setup_zone_migrate_reserve(zone);
+		setup_zone_migrate_reserve(zone);    /*选择1~2块pageblock划分给为保留属性，并移动到伙伴系统保留内存链表上*/
 		spin_unlock_irqrestore(&zone->lock, flags);
 	}
 
 	/* update totalreserve_pages */
-	calculate_totalreserve_pages();
+	calculate_totalreserve_pages();   /*计算总共的保留内存*/
 }
 
 /**
@@ -5544,7 +5545,7 @@ void setup_per_zone_wmarks(void)
  *  100GB      31         3GB
  *    1TB     101        10GB
  *   10TB     320        32GB
- */
+ */ /*计算发起活动链表往非活动链表迁移的比例阈值*/
 static void __meminit calculate_zone_inactive_ratio(struct zone *zone)
 {
 	unsigned int gb, ratio;
@@ -5596,9 +5597,10 @@ int __meminit init_per_zone_wmark_min(void)
 	unsigned long lowmem_kbytes;
 	int new_min_free_kbytes;
 
-	lowmem_kbytes = nr_free_buffer_pages() * (PAGE_SIZE >> 10);
+	lowmem_kbytes = nr_free_buffer_pages() * (PAGE_SIZE >> 10);    /*可管理内存高于高水标的数。启动的时候高水标为0，可管理内存还不包括内核最后free的*/
 	new_min_free_kbytes = int_sqrt(lowmem_kbytes * 16);
-	printk("init_per_zone_wmark_min 0x%lx 0x%x 0x%x\n",lowmem_kbytes,new_min_free_kbytes,user_min_free_kbytes);
+	/*对于64M的内存，lowmem_kbytes=41716 new_min_free_kbytes=816*/
+	printk("init_per_zone_wmark_min %ldK %ldK %ldK\n",lowmem_kbytes,new_min_free_kbytes,user_min_free_kbytes);
 	if (new_min_free_kbytes > user_min_free_kbytes) {
 		min_free_kbytes = new_min_free_kbytes;
 		if (min_free_kbytes < 128)
@@ -5609,10 +5611,10 @@ int __meminit init_per_zone_wmark_min(void)
 		pr_warn("min_free_kbytes is not updated to %d because user defined value %d is preferred\n",
 				new_min_free_kbytes, user_min_free_kbytes);
 	}
-	setup_per_zone_wmarks();              /*设置zone里的各项水标值*/
+	setup_per_zone_wmarks();              /*设置zone里的各项水标值，分配保留内存pageblock，并将其中的页移动到对应伙伴系统链中*/
 	refresh_zone_stat_thresholds();
 	setup_per_zone_lowmem_reserve();      /*设置lowmem_reserve*/
-	setup_per_zone_inactive_ratio();
+	setup_per_zone_inactive_ratio();      /*计算活动页迁移到非活动页的比例*/
 	return 0;
 }
 module_init(init_per_zone_wmark_min)

@@ -331,13 +331,13 @@ struct zone {
 	 * on the higher zones). This array is recalculated at runtime if the
 	 * sysctl_lowmem_reserve_ratio sysctl changes.
 	 */
-	unsigned long		lowmem_reserve[MAX_NR_ZONES];   /*关键预留页，不会分配失败的页*/
+	unsigned long		lowmem_reserve[MAX_NR_ZONES];   /*关键预留页，不会分配失败的页。每一级对应为为该级的zone分配的保留内存*/
 
 	/*
 	 * This is a per-zone reserve of pages that should not be
 	 * considered dirtyable memory.
 	 */
-	unsigned long		dirty_balance_reserve;
+	unsigned long		dirty_balance_reserve;  /* zone->lowmem_reserve[n]中最大值 +  高水标值 */
 
 #ifdef CONFIG_NUMA
 	int node;
@@ -401,7 +401,7 @@ struct zone {
 	/*
 	 * The target ratio of ACTIVE_ANON to INACTIVE_ANON pages on
 	 * this zone's LRU.  Maintained by the pageout code.
-	 */
+	 */ /*由calculate_zone_inactive_ratio计算*/
 	unsigned int inactive_ratio;          /*用于判断是否需要从活动匿名链表移到非活动链表 active>in_active*inactive_ratio */
 
 
