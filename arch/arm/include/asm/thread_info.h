@@ -15,8 +15,8 @@
 #include <linux/compiler.h>
 #include <asm/fpstate.h>
 
-#define THREAD_SIZE_ORDER	1
-#define THREAD_SIZE		8192
+#define THREAD_SIZE_ORDER	3
+#define THREAD_SIZE		32768
 #define THREAD_START_SP		(THREAD_SIZE - 8)
 
 #ifndef __ASSEMBLY__
