@@ -6,7 +6,7 @@
 
 typedef union sigval {
 	int sival_int;
-	void __user *sival_ptr;
+	void __user *sival_ptr;  /*指向用户态的struct timer*/
 } sigval_t;
 
 /*
@@ -61,11 +61,11 @@ typedef struct siginfo {
 
 		/* POSIX.1b timers */
 		struct {
-			__kernel_timer_t _tid;	/* timer id */
-			int _overrun;		/* overrun count */
+			__kernel_timer_t _tid;	/* timer id */    /*内核里的定时器id，不是用户态的*/
+			int _overrun;		/* overrun count */   /*定时前到期没有执行次数*/
 			char _pad[sizeof( __ARCH_SI_UID_T) - sizeof(int)];
-			sigval_t _sigval;	/* same as below */
-			int _sys_private;       /* not to be passed to user */
+			sigval_t _sigval;	/* same as below */   /*指向用户态的struct timer*/
+			int _sys_private;       /* not to be passed to user */ /*定时器到期产生次数*/
 		} _timer;
 
 		/* POSIX.1b signals */
@@ -277,11 +277,11 @@ typedef struct siginfo {
 
 typedef struct sigevent {
 	sigval_t sigev_value;
-	int sigev_signo;
-	int sigev_notify;
+	int sigev_signo;     /*glibc中使用的是SIGTIMER*/
+	int sigev_notify;    /*通知类型:SIGEV_SIGNAL, SIGEV_THREAD。glibc中SIGEV_THREAD传过来的是SIGEV_SIGNAL | SIGEV_THREAD_ID*/
 	union {
 		int _pad[SIGEV_PAD_SIZE];
-		 int _tid;
+		 int _tid;    /*应该是用户态help线程的id*/
 
 		struct {
 			void (*_function)(sigval_t);

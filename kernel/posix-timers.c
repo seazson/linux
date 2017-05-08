@@ -415,7 +415,7 @@ int posix_timer_event(struct k_itimer *timr, int si_private)
 	task = pid_task(timr->it_pid, PIDTYPE_PID);
 	if (task) {
 		shared = !(timr->it_sigev_notify & SIGEV_THREAD_ID);
-		ret = send_sigqueue(timr->sigq, task, shared);
+		ret = send_sigqueue(timr->sigq, task, shared);  /*发送信号并唤醒线程。正常发送返回0，忽略或者阻塞返回1*/
 	}
 	rcu_read_unlock();
 	/* If we failed to send the signal the timer stops. */
@@ -443,9 +443,9 @@ static enum hrtimer_restart posix_timer_fn(struct hrtimer *timer)
 	if (timr->it.real.interval.tv64 != 0)
 		si_private = ++timr->it_requeue_pending;
 
-	if (posix_timer_event(timr, si_private)) {
+	if (posix_timer_event(timr, si_private)) {/*定时器到期，发送信号。正常返回0。下一次到期时间在dequeue_signal中设置*/
 		/*
-		 * signal was not sent because of sig_ignor
+		 * signal was not sent because of sig_ignor    到这里说明信号被阻塞或者忽略了，需要重启定时器
 		 * we will not get a call back to restart it AND
 		 * it should be restarted.
 		 */
@@ -499,7 +499,7 @@ static struct pid *good_sigevent(sigevent_t * event)
 	struct task_struct *rtn = current->group_leader;
 
 	if ((event->sigev_notify & SIGEV_THREAD_ID ) &&
-		(!(rtn = find_task_by_vpid(event->sigev_notify_thread_id)) ||
+		(!(rtn = find_task_by_vpid(event->sigev_notify_thread_id)) ||   /*修改成timer_helper_thread的pid*/
 		 !same_thread_group(rtn, current) ||
 		 (event->sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_SIGNAL))
 		return NULL;
@@ -605,12 +605,12 @@ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
 	if (!kc->timer_create)
 		return -EOPNOTSUPP;
 
-	new_timer = alloc_posix_timer();
+	new_timer = alloc_posix_timer();   /*分配k_itimer和sigqueue*/
 	if (unlikely(!new_timer))
 		return -EAGAIN;
 
 	spin_lock_init(&new_timer->it_lock);
-	new_timer_id = posix_timer_add(new_timer);
+	new_timer_id = posix_timer_add(new_timer);  /*分配id并关联k_itimer*/
 	if (new_timer_id < 0) {
 		error = new_timer_id;
 		goto out;
@@ -627,7 +627,7 @@ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
 			goto out;
 		}
 		rcu_read_lock();
-		new_timer->it_pid = get_pid(good_sigevent(&event));
+		new_timer->it_pid = get_pid(good_sigevent(&event));  /*发送给的是用户态的help线程*/
 		rcu_read_unlock();
 		if (!new_timer->it_pid) {
 			error = -EINVAL;
@@ -642,8 +642,8 @@ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
 
 	new_timer->it_sigev_notify     = event.sigev_notify;
 	new_timer->sigq->info.si_signo = event.sigev_signo;
-	new_timer->sigq->info.si_value = event.sigev_value;
-	new_timer->sigq->info.si_tid   = new_timer->it_id;
+	new_timer->sigq->info.si_value = event.sigev_value; /*用户态传入的是sigev_value.sival_ptr = newp,*/
+	new_timer->sigq->info.si_tid   = new_timer->it_id;  /*内核态的timer id*/
 	new_timer->sigq->info.si_code  = SI_TIMER;
 
 	if (copy_to_user(created_timer_id,
@@ -834,7 +834,7 @@ common_timer_set(struct k_itimer *timr, int flags,
 	 * careful here.  If smp we could be in the "fire" routine which will
 	 * be spinning as we hold the lock.  But this is ONLY an SMP issue.
 	 */
-	if (hrtimer_try_to_cancel(timer) < 0)
+	if (hrtimer_try_to_cancel(timer) < 0)   /*先取消之前的timer*/
 		return TIMER_RETRY;
 
 	timr->it_requeue_pending = (timr->it_requeue_pending + 2) & 
@@ -846,13 +846,13 @@ common_timer_set(struct k_itimer *timr, int flags,
 		return 0;
 
 	mode = flags & TIMER_ABSTIME ? HRTIMER_MODE_ABS : HRTIMER_MODE_REL;
-	hrtimer_init(&timr->it.real.timer, timr->it_clock, mode);
+	hrtimer_init(&timr->it.real.timer, timr->it_clock, mode);  /*初始化并挂接定时器到期函数*/
 	timr->it.real.timer.function = posix_timer_fn;
 
-	hrtimer_set_expires(timer, timespec_to_ktime(new_setting->it_value));
+	hrtimer_set_expires(timer, timespec_to_ktime(new_setting->it_value)); /*设置到期时间*/
 
 	/* Convert interval */
-	timr->it.real.interval = timespec_to_ktime(new_setting->it_interval);
+	timr->it.real.interval = timespec_to_ktime(new_setting->it_interval);  
 
 	/* SIGEV_NONE timers are not queued ! See common_timer_get */
 	if (((timr->it_sigev_notify & ~SIGEV_THREAD_ID) == SIGEV_NONE)) {
@@ -863,7 +863,7 @@ common_timer_set(struct k_itimer *timr, int flags,
 		return 0;
 	}
 
-	hrtimer_start_expires(timer, mode);
+	hrtimer_start_expires(timer, mode);   /*启动定时器*/
 	return 0;
 }
 
