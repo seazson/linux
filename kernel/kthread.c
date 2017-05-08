@@ -449,7 +449,7 @@ int kthreadd(void *unused)
 
 	/* Setup a clean context for our children to inherit. */
 	set_task_comm(tsk, "kthreadd");
-	ignore_signals(tsk);
+	ignore_signals(tsk);                       /*ºöÂÔËùÓĞĞÅºÅ*/
 	set_cpus_allowed_ptr(tsk, cpu_all_mask);
 	set_mems_allowed(node_states[N_MEMORY]);
 

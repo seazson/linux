@@ -78,7 +78,7 @@ static void __unhash_process(struct task_struct *p, bool group_dead)
 
 /*
  * This function expects the tasklist_lock write-locked.
- */
+ */ /*清理信号相关*/
 static void __exit_signal(struct task_struct *tsk)
 {
 	struct signal_struct *sig = tsk->signal;
@@ -139,20 +139,20 @@ static void __exit_signal(struct task_struct *tsk)
 	}
 
 	sig->nr_threads--;
-	__unhash_process(tsk, group_dead);
+	__unhash_process(tsk, group_dead);  /*释放pid*/
 
 	/*
 	 * Do this under ->siglock, we can race with another thread
 	 * doing sigqueue_free() if we have SIGQUEUE_PREALLOC signals.
 	 */
-	flush_sigqueue(&tsk->pending);
+	flush_sigqueue(&tsk->pending);  /*释放私有信号链表上的请求*/
 	tsk->sighand = NULL;
 	spin_unlock(&sighand->siglock);
 
-	__cleanup_sighand(sighand);
+	__cleanup_sighand(sighand);     /*清除sighand*/
 	clear_tsk_thread_flag(tsk,TIF_SIGPENDING);
 	if (group_dead) {
-		flush_sigqueue(&sig->shared_pending);
+		flush_sigqueue(&sig->shared_pending);  /*如果是进程或者线程组长释放共享信号链表上的请求*/
 		tty_kref_put(tty);
 	}
 }
@@ -178,11 +178,11 @@ repeat:
 	atomic_dec(&__task_cred(p)->user->processes);
 	rcu_read_unlock();
 
-	proc_flush_task(p);
+ 	proc_flush_task(p);  /*清除proc下的节点*/
 
 	write_lock_irq(&tasklist_lock);
 	ptrace_release_task(p);
-	__exit_signal(p);
+	__exit_signal(p);    /*清除信号相关结构体*/
 
 	/*
 	 * If we are the last non-leader member of the thread
@@ -192,7 +192,7 @@ repeat:
 	zap_leader = 0;
 	leader = p->group_leader;
 	if (leader != p && thread_group_empty(leader) && leader->exit_state == EXIT_ZOMBIE) {
-		/*
+		/* 线程组最后一个线程，且不是组长线程，发信号给组长线程的父进程
 		 * If we were the last child thread and the leader has
 		 * exited already, and the leader's parent ignores SIGCHLD,
 		 * then we are the one who should release the leader.
@@ -204,10 +204,10 @@ repeat:
 
 	write_unlock_irq(&tasklist_lock);
 	release_thread(p);
-	call_rcu(&p->rcu, delayed_put_task_struct);
+	call_rcu(&p->rcu, delayed_put_task_struct);   /*释放task_struct以及内核栈*/
 
 	p = leader;
-	if (unlikely(zap_leader))
+	if (unlikely(zap_leader))   /*最后一个线程释放完了，现在可以释放组长线程了*/
 		goto repeat;
 }
 
@@ -239,18 +239,18 @@ struct pid *session_of_pgrp(struct pid *pgrp)
  * to receive a SIGHUP and a SIGCONT.
  *
  * "I ask you, have you ever known what it is to be an orphan?"
- */
+ */ /*进程组里所有的进程的父进程都在组里，或者都在另一个会话里。反着看:有一个进程的父进程不在组里，但是在同一会话里就不是孤立进程组*/
 static int will_become_orphaned_pgrp(struct pid *pgrp, struct task_struct *ignored_task)
 {
 	struct task_struct *p;
 
-	do_each_pid_task(pgrp, PIDTYPE_PGID, p) {
+	do_each_pid_task(pgrp, PIDTYPE_PGID, p) {/*遍历pgrp中的PIDTYPE_PGID链表上的task*/
 		if ((p == ignored_task) ||
-		    (p->exit_state && thread_group_empty(p)) ||
-		    is_global_init(p->real_parent))
+		    (p->exit_state && thread_group_empty(p)) || /*线程组最后一个进程在退出*/
+		    is_global_init(p->real_parent))  /*父进程是init*/
 			continue;
 
-		if (task_pgrp(p->real_parent) != pgrp &&
+		if (task_pgrp(p->real_parent) != pgrp &&  /*有一个进程的父进程不在这个进程组里，并且他们处于同一个会话中，不能算是孤立进程组*/
 		    task_session(p->real_parent) == task_session(p))
 			return 0;
 	} while_each_pid_task(pgrp, PIDTYPE_PGID, p);
@@ -303,10 +303,10 @@ kill_orphaned_pgrp(struct task_struct *tsk, struct task_struct *parent)
 		 */
 		ignored_task = NULL;
 
-	if (task_pgrp(parent) != pgrp &&
-	    task_session(parent) == task_session(tsk) &&
-	    will_become_orphaned_pgrp(pgrp, ignored_task) &&
-	    has_stopped_jobs(pgrp)) {
+	if (task_pgrp(parent) != pgrp &&   /*父进程所在的进程组和子进程不一样*/
+	    task_session(parent) == task_session(tsk) &&  /*父进程和子进程在一个会话里面*/
+	    will_become_orphaned_pgrp(pgrp, ignored_task) && /*是孤立进程组*/
+	    has_stopped_jobs(pgrp)) { /*进程组里面有stop的进程*/
 		__kill_pgrp_info(SIGHUP, SEND_SIG_PRIV, pgrp);
 		__kill_pgrp_info(SIGCONT, SEND_SIG_PRIV, pgrp);
 	}
@@ -444,7 +444,7 @@ static void exit_mm(struct task_struct * tsk)
 	struct mm_struct *mm = tsk->mm;
 	struct core_state *core_state;
 
-	mm_release(tsk, mm);
+	mm_release(tsk, mm);   /*唤醒父进程*/
 	if (!mm)
 		return;
 	sync_mm_rss(mm);
@@ -488,7 +488,7 @@ static void exit_mm(struct task_struct * tsk)
 	enter_lazy_tlb(mm, current);
 	task_unlock(tsk);
 	mm_update_next_owner(mm);
-	mmput(mm);
+	mmput(mm);     /*释放mm*/
 }
 
 /*
@@ -506,10 +506,10 @@ static struct task_struct *find_new_reaper(struct task_struct *father)
 	struct task_struct *thread;
 
 	thread = father;
-	while_each_thread(father, thread) {
+	while_each_thread(father, thread) {   /*遍历线程组中的所有线程到thread*/
 		if (thread->flags & PF_EXITING)
 			continue;
-		if (unlikely(pid_ns->child_reaper == father))
+		if (unlikely(pid_ns->child_reaper == father)) /*如果要结束的这个线程正好是child_reaper，则指定下一个线程是child_reaper*/
 			pid_ns->child_reaper = thread;
 		return thread;
 	}
@@ -522,7 +522,7 @@ static struct task_struct *find_new_reaper(struct task_struct *father)
 					father->exit_code);
 		}
 
-		zap_pid_ns_processes(pid_ns);
+		zap_pid_ns_processes(pid_ns);      /*?*/
 		write_lock_irq(&tasklist_lock);
 	} else if (father->signal->has_child_subreaper) {
 		struct task_struct *reaper;
@@ -536,14 +536,14 @@ static struct task_struct *find_new_reaper(struct task_struct *father)
 		 */
 		for (reaper = father->real_parent;
 		     reaper != &init_task;
-		     reaper = reaper->real_parent) {
-			if (same_thread_group(reaper, pid_ns->child_reaper))
+		     reaper = reaper->real_parent) { /*从要结束的进程的父进程往上一级级找，一直找到init进程*/
+			if (same_thread_group(reaper, pid_ns->child_reaper)) /*如果祖先进程和当前命名空间的child_reaper属于同一个线程组，可以使用*/
 				break;
 			if (!reaper->signal->is_child_subreaper)
 				continue;
 			thread = reaper;
 			do {
-				if (!(thread->flags & PF_EXITING))
+				if (!(thread->flags & PF_EXITING))  /*在父进程中寻找一个当回收使用的*/
 					return reaper;
 			} while_each_thread(reaper, thread);
 		}
@@ -574,7 +574,7 @@ static void reparent_leader(struct task_struct *father, struct task_struct *p,
 
 	/* If it has exited notify the new parent about this child's death. */
 	if (!p->ptrace &&
-	    p->exit_state == EXIT_ZOMBIE && thread_group_empty(p)) {
+	    p->exit_state == EXIT_ZOMBIE && thread_group_empty(p)) { /*如果子进程处于僵尸状态，添加到链表，并通知父进程*/
 		if (do_notify_parent(p, p->exit_signal)) {
 			p->exit_state = EXIT_DEAD;
 			list_move_tail(&p->sibling, dead);
@@ -595,9 +595,9 @@ static void forget_original_parent(struct task_struct *father)
 	 * drop tasklist_lock and reacquire it.
 	 */
 	exit_ptrace(father);
-	reaper = find_new_reaper(father);
+	reaper = find_new_reaper(father);   /*找到依赖此进程的子进程需要报告给的新的父进程*/
 
-	list_for_each_entry_safe(p, n, &father->children, sibling) {
+	list_for_each_entry_safe(p, n, &father->children, sibling) { /*遍历所有子进程，修改他们的real_parent为新的reaper*/
 		struct task_struct *t = p;
 		do {
 			t->real_parent = reaper;
@@ -609,13 +609,13 @@ static void forget_original_parent(struct task_struct *father)
 				group_send_sig_info(t->pdeath_signal,
 						    SEND_SIG_NOINFO, t);
 		} while_each_thread(p, t);
-		reparent_leader(father, p, &dead_children);
+		reparent_leader(father, p, &dead_children);   /*将子进程添加到新的父进程的children链表上，如果子进程处于僵尸状态，则添加到dead_children*/
 	}
 	write_unlock_irq(&tasklist_lock);
 
 	BUG_ON(!list_empty(&father->children));
 
-	list_for_each_entry_safe(p, n, &dead_children, sibling) {
+	list_for_each_entry_safe(p, n, &dead_children, sibling) {  /*释放僵尸状态的子进程*/
 		list_del_init(&p->sibling);
 		release_task(p);
 	}
@@ -637,11 +637,11 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 	 *	as a result of our exiting, and if they have any stopped
 	 *	jobs, send them a SIGHUP and then a SIGCONT.  (POSIX 3.2.2.2)
 	 */
-	forget_original_parent(tsk);
+	forget_original_parent(tsk); /*进程要结束，它的子进程需要使用新的父进程*/
 
 	write_lock_irq(&tasklist_lock);
 	if (group_dead)
-		kill_orphaned_pgrp(tsk->group_leader, NULL);
+		kill_orphaned_pgrp(tsk->group_leader, NULL); /*如果本进程的结束会形成孤立进程组，需要发送SIGHUP，SIGCONT信号给组内所有进程*/
 
 	if (unlikely(tsk->ptrace)) {
 		int sig = thread_group_leader(tsk) &&
@@ -651,12 +651,12 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 		autoreap = do_notify_parent(tsk, sig);
 	} else if (thread_group_leader(tsk)) {
 		autoreap = thread_group_empty(tsk) &&
-			do_notify_parent(tsk, tsk->exit_signal);
+			do_notify_parent(tsk, tsk->exit_signal);  /*进程或者线程组长结束时会通知父进程*/
 	} else {
-		autoreap = true;
+		autoreap = true;   /*线程成员结束时不会通知父进程，自己清理*/
 	}
 
-	tsk->exit_state = autoreap ? EXIT_DEAD : EXIT_ZOMBIE;
+	tsk->exit_state = autoreap ? EXIT_DEAD : EXIT_ZOMBIE;   /*如果父进程不需要子进程退出状态就将进程设置为EXIT_DEAD状态*/
 
 	/* mt-exec, de_thread() is waiting for group leader */
 	if (unlikely(tsk->signal->notify_count < 0))
@@ -664,7 +664,7 @@ static void exit_notify(struct task_struct *tsk, int group_dead)
 	write_unlock_irq(&tasklist_lock);
 
 	/* If the process is dead, release it - nobody will wait for it */
-	if (autoreap)
+	if (autoreap)   /*如果置位了说明父进程不关心子进程的结束状态，由子进程自己清理。否则的话暂时不清理,由父进程清理*/
 		release_task(tsk);
 }
 
@@ -702,9 +702,9 @@ void do_exit(long code)
 
 	WARN_ON(blk_needs_flush_plug(tsk));
 
-	if (unlikely(in_interrupt()))
+	if (unlikely(in_interrupt()))          /*处于原子上下文是不允许结束进程的*/
 		panic("Aiee, killing interrupt handler!");
-	if (unlikely(!tsk->pid))
+	if (unlikely(!tsk->pid))               /*swapper进程是不能结束的*/
 		panic("Attempted to kill the idle task!");
 
 	/*
@@ -741,7 +741,7 @@ void do_exit(long code)
 		schedule();
 	}
 
-	exit_signals(tsk);  /* sets PF_EXITING */
+	exit_signals(tsk);  /* sets PF_EXITING */  /*设置PF_EXITING，如果不是最后一个线程，将线程未处理的信号给其他能处理的线程*/
 	/*
 	 * tsk->flags are checked in the futex code to protect against
 	 * an exiting task cleaning up the robust pi futexes.
@@ -758,7 +758,7 @@ void do_exit(long code)
 	/* sync mm's RSS info before statistics gathering */
 	if (tsk->mm)
 		sync_mm_rss(tsk->mm);
-	group_dead = atomic_dec_and_test(&tsk->signal->live);
+	group_dead = atomic_dec_and_test(&tsk->signal->live); /*live减1等于零，也就是说是进程或者线程组最后一个线程结束*/
 	if (group_dead) {
 		hrtimer_cancel(&tsk->signal->real_timer);
 		exit_itimers(tsk->signal);
@@ -770,23 +770,23 @@ void do_exit(long code)
 		tty_audit_exit();
 	audit_free(tsk);
 
-	tsk->exit_code = code;
+	tsk->exit_code = code;             /*保存退出码*/
 	taskstats_exit(tsk, group_dead);
 
-	exit_mm(tsk);
+	exit_mm(tsk);           /*唤醒父进程，执行aioexit.如果没有其他进程共用mm，解除mmap，解除可执行文件关联，释放页表和mm_struct*/
 
 	if (group_dead)
 		acct_process();
 	trace_sched_process_exit(tsk);
 
-	exit_sem(tsk);
+	exit_sem(tsk);          /*IPC相关清理*/
 	exit_shm(tsk);
-	exit_files(tsk);
-	exit_fs(tsk);
-	exit_task_namespaces(tsk);
-	exit_task_work(tsk);
-	check_stack_usage();
-	exit_thread();
+	exit_files(tsk);        /*关闭已打开的文件描述符*/
+	exit_fs(tsk);           /*关闭文件系统*/
+	exit_task_namespaces(tsk);  /*切换命名空间为NULL*/
+	exit_task_work(tsk);    /*执行task_work*/
+	check_stack_usage();    /*检查栈的使用是否过多*/
+	exit_thread();          /*执行通知链THREAD_NOTIFY_EXIT*/
 
 	/*
 	 * Flush inherited counters to the parent - before the parent
@@ -799,7 +799,7 @@ void do_exit(long code)
 	cgroup_exit(tsk, 1);
 
 	if (group_dead)
-		disassociate_ctty(1);  /*群发组下的进程，tty终端的特性*/
+		disassociate_ctty(1);  /*如果是会话首进程，解除所有进程与tty关联，终止前台进程*/
 
 	module_put(task_thread_info(tsk)->exec_domain->module);
 
@@ -810,7 +810,7 @@ void do_exit(long code)
 	 */
 	flush_ptrace_hw_breakpoint(tsk);
 
-	exit_notify(tsk, group_dead);
+	exit_notify(tsk, group_dead);     /*通知父进程，并清理子进程*/
 #ifdef CONFIG_NUMA
 	task_lock(tsk);
 	mpol_put(tsk->mempolicy);
@@ -983,7 +983,7 @@ static int wait_noreap_copyout(struct wait_opts *wo, struct task_struct *p,
 	int retval = wo->wo_rusage
 		? getrusage(p, RUSAGE_BOTH, wo->wo_rusage) : 0;
 
-	put_task_struct(p);
+	put_task_struct(p);    /*这里会回收task_struct和内核栈*/
 	infop = wo->wo_info;
 	if (infop) {
 		if (!retval)
@@ -1021,7 +1021,7 @@ static int wait_task_zombie(struct wait_opts *wo, struct task_struct *p)
 	if (!likely(wo->wo_flags & WEXITED))
 		return 0;
 
-	if (unlikely(wo->wo_flags & WNOWAIT)) {
+	if (unlikely(wo->wo_flags & WNOWAIT)) {  /*不希望等待，直接清除*/
 		int exit_code = p->exit_code;
 		int why;
 
@@ -1113,7 +1113,7 @@ static int wait_task_zombie(struct wait_opts *wo, struct task_struct *p)
 	read_unlock(&tasklist_lock);
 
 	retval = wo->wo_rusage
-		? getrusage(p, RUSAGE_BOTH, wo->wo_rusage) : 0;
+		? getrusage(p, RUSAGE_BOTH, wo->wo_rusage) : 0;    /*如果需要获取usage的话在这里赋值*/
 	status = (p->signal->flags & SIGNAL_GROUP_EXIT)
 		? p->signal->group_exit_code : p->exit_code;
 	if (!retval && wo->wo_stat)
@@ -1161,7 +1161,7 @@ static int wait_task_zombie(struct wait_opts *wo, struct task_struct *p)
 		write_unlock_irq(&tasklist_lock);
 	}
 	if (p != NULL)
-		release_task(p);
+		release_task(p);      /*清理子进程*/
 
 	return retval;
 }
@@ -1356,7 +1356,7 @@ static int wait_consider_task(struct wait_opts *wo, int ptrace,
 	}
 
 	/* dead body doesn't have much to contribute */
-	if (unlikely(p->exit_state == EXIT_DEAD)) {
+	if (unlikely(p->exit_state == EXIT_DEAD)) {  /*EXIT_DEAD是获取不到信息的*/
 		/*
 		 * But do not ignore this task until the tracer does
 		 * wait_task_zombie()->do_notify_parent().
@@ -1380,8 +1380,8 @@ static int wait_consider_task(struct wait_opts *wo, int ptrace,
 		}
 
 		/* we don't reap group leaders with subthreads */
-		if (!delay_group_leader(p))
-			return wait_task_zombie(wo, p);
+		if (!delay_group_leader(p))  /*是线程组长并且有子线程，不收集*/
+			return wait_task_zombie(wo, p);  /*开始收集信息*/
 
 		/*
 		 * Allow access to stopped/continued state via zombie by
@@ -1455,7 +1455,7 @@ static int do_wait_thread(struct wait_opts *wo, struct task_struct *tsk)
 {
 	struct task_struct *p;
 
-	list_for_each_entry(p, &tsk->children, sibling) {
+	list_for_each_entry(p, &tsk->children, sibling) {/*遍历tsk的每个子进程*/
 		int ret = wait_consider_task(wo, 0, p);
 		if (ret)
 			return ret;
@@ -1535,7 +1535,7 @@ repeat:
 
 		if (wo->wo_flags & __WNOTHREAD)
 			break;
-	} while_each_thread(current, tsk);
+	} while_each_thread(current, tsk);  /*遍历线程组里的每个线程*/
 	read_unlock(&tasklist_lock);
 
 notask:

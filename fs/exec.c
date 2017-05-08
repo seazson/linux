@@ -355,7 +355,7 @@ static bool valid_arg_len(struct linux_binprm *bprm, long len)
  * vm_area_struct.  We don't have enough context at this point to set the stack
  * flags, permissions, and offset, so we use temporary values.  We'll update
  * them later in setup_arg_pages().
- */
+ */ /*分配一个mm，临时创建一个vma，用于栈*/
 static int bprm_mm_init(struct linux_binprm *bprm)
 {
 	int err;
@@ -849,7 +849,7 @@ static int exec_mmap(struct mm_struct *mm)
 		BUG_ON(active_mm != old_mm);
 		setmax_mm_hiwater_rss(&tsk->signal->maxrss, old_mm);
 		mm_update_next_owner(old_mm);
-		mmput(old_mm);                     /*释放之前map的空间*/
+		mmput(old_mm);                     /*释放之前map的空间，页表，vma*/
 		return 0;
 	}
 	mmdrop(active_mm);
@@ -868,7 +868,7 @@ static int de_thread(struct task_struct *tsk)
 	struct sighand_struct *oldsighand = tsk->sighand;
 	spinlock_t *lock = &oldsighand->siglock;
 
-	if (thread_group_empty(tsk))
+	if (thread_group_empty(tsk)) /*如果是进程或者最后一个线程，不需要分离信号结构体*/
 		goto no_thread_group;
 
 	/*
@@ -985,10 +985,10 @@ no_thread_group:
 	/* we have changed execution domain */
 	tsk->exit_signal = SIGCHLD;
 
-	exit_itimers(sig);
+	exit_itimers(sig);     /*未到期定时器都删除*/
 	flush_itimer_signals();
 
-	if (atomic_read(&oldsighand->count) != 1) {
+	if (atomic_read(&oldsighand->count) != 1) { /*信号处理函数有被共享的情况，重新分配一个信号处理函数，并拷贝原有的*/
 		struct sighand_struct *newsighand;
 		/*
 		 * This ->sighand is shared with the CLONE_SIGHAND
@@ -1070,7 +1070,7 @@ int flush_old_exec(struct linux_binprm * bprm)
 	 * Make sure we have a private signal table and that
 	 * we are unassociated from the previous thread group.
 	 */
-	retval = de_thread(current);             /*建立独有的信号表*/
+	retval = de_thread(current);             /*建立独有的信号处理函数*/
 	if (retval)
 		goto out;
 
@@ -1081,7 +1081,7 @@ int flush_old_exec(struct linux_binprm * bprm)
 	 * Release all of the old mmap stuff
 	 */
 	acct_arg_size(bprm, 0);
-	retval = exec_mmap(bprm->mm);            /*释放之前mmap的空间*/
+	retval = exec_mmap(bprm->mm);            /*释放之前的页表，vma，mm_struct。使用新的bprm->mm。*/
 	if (retval)
 		goto out;
 
@@ -1143,7 +1143,7 @@ void setup_new_exec(struct linux_binprm * bprm)
 	current->self_exec_id++;
 			
 	flush_signal_handlers(current, 0);               /*恢复默认信号表*/
-	do_close_on_exec(current->files);                /*关闭所有打开的文件*/
+	do_close_on_exec(current->files);                /*如果置位了close_on_exec，关闭所有打开的文件*/
 }
 EXPORT_SYMBOL(setup_new_exec);
 
@@ -1471,7 +1471,7 @@ static int do_execve_common(const char *filename,
 	 * set*uid() to execve() because too many poorly written programs
 	 * don't check setuid() return code.  Here we additionally recheck
 	 * whether NPROC limit is still exceeded.
-	 */
+	 */ /*运行的进程不能超限制*/
 	if ((current->flags & PF_NPROC_EXCEEDED) &&
 	    atomic_read(&current_user()->processes) > rlimit(RLIMIT_NPROC)) {
 		retval = -EAGAIN;
@@ -1481,13 +1481,13 @@ static int do_execve_common(const char *filename,
 	/* We're below the limit (still or again), so we don't want to make
 	 * further execve() calls fail. */
 	current->flags &= ~PF_NPROC_EXCEEDED;
-	/*复制一份fd，执行成功后会将原始的删除掉*/
+	/*如果files_struct是被共享的，复制一份files_struct，displaced指向被替换的*/
 	retval = unshare_files(&displaced);
 	if (retval)
 		goto out_ret;
 
 	retval = -ENOMEM;
-	bprm = kzalloc(sizeof(*bprm), GFP_KERNEL);
+	bprm = kzalloc(sizeof(*bprm), GFP_KERNEL);  /*分配一个bprm结构体*/
 	if (!bprm)
 		goto out_files;
 
@@ -1501,7 +1501,7 @@ static int do_execve_common(const char *filename,
 	clear_in_exec = retval;
 	current->in_execve = 1;
 
-	file = open_exec(filename);
+	file = open_exec(filename);    /*打开可执行文件*/
 	retval = PTR_ERR(file);
 	if (IS_ERR(file))
 		goto out_unmark;
@@ -1512,7 +1512,7 @@ static int do_execve_common(const char *filename,
 	bprm->filename = filename;
 	bprm->interp = filename;
 
-	retval = bprm_mm_init(bprm);
+	retval = bprm_mm_init(bprm);   /*分配一个新的mm，创建一个临时vma用于栈空间*/
 	if (retval)
 		goto out_file;
 
@@ -1527,13 +1527,13 @@ static int do_execve_common(const char *filename,
 	retval = prepare_binprm(bprm);
 	if (retval < 0)
 		goto out;
-	/*将文件名，argv，envp拷贝给bprm*/
+	/*将文件名，argv，envp拷贝到临时的vma中*/
 	retval = copy_strings_kernel(1, &bprm->filename, bprm);
 	if (retval < 0)
 		goto out;
 
 	bprm->exec = bprm->p;
-	retval = copy_strings(bprm->envc, envp, bprm);
+	retval = copy_strings(bprm->envc, envp, bprm);   
 	if (retval < 0)
 		goto out;
 
@@ -1541,7 +1541,7 @@ static int do_execve_common(const char *filename,
 	if (retval < 0)
 		goto out;
 	/*根据可执行文件类型调用相应的处理函数*/
-	retval = search_binary_handler(bprm);
+	retval = search_binary_handler(bprm);   /*可执行文件是load_elf_binary*/
 	if (retval < 0)
 		goto out;
 
@@ -1551,7 +1551,7 @@ static int do_execve_common(const char *filename,
 	acct_update_integrals(current);
 	free_bprm(bprm);
 	if (displaced)
-		put_files_struct(displaced);
+		put_files_struct(displaced);   /*减少对共享fd的引用*/
 	return retval;
 
 out:

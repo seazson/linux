@@ -775,7 +775,7 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	}
 
 	/* Flush all traces of the currently running executable */
-	retval = flush_old_exec(bprm);                     /*清除旧的进程mmap，创建独有信号表*/
+	retval = flush_old_exec(bprm);                     /*清除旧的进程mmap，创建独有信号处理函数。信号处理函数还是拷贝之前的*/
 	if (retval)
 		goto out_free_dentry;
 

@@ -347,7 +347,7 @@ out_release:
 out:
 	return NULL;
 }
-
+/*关闭已打开的文件描述符*/
 static void close_files(struct files_struct * files)
 {
 	int i, j;

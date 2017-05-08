@@ -473,13 +473,13 @@ struct autogroup;
  */
 struct signal_struct {
 	atomic_t		sigcnt;
-	atomic_t		live;
+	atomic_t		live;   /*进程或者只有一个线程的话是1，每增加一个线程加1*/
 	int			nr_threads;
 
-	wait_queue_head_t	wait_chldexit;	/* for wait4() */
+	wait_queue_head_t	wait_chldexit;	/* for wait4() */ /*等待子进程结束*/
 
 	/* current thread group signal load-balancing target: */
-	struct task_struct	*curr_target;
+	struct task_struct	*curr_target;  /*线程组中处理当前信号的进程*/
 
 	/* shared signal handling: */
 	struct sigpending	shared_pending;
@@ -553,7 +553,7 @@ struct signal_struct {
 	 * Live threads maintain their own counters and add to these
 	 * in __exit_signal, except for the group leader.
 	 */
-	cputime_t utime, stime, cutime, cstime;
+	cputime_t utime, stime, cutime, cstime;  /*所有线程的和*/
 	cputime_t gtime;
 	cputime_t cgtime;
 #ifndef CONFIG_VIRT_CPU_ACCOUNTING_NATIVE
@@ -1038,10 +1038,10 @@ struct task_struct {
 	struct llist_node wake_entry;
 	int on_cpu;
 #endif
-	int on_rq;
-
-	int prio, static_prio, normal_prio;
-	unsigned int rt_priority;
+	int on_rq;                           /*prio表示当前起作用的优先级*/
+                                         /*normal_prio分为两种:1普通进程等于static_prio，2实时进程为0~99(根rt_priority相反)*/
+	int prio, static_prio, normal_prio;  /*static_prio由nice值决定取值100~139.*/
+	unsigned int rt_priority;      /*实时优先级与用户态保持一致1~99,越高越大*/
 	const struct sched_class *sched_class;
 	struct sched_entity se;
 	struct sched_rt_entity rt;
@@ -1100,7 +1100,7 @@ struct task_struct {
 	struct task_rss_stat	rss_stat;
 #endif
 /* task state */
-	int exit_state;
+	int exit_state;            /*进程退出状态:EXIT_DEAD,EXIT_ZOMBIE*/
 	int exit_code, exit_signal;  /*进程退出时需要发给父进程的信号*/
 	int pdeath_signal;  /*  The signal sent when the parent dies  */
 	unsigned int jobctl;	/* JOBCTL_*, siglock protected */
@@ -1108,8 +1108,8 @@ struct task_struct {
 	/* Used for emulating ABI behavior of previous Linux versions */
 	unsigned int personality;
 
-	unsigned did_exec:1;
-	unsigned in_execve:1;	/* Tell the LSMs that the process is doing an
+	unsigned did_exec:1;    /*fork后置0，exec后置1*/
+	unsigned in_execve:1;	/* Tell the LSMs that the process is doing an 置1表示正在进行exec操作
 				 * execve */
 	unsigned in_iowait:1;
 
@@ -1171,11 +1171,11 @@ struct task_struct {
 		VTIME_SYS,
 	} vtime_snap_whence;
 #endif
-	unsigned long nvcsw, nivcsw; /* context switch counts */ /*进程切换的次数*/
+	unsigned long nvcsw, nivcsw; /* context switch counts */ /*进程切换的次数。前者是由于等待资源引起的，后者是时间片到，或者更高优先级任务来了*/
 	struct timespec start_time; 		/* monotonic time */
 	struct timespec real_start_time;	/* boot based time */
 /* mm fault and swap info: this can arguably be seen as either mm-specific or thread-specific */
-	unsigned long min_flt, maj_flt;
+	unsigned long min_flt, maj_flt;   /*信号结构体中也有此数据，用于线程组共有的，这个是线程私有的*/
 
 	struct task_cputime cputime_expires;
 	struct list_head cpu_timers[3];
@@ -2042,9 +2042,9 @@ static inline int kill_cad_pid(int sig, int priv)
 }
 
 /* These can be the second arg to send_sig_info/send_group_sig_info.  */
-#define SEND_SIG_NOINFO ((struct siginfo *) 0)
-#define SEND_SIG_PRIV	((struct siginfo *) 1)
-#define SEND_SIG_FORCED	((struct siginfo *) 2)
+#define SEND_SIG_NOINFO ((struct siginfo *) 0)    /*用户空间发送*/
+#define SEND_SIG_PRIV	((struct siginfo *) 1)    /*内核空间发送*/
+#define SEND_SIG_FORCED	((struct siginfo *) 2)    /*强制发送，不填info*/
 
 /*
  * True if we are on the alternate signal stack.

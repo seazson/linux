@@ -927,22 +927,22 @@ SYSCALL_DEFINE2(setpgid, pid_t, pid, pid_t, pgid)
 	err = -EINVAL;
 	if (!thread_group_leader(p)) /*pid不是线程组组长不能设置?*/
 		goto out;
-
+    /*父进程，或者父进程中的一个线程修改子进程。*/
 	if (same_thread_group(p->real_parent, group_leader)) { /*需要修改的进程的父进程和当前进程的线程组长进程具有相同的tgid*/
 		err = -EPERM;
-		if (task_session(p) != task_session(group_leader)) /*不在一个会话中*/
+		if (task_session(p) != task_session(group_leader)) /*不在一个会话中不能修改*/
 			goto out;
 		err = -EACCES;
-		if (p->did_exec)    /*执行了exex操作*/
+		if (p->did_exec)    /*如果子进程执行了exex操作，不能修改*/
 			goto out;
-	} else {
+	} else {  /*表明是进程修改自己的组id*/
 		err = -ESRCH;
 		if (p != group_leader)
 			goto out;
 	}
 
 	err = -EPERM;
-	if (p->signal->leader) /*有领头信号*/
+	if (p->signal->leader) /*会话首进程不能设置*/
 		goto out;
 
 	pgrp = task_pid(p);

@@ -59,7 +59,7 @@ struct pid
 	atomic_t count;
 	unsigned int level;          /*本pid的最高层级*/
 	/* lists of tasks that use this pid */
-	struct hlist_head tasks[PIDTYPE_MAX];  /*每个数组项都是一个散列表头，可能有多个task_struct链接到这里*/
+	struct hlist_head tasks[PIDTYPE_MAX];  /*每个数组项都是一个散列表头，可能有多个task_struct链接到这里。例如同一个进程组的进程都连接到PIDTYPE_PGID这里*/
 	struct rcu_head rcu;
 	struct upid numbers[1];      /*每个数组项代表一个命名空间*/
 };

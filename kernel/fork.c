@@ -306,7 +306,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	if (!ti)
 		goto free_tsk;
 
-	err = arch_dup_task_struct(tsk, orig);  /*拷贝task_struct中跟体系结构特有的数据*/
+	err = arch_dup_task_struct(tsk, orig);  /*拷贝task_struct结构体*/
 	if (err)
 		goto free_ti;
 
@@ -607,13 +607,13 @@ void mmput(struct mm_struct *mm)
 {
 	might_sleep();
 
-	if (atomic_dec_and_test(&mm->mm_users)) {
+	if (atomic_dec_and_test(&mm->mm_users)) { /*没有人在使用mm了就可以释放了*/
 		uprobe_clear_state(mm);
-		exit_aio(mm);
+		exit_aio(mm);     /*调用之前注册的异步事件,不同于用户态的aioexit*/
 		ksm_exit(mm);
 		khugepaged_exit(mm); /* must run before exit_mmap */
-		exit_mmap(mm);
-		set_mm_exe_file(mm, NULL);
+		exit_mmap(mm);    /*解除mmap*/
+		set_mm_exe_file(mm, NULL); /*解除与可执行文件的关联*/
 		if (!list_empty(&mm->mmlist)) {
 			spin_lock(&mmlist_lock);
 			list_del(&mm->mmlist);
@@ -621,7 +621,7 @@ void mmput(struct mm_struct *mm)
 		}
 		if (mm->binfmt)
 			module_put(mm->binfmt->module);
-		mmdrop(mm);
+		mmdrop(mm);      /*释放页表和mm_struct*/
 	}
 }
 EXPORT_SYMBOL_GPL(mmput);
@@ -794,7 +794,7 @@ void mm_release(struct task_struct *tsk, struct mm_struct *mm)
 	 * All done, finally we can wake up parent and return this mm to him.
 	 * Also kthread_stop() uses this completion for synchronization.
 	 */
-	if (tsk->vfork_done)
+	if (tsk->vfork_done)    /*唤醒父进程*/
 		complete_vfork_done(tsk);
 }
 
@@ -1185,7 +1185,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 		goto fork_out;
 
 	retval = -ENOMEM;
-	p = dup_task_struct(current);   /*创建task_struct和内核栈，并拷贝父进程内核栈*/
+	p = dup_task_struct(current);   /*创建task_struct和内核栈，并拷贝父进程内核栈，task_struct结构体*/
 	if (!p)
 		goto fork_out;
 
@@ -1573,7 +1573,7 @@ long do_fork(unsigned long clone_flags,
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
-
+	pr_sea_task("clone flags %lx\n",clone_flags);
 	/*
 	 * Do some preliminary argument and permissions checking before we
 	 * actually start allocating stuff
@@ -1623,7 +1623,7 @@ long do_fork(unsigned long clone_flags,
 			get_task_struct(p);
 		}
 
-		wake_up_new_task(p);
+		wake_up_new_task(p);   /*唤醒子进程*/
 
 		/* forking complete and child started to run, tell ptracer */
 		if (unlikely(trace))
@@ -1785,7 +1785,7 @@ static int unshare_fs(unsigned long unshare_flags, struct fs_struct **new_fsp)
 
 /*
  * Unshare file descriptor table if it is being shared
- */
+ */ /*如果fd被共享了，拷贝一份fd*/
 static int unshare_fd(unsigned long unshare_flags, struct files_struct **new_fdp)
 {
 	struct files_struct *fd = current->files;

@@ -97,7 +97,7 @@ ramfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 	struct inode * inode = ramfs_get_inode(dir->i_sb, dir, mode, dev); /*在超级块的dir下创建一个inode*/
 	int error = -ENOSPC;
 
-	pr_sea_start("%s\n",dentry->d_name.name);
+	pr_sea_fs("%s\n",dentry->d_name.name);
 	if (inode) {
 		d_instantiate(dentry, inode);                 /*关联dentry和inode*/
 		dget(dentry);	/* Extra count - pin the dentry in core */

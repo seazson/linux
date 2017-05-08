@@ -834,20 +834,20 @@ static void session_clear_tty(struct pid *session)
  *		  tasklist_lock is taken to walk process list for sessions
  *		    ->siglock is taken to protect ->signal/->sighand
  */
-
+/*只有会话首进程才执行。on_exit=1表示进程退出，0表示解除绑定*/
 void disassociate_ctty(int on_exit)
 {
 	struct tty_struct *tty;
 
-	if (!current->signal->leader)
+	if (!current->signal->leader)   /*不是会话首进程就退出*/
 		return;
 
 	tty = get_current_tty();
 	if (tty) {
 		if (on_exit && tty->driver->type != TTY_DRIVER_TYPE_PTY) {
 			tty_vhangup_session(tty);
-		} else {
-			struct pid *tty_pgrp = tty_get_pgrp(tty);
+		} else {/*虚拟终端走这里*/
+			struct pid *tty_pgrp = tty_get_pgrp(tty);  /*获取前台进程组pid*/
 			if (tty_pgrp) {
 				kill_pgrp(tty_pgrp, SIGHUP, on_exit);
 				kill_pgrp(tty_pgrp, SIGCONT, on_exit);
@@ -876,12 +876,12 @@ void disassociate_ctty(int on_exit)
 	spin_unlock_irq(&current->sighand->siglock);
 
 	tty = get_current_tty();
-	if (tty) {
+	if (tty) {  /*清除tty与会话的关系*/
 		unsigned long flags;
 		spin_lock_irqsave(&tty->ctrl_lock, flags);
 		put_pid(tty->session);
 		put_pid(tty->pgrp);
-		tty->session = NULL;
+		tty->session = NULL;     /*也就是说tty只能与一个会话关联*/
 		tty->pgrp = NULL;
 		spin_unlock_irqrestore(&tty->ctrl_lock, flags);
 		tty_kref_put(tty);
@@ -894,7 +894,7 @@ void disassociate_ctty(int on_exit)
 
 	/* Now clear signal->tty under the lock */
 	read_lock(&tasklist_lock);
-	session_clear_tty(task_session(current));
+	session_clear_tty(task_session(current));  /*将会话中的所有进程与tty解除关联*/
 	read_unlock(&tasklist_lock);
 }
 
@@ -2483,7 +2483,7 @@ static int tiocgpgrp(struct tty_struct *tty, struct tty_struct *real_tty, pid_t 
  *
  *	Locking: RCU, ctrl lock
  */
-
+/*设置一个进程组为前台进程组*/
 static int tiocspgrp(struct tty_struct *tty, struct tty_struct *real_tty, pid_t __user *p)
 {
 	struct pid *pgrp;

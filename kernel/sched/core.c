@@ -1690,7 +1690,7 @@ void sched_fork(struct task_struct *p)
 	/*
 	 * Revert to default priority/policy on fork if requested.
 	 */
-	if (unlikely(p->sched_reset_on_fork)) {
+	if (unlikely(p->sched_reset_on_fork)) {  /*如果需要的话可以重置调度方式*/
 		if (task_has_rt_policy(p)) {
 			p->policy = SCHED_NORMAL;
 			p->static_prio = NICE_TO_PRIO(0);
@@ -1762,13 +1762,13 @@ void wake_up_new_task(struct task_struct *p)
 	 *  - cpus_allowed can change in the fork path
 	 *  - any previously selected cpu might disappear through hotplug
 	 */
-	set_task_cpu(p, select_task_rq(p, SD_BALANCE_FORK, 0));
+	set_task_cpu(p, select_task_rq(p, SD_BALANCE_FORK, 0));  /*选择合适的cpu*/
 #endif
 
 	/* Initialize new task's runnable average */
 	init_task_runnable_average(p);
 	rq = __task_rq_lock(p);
-	activate_task(rq, p, 0);
+	activate_task(rq, p, 0);   /*将新进程添加到运行队列中*/
 	p->on_rq = 1;
 	trace_sched_wakeup_new(p, true);
 	check_preempt_curr(rq, p, WF_FORK);
@@ -1910,7 +1910,7 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
 		 * task and put them back on the free list.
 		 */
 		kprobe_flush_task(prev);
-		put_task_struct(prev);
+		put_task_struct(prev);      /*释放task_struct,内核栈，signal_struct*/
 	}
 
 	tick_nohz_task_switch(current);
@@ -2029,7 +2029,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	 * CPUs since it called schedule(), thus the 'rq' on its stack
 	 * frame will be invalid.
 	 */
-	finish_task_switch(this_rq(), prev);
+	finish_task_switch(this_rq(), prev);   /*如果被切走的进程处于结束状态，在这里清理*/
 }
 
 /*
@@ -3328,10 +3328,10 @@ recheck:
 	 * Valid priorities for SCHED_FIFO and SCHED_RR are
 	 * 1..MAX_USER_RT_PRIO-1, valid priority for SCHED_NORMAL,
 	 * SCHED_BATCH and SCHED_IDLE is 0.
-	 */
+	 */ /*rt类优先级是1~99，普通进程是0*/
 	if (param->sched_priority < 0 ||
-	    (p->mm && param->sched_priority > MAX_USER_RT_PRIO-1) ||
-	    (!p->mm && param->sched_priority > MAX_RT_PRIO-1))
+	    (p->mm && param->sched_priority > MAX_USER_RT_PRIO-1) ||   /*用户进程优先级判断*/
+	    (!p->mm && param->sched_priority > MAX_RT_PRIO-1))         /*内核线程优先级判断*/
 		return -EINVAL;
 	if (rt_policy(policy) != (param->sched_priority != 0))
 		return -EINVAL;

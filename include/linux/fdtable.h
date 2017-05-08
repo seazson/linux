@@ -24,7 +24,7 @@
 struct fdtable {
 	unsigned int max_fds;
 	struct file __rcu **fd;      /* current fd array */
-	unsigned long *close_on_exec;
+	unsigned long *close_on_exec;   /*执行exec的时候是否需要关闭之前的fd*/
 	unsigned long *open_fds;
 	struct rcu_head rcu;
 };
@@ -46,7 +46,7 @@ struct files_struct {
   /*
    * read mostly part
    */
-	atomic_t count;
+	atomic_t count;    /*当前被多少进程共享这个结构体*/
 	struct fdtable __rcu *fdt;
 	struct fdtable fdtab;
   /*

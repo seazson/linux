@@ -494,11 +494,11 @@ setup_rt_frame(struct ksignal *ksig, sigset_t *set, struct pt_regs *regs)
  */	
 static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
 {
-	sigset_t *oldset = sigmask_to_save();
+	sigset_t *oldset = sigmask_to_save();   /*保存进入信号处理函数之前的全局mask状态*/
 	int ret;
 
 	/*
-	 * Set up the stack frame
+	 * Set up the stack frame    建立信号处理帧
 	 */
 	if (ksig->ka.sa.sa_flags & SA_SIGINFO)
 		ret = setup_rt_frame(ksig, oldset, regs);
@@ -510,7 +510,7 @@ static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
 	 */
 	ret |= !valid_user_regs(regs);
 
-	signal_setup_done(ret, ksig, 0);
+	signal_setup_done(ret, ksig, 0);   /*全局block并上信号私有屏蔽字*/
 }
 
 /*
@@ -562,7 +562,7 @@ static int do_signal(struct pt_regs *regs, int syscall)
 	 * decision to restart the system call.  But skip this if a
 	 * debugger has chosen to restart at a different PC.
 	 */
-	if (get_signal(&ksig)) {
+	if (get_signal(&ksig)) { /*获取信号，及对应的处理函数*/
 		/* handler */
 		if (unlikely(restart) && regs->ARM_pc == restart_addr) {
 			if (retval == -ERESTARTNOHAND ||
@@ -592,7 +592,7 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
 		if (likely(thread_flags & _TIF_NEED_RESCHED)) {
 			schedule();
 		} else {
-			if (unlikely(!user_mode(regs)))
+			if (unlikely(!user_mode(regs)))  /*信号处理只能打断用户态*/
 				return 0;
 			local_irq_enable();
 			if (thread_flags & _TIF_SIGPENDING) {
