@@ -690,7 +690,7 @@ int __lock_page_or_retry(struct page *page, struct mm_struct *mm,
  *
  * Is there a pagecache struct page at the given (mapping, offset) tuple?
  * If yes, increment its refcount and return it; if no, return NULL.
- */
+ */ /*从基数树中找到对应地址偏移的页缓存*/
 struct page *find_get_page(struct address_space *mapping, pgoff_t offset)
 {
 	void **pagep;
@@ -1326,7 +1326,7 @@ int file_read_actor(read_descriptor_t *desc, struct page *page,
 	 * Faults on the destination of a read are common, so do it before
 	 * taking the kmap.
 	 */
-	if (!fault_in_pages_writeable(desc->arg.buf, size)) {
+	if (!fault_in_pages_writeable(desc->arg.buf, size)) {/*不允许失败就是用固定映射方式*/
 		kaddr = kmap_atomic(page);
 		left = __copy_to_user_inatomic(desc->arg.buf,
 						kaddr + offset, size);
@@ -1336,7 +1336,7 @@ int file_read_actor(read_descriptor_t *desc, struct page *page,
 	}
 
 	/* Do it the slow way */
-	kaddr = kmap(page);
+	kaddr = kmap(page);    /*允许失败是用持久映射方式*/
 	left = __copy_to_user(desc->arg.buf, kaddr + offset, size);
 	kunmap(page);
 

@@ -37,7 +37,7 @@ struct vm_struct {   /*用来建立虚拟地址和物理地址的关系*/
 	const void		*caller;
 };
 
-struct vmap_area {    /*用来维护vmalloc区域的分配信息*/
+struct vmap_area {    /*用来维护vmalloc区域的分配信息，组成红黑树*/
 	unsigned long va_start;
 	unsigned long va_end;
 	unsigned long flags;

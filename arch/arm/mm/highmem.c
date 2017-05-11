@@ -32,7 +32,7 @@ void kunmap(struct page *page)
 	BUG_ON(in_interrupt());
 	if (!PageHighMem(page))
 		return;
-	kunmap_high(page);
+	kunmap_high(page);   /*只是减计数，唤醒等待分配的进程。实际释放是在分配的时候*/
 }
 EXPORT_SYMBOL(kunmap);
 
@@ -56,11 +56,11 @@ void *kmap_atomic(struct page *page)
 		kmap = NULL;
 	else
 #endif
-		kmap = kmap_high_get(page);
+		kmap = kmap_high_get(page);   /*page是否已经在持久映射区映射过了*/
 	if (kmap)
 		return kmap;
 
-	type = kmap_atomic_idx_push();
+	type = kmap_atomic_idx_push();     /*分配槽位*/
 
 	idx = type + KM_TYPE_NR * smp_processor_id();
 	vaddr = __fix_to_virt(FIX_KMAP_BEGIN + idx);

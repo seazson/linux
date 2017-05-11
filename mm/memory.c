@@ -3419,7 +3419,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			entry = maybe_mkwrite(pte_mkdirty(entry), vma);
 		else if (pte_file(orig_pte) && pte_file_soft_dirty(orig_pte))
 			pte_mksoft_dirty(entry);
-		if (anon) {
+		if (anon) {                                 /*对非共享页的写操作会创建匿名页*/
 			inc_mm_counter_fast(mm, MM_ANONPAGES);
 			page_add_new_anon_rmap(page, vma, address);   /*增加匿名页计数，只有在写时复制时才会把anon置1*/
 		} else {                                          /*也就是说写时复制的page属于匿名类型*/

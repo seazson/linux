@@ -1132,10 +1132,22 @@ static ssize_t allocmem_write(struct file *filp, const char __user *buffer,
 	
 done:
 
-	allocorder = simple_strtol(argv[0],NULL,0);
-	allocflag = simple_strtol(argv[1],NULL,0);
+	if(strncmp("page",argv[0],4) == 0)
+	{
+		allocorder = simple_strtol(argv[1],NULL,0);
+		allocflag = simple_strtol(argv[2],NULL,0);
 
-	alloc_pages(allocflag,allocorder);
+		printk("alloc page order%d %x\n",allocorder,allocflag);
+		alloc_pages(allocflag,allocorder);
+	}
+	else if(strncmp("kmalloc",argv[0],4) == 0)
+	{
+		allocorder = simple_strtol(argv[1],NULL,0);
+		allocflag = simple_strtol(argv[2],NULL,0);
+
+		printk("kmalloc size %d %x\n",allocorder,allocflag);
+		kmalloc(allocorder,allocflag);
+	}
 
 	return ret;
 }

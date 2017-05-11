@@ -44,7 +44,7 @@ DEFINE_PER_CPU(int, __kmap_atomic_idx);
  */
 #ifdef CONFIG_HIGHMEM
 
-unsigned long totalhigh_pages __read_mostly;
+unsigned long totalhigh_pages __read_mostly;  /*高端内存总共有多少页*/
 EXPORT_SYMBOL(totalhigh_pages);
 
 
@@ -168,7 +168,7 @@ start:
 	for (;;) {
 		last_pkmap_nr = (last_pkmap_nr + 1) & LAST_PKMAP_MASK;
 		if (!last_pkmap_nr) {
-			flush_all_zero_pkmaps();
+			flush_all_zero_pkmaps();    /*查找了一轮，清除计数为1的槽位映射*/
 			count = LAST_PKMAP;
 		}
 		if (!pkmap_count[last_pkmap_nr])
@@ -199,10 +199,10 @@ start:
 	}
 	vaddr = PKMAP_ADDR(last_pkmap_nr);
 	set_pte_at(&init_mm, vaddr,
-		   &(pkmap_page_table[last_pkmap_nr]), mk_pte(page, kmap_prot));
+		   &(pkmap_page_table[last_pkmap_nr]), mk_pte(page, kmap_prot));  /*将高端page映射到pkmap区*/
 
 	pkmap_count[last_pkmap_nr] = 1;
-	set_page_address(page, (void *)vaddr);
+	set_page_address(page, (void *)vaddr);   /*将page与pkmap数组关联*/
 
 	return vaddr;
 }
@@ -226,7 +226,7 @@ void *kmap_high(struct page *page)
 	lock_kmap();
 	vaddr = (unsigned long)page_address(page);
 	if (!vaddr)
-		vaddr = map_new_virtual(page);
+		vaddr = map_new_virtual(page);    /*寻找可用的槽位来映射页*/
 	pkmap_count[PKMAP_NR(vaddr)]++;
 	BUG_ON(pkmap_count[PKMAP_NR(vaddr)] < 2);
 	unlock_kmap();
@@ -319,12 +319,12 @@ EXPORT_SYMBOL(kunmap_high);
  * Describes one page->virtual association
  */
 struct page_address_map {
-	struct page *page;
-	void *virtual;
+	struct page *page;    /*持久映射区对应的page*/
+	void *virtual;        /*持久映射区对应的虚拟地址*/
 	struct list_head list;
 };
 
-static struct page_address_map page_address_maps[LAST_PKMAP];
+static struct page_address_map page_address_maps[LAST_PKMAP];  /*用来维护持久映射区*/
 
 /*
  * Hash table bucket
@@ -394,7 +394,7 @@ void set_page_address(struct page *page, void *virtual)
 		pam->virtual = virtual;
 
 		spin_lock_irqsave(&pas->lock, flags);
-		list_add_tail(&pam->list, &pas->lh);
+		list_add_tail(&pam->list, &pas->lh);    /*添加到hash表中*/
 		spin_unlock_irqrestore(&pas->lock, flags);
 	} else {		/* Remove */
 		spin_lock_irqsave(&pas->lock, flags);

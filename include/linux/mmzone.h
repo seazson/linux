@@ -106,21 +106,21 @@ enum zone_stat_item {
 	/* First 128 byte cacheline (assuming 64 bit words) */
 	NR_FREE_PAGES,
 	NR_LRU_BASE,
-	NR_INACTIVE_ANON = NR_LRU_BASE, /* must match order of LRU_[IN]ACTIVE */
+	NR_INACTIVE_ANON = NR_LRU_BASE, /* must match order of LRU_[IN]ACTIVE */ /*NR_ANON_PAGES中写时复制的页*/
 	NR_ACTIVE_ANON,		/*  "     "     "   "       "         */
-	NR_INACTIVE_FILE,	/*  "     "     "   "       "         */
+	NR_INACTIVE_FILE,	/*  "     "     "   "       "         */ /*NR_FILE_PAGES中页缓存类型的页*/
 	NR_ACTIVE_FILE,		/*  "     "     "   "       "         */
 	NR_UNEVICTABLE,		/*  "     "     "   "       "         */
 	NR_MLOCK,		/* mlock()ed pages found and moved off LRU */
-	NR_ANON_PAGES,	/* Mapped anonymous pages */
-	NR_FILE_MAPPED,	/* pagecache pages mapped into pagetables.
+	NR_ANON_PAGES,	/* Mapped anonymous pages */  /*所有的匿名页*/
+	NR_FILE_MAPPED,	/* pagecache pages mapped into pagetables. 映射进程的text data段
 			   only modified from process context */
-	NR_FILE_PAGES,
+	NR_FILE_PAGES,   /*包括页缓存，shmem，swapcache三种类型的页*/
 	NR_FILE_DIRTY,
 	NR_WRITEBACK,
 	NR_SLAB_RECLAIMABLE,
 	NR_SLAB_UNRECLAIMABLE,
-	NR_PAGETABLE,		/* used for pagetables */
+	NR_PAGETABLE,		/* used for pagetables */  /*页表项使用的页，可以用低端内存也可以用高端内存*/
 	NR_KERNEL_STACK,
 	/* Second 128 byte cacheline */
 	NR_UNSTABLE_NFS,	/* NFS unstable pages */

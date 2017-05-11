@@ -1360,7 +1360,7 @@ static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node)
 	BUG_ON(flags & GFP_SLAB_BUG_MASK);
 
 	page = allocate_slab(s,
-		flags & (GFP_RECLAIM_MASK | GFP_CONSTRAINT_MASK), node);
+		flags & (GFP_RECLAIM_MASK | GFP_CONSTRAINT_MASK), node);  /*不能分配高端内存*/
 	if (!page)
 		goto out;
 

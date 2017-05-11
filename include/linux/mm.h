@@ -36,7 +36,7 @@ static inline void set_max_mapnr(unsigned long limit)
 static inline void set_max_mapnr(unsigned long limit) { }
 #endif
 
-extern unsigned long totalram_pages;  
+extern unsigned long totalram_pages;     /*总page数 - 内核初始化所用空间（包括内核代码） + init释放的空间*/
 extern void * high_memory;
 extern int page_cluster;
 

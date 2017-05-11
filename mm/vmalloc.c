@@ -272,7 +272,7 @@ EXPORT_SYMBOL(vmalloc_to_pfn);
 static DEFINE_SPINLOCK(vmap_area_lock);
 /* Export for kexec only */
 LIST_HEAD(vmap_area_list);
-static struct rb_root vmap_area_root = RB_ROOT;
+static struct rb_root vmap_area_root = RB_ROOT;    /*根节点*/
 
 /* The vmap cache globals are protected by vmap_area_lock */
 static struct rb_node *free_vmap_cache;
@@ -1324,7 +1324,7 @@ static struct vm_struct *__get_vm_area_node(unsigned long size,
 	 */
 	size += PAGE_SIZE;          /*多分一个页作为分隔*/
 
-	va = alloc_vmap_area(size, align, start, end, node, gfp_mask);   /*分配空间*/
+	va = alloc_vmap_area(size, align, start, end, node, gfp_mask);   /*从红黑树中找到一个可用空间*/
 	if (IS_ERR(va)) {
 		kfree(area);
 		return NULL;

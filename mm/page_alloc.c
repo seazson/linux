@@ -206,9 +206,9 @@ static char * const zone_names[MAX_NR_ZONES] = {
 int min_free_kbytes = 1024;
 int user_min_free_kbytes;
 
-static unsigned long __meminitdata nr_kernel_pages;
-static unsigned long __meminitdata nr_all_pages;
-static unsigned long __meminitdata dma_reserve;
+static unsigned long __meminitdata nr_kernel_pages;    /*不包含高端内存的页数。去除page数组占用的页*/
+static unsigned long __meminitdata nr_all_pages;       /*说有内存的页数。去除page数组占用的页*/
+static unsigned long __meminitdata dma_reserve;        /*为DMA预留的页数*/
 
 #ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
 static unsigned long __meminitdata arch_zone_lowest_possible_pfn[MAX_NR_ZONES];

@@ -1115,7 +1115,7 @@ void page_add_file_rmap(struct page *page)
 		pr_sea_mem("%s Mapped pages %lu, FILE pages %lu\n",current->comm,global_page_state(NR_FILE_MAPPED),global_page_state(NR_FILE_PAGES));
 	
 	mem_cgroup_begin_update_page_stat(page, &locked, &flags);
-	if (atomic_inc_and_test(&page->_mapcount)) {
+	if (atomic_inc_and_test(&page->_mapcount)) { /*原值是-1时才会进来*/
 		__inc_zone_page_state(page, NR_FILE_MAPPED);
 		mem_cgroup_inc_page_stat(page, MEMCG_NR_FILE_MAPPED);
 	}
@@ -1143,7 +1143,7 @@ void page_remove_rmap(struct page *page)
 		mem_cgroup_begin_update_page_stat(page, &locked, &flags);
 
 	/* page still mapped by someone else? */
-	if (!atomic_add_negative(-1, &page->_mapcount))
+	if (!atomic_add_negative(-1, &page->_mapcount))   /*没有人引用了才会往下走*/
 		goto out;
 
 	/*
