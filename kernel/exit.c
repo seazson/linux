@@ -692,7 +692,7 @@ static void check_stack_usage(void)
 #else
 static inline void check_stack_usage(void) {}
 #endif
-
+/*线程组退出的时候每个线程都会执行*/
 void do_exit(long code)
 {
 	struct task_struct *tsk = current;
@@ -912,7 +912,7 @@ do_group_exit(int exit_code)
 		else {
 			sig->group_exit_code = exit_code;
 			sig->flags = SIGNAL_GROUP_EXIT;
-			zap_other_threads(current);
+			zap_other_threads(current);   /*向线程组的其他线程发送kill信号*/
 		}
 		spin_unlock_irq(&sighand->siglock);
 	}
@@ -925,7 +925,7 @@ do_group_exit(int exit_code)
  * this kills every thread in the thread group. Note that any externally
  * wait4()-ing process will get the correct exit code - even if this
  * thread is not the thread group leader.
- */
+ */ /*用户态调用exit，实际上会走到这里*/
 SYSCALL_DEFINE1(exit_group, int, error_code)
 {
 	do_group_exit((error_code & 0xff) << 8);

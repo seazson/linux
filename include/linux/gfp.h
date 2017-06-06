@@ -67,7 +67,7 @@ struct vm_area_struct;
  * mechanism or reclaimed
  */
 #define __GFP_WAIT	((__force gfp_t)___GFP_WAIT)	/* Can wait and reschedule? */
-#define __GFP_HIGH	((__force gfp_t)___GFP_HIGH)	/* Should access emergency pools? */
+#define __GFP_HIGH	((__force gfp_t)___GFP_HIGH)	/* Should access emergency pools? */ /*更高优先级的分配。使用low水标值的一半*/
 #define __GFP_IO	((__force gfp_t)___GFP_IO)	/* Can start physical IO? */
 #define __GFP_FS	((__force gfp_t)___GFP_FS)	/* Can call down to low-level FS? */
 #define __GFP_COLD	((__force gfp_t)___GFP_COLD)	/* Cache-cold page required */
@@ -88,10 +88,10 @@ struct vm_area_struct;
 #define __GFP_RECLAIMABLE ((__force gfp_t)___GFP_RECLAIMABLE) /* Page is reclaimable */
 #define __GFP_NOTRACK	((__force gfp_t)___GFP_NOTRACK)  /* Don't track with kmemcheck */
 
-#define __GFP_NO_KSWAPD	((__force gfp_t)___GFP_NO_KSWAPD)
+#define __GFP_NO_KSWAPD	((__force gfp_t)___GFP_NO_KSWAPD)  /*内存不够的时候是否要唤醒kswapd*/
 #define __GFP_OTHER_NODE ((__force gfp_t)___GFP_OTHER_NODE) /* On behalf of other node */
 #define __GFP_KMEMCG	((__force gfp_t)___GFP_KMEMCG) /* Allocation comes from a memcg-accounted resource */
-#define __GFP_WRITE	((__force gfp_t)___GFP_WRITE)	/* Allocator intends to dirty page */
+#define __GFP_WRITE	((__force gfp_t)___GFP_WRITE)	/* Allocator intends to dirty page */ /*想分配脏页*/
 
 /*
  * This may seem redundant, but it's a way of annotating false positives vs.
@@ -220,7 +220,7 @@ static inline int allocflags_to_migratetype(gfp_t gfp_flags)
 #if 16 * ZONES_SHIFT > BITS_PER_LONG
 #error ZONES_SHIFT too large to create GFP_ZONE_TABLE integer
 #endif
-
+/*分配gfp标志允许的组合，以及对应从哪个zone分配*/
 #define GFP_ZONE_TABLE ( \
 	(ZONE_NORMAL << 0 * ZONES_SHIFT)				      \
 	| (OPT_ZONE_DMA << ___GFP_DMA * ZONES_SHIFT)			      \
@@ -237,7 +237,7 @@ static inline int allocflags_to_migratetype(gfp_t gfp_flags)
  * __GFP_HIGHMEM and __GFP_MOVABLE that are not permitted. One flag per
  * entry starting with bit 0. Bit is set if the combination is not
  * allowed.
- */
+ */ /*不允许的组合*/
 #define GFP_ZONE_BAD ( \
 	1 << (___GFP_DMA | ___GFP_HIGHMEM)				      \
 	| 1 << (___GFP_DMA | ___GFP_DMA32)				      \
@@ -249,7 +249,7 @@ static inline int allocflags_to_migratetype(gfp_t gfp_flags)
 	| 1 << (___GFP_MOVABLE | ___GFP_DMA32 | ___GFP_DMA | ___GFP_HIGHMEM)  \
 )
 
-static inline enum zone_type gfp_zone(gfp_t flags)    /*根据flags返回内存域*/
+static inline enum zone_type gfp_zone(gfp_t flags)    /*根据flags返回最高能从哪个内存域分配*/
 {
 	enum zone_type z;
 	int bit = (__force int) (flags & GFP_ZONEMASK);

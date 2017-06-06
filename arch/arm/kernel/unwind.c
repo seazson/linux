@@ -340,7 +340,7 @@ int unwind_frame(struct stackframe *frame)
 	pr_debug("%s(pc = %08lx lr = %08lx sp = %08lx)\n", __func__,
 		 frame->pc, frame->lr, frame->sp);
 
-	if (!kernel_text_address(frame->pc))
+	if (!kernel_text_address(frame->pc))    /*pc指针必须位于内核代码段或者模块代码段*/
 		return -URC_FAILURE;
 
 	idx = unwind_find_idx(frame->pc);
@@ -353,7 +353,7 @@ int unwind_frame(struct stackframe *frame)
 	ctrl.vrs[SP] = frame->sp;
 	ctrl.vrs[LR] = frame->lr;
 	ctrl.vrs[PC] = 0;
-
+/*根据idx获取在tab中的偏移*/
 	if (idx->insn == 1)
 		/* can't unwind */
 		return -URC_FAILURE;
@@ -368,7 +368,7 @@ int unwind_frame(struct stackframe *frame)
 			   idx->insn, idx);
 		return -URC_FAILURE;
 	}
-
+/*分析tab中的值*/
 	/* check the personality routine */
 	if ((*ctrl.insn & 0xff000000) == 0x80000000) {
 		ctrl.byte = 2;

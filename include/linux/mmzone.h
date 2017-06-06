@@ -237,7 +237,7 @@ enum zone_watermarks {
 
 struct per_cpu_pages {
 	int count;		/* number of pages in the list */
-	int high;		/* high watermark, emptying needed */
+	int high;		/* high watermark, emptying needed */ /*超过此值一次释放batch个页到伙伴系统*/
 	int batch;		/* chunk size for buddy add/remove */ /*跟cpu的高速缓存大小有关系，表示一次添加进高速缓存的页数*/
 
 	/* Lists of pages, one per migrate type stored on the pcp-lists */

@@ -303,7 +303,7 @@ struct core_state {
 	struct core_thread dumper;
 	struct completion startup;
 };
-
+/*用于统计进程的内存使用情况*/
 enum {
 	MM_FILEPAGES,
 	MM_ANONPAGES,

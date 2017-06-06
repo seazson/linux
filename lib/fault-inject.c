@@ -56,7 +56,7 @@ static bool fail_task(struct fault_attr *attr, struct task_struct *task)
 #define MAX_STACK_TRACE_DEPTH 32
 
 #ifdef CONFIG_FAULT_INJECTION_STACKTRACE_FILTER
-
+/*返回0代表不满足*/
 static bool fail_stacktrace(struct fault_attr *attr)
 {
 	struct stack_trace trace;
@@ -73,13 +73,13 @@ static bool fail_stacktrace(struct fault_attr *attr)
 	trace.max_entries = depth;
 	trace.skip = 1;
 
-	save_stack_trace(&trace);
+	save_stack_trace(&trace);  /*保存当前栈*/
 	for (n = 0; n < trace.nr_entries; n++) {
 		if (attr->reject_start <= entries[n] &&
-			       entries[n] < attr->reject_end)
+			       entries[n] < attr->reject_end)   /*调用函数中有拒绝区的不满足要求*/
 			return false;
 		if (attr->require_start <= entries[n] &&
-			       entries[n] < attr->require_end)
+			       entries[n] < attr->require_end)  /**调用函数中都是需要区的满足要求*/*/
 			found = true;
 	}
 	return found;
@@ -102,21 +102,21 @@ static inline bool fail_stacktrace(struct fault_attr *attr)
 bool should_fail(struct fault_attr *attr, ssize_t size)
 {
 	/* No need to check any other properties if the probability is 0 */
-	if (attr->probability == 0)
+	if (attr->probability == 0)     /*故障百分比，0~100*/
 		return false;
 
-	if (attr->task_filter && !fail_task(attr, current))
+ 	if (attr->task_filter && !fail_task(attr, current)) /*开启了pid检查，并且设置了/proc/<pid>/make-it-fail==1*/
+ 		return false;
+
+	if (atomic_read(&attr->times) == 0)   /*次数必须大于0，或者为-1*/
 		return false;
 
-	if (atomic_read(&attr->times) == 0)
-		return false;
-
-	if (atomic_read(&attr->space) > size) {
+	if (atomic_read(&attr->space) > size) { /*预算是否用完了*/
 		atomic_sub(size, &attr->space);
 		return false;
 	}
 
-	if (attr->interval > 1) {
+	if (attr->interval > 1) {    /*产生故障间隔*/
 		attr->count++;
 		if (attr->count % attr->interval)
 			return false;
@@ -125,10 +125,10 @@ bool should_fail(struct fault_attr *attr, ssize_t size)
 	if (attr->probability <= prandom_u32() % 100)
 		return false;
 
-	if (!fail_stacktrace(attr))
+	if (!fail_stacktrace(attr))  /*地址范围检查*/
 		return false;
 
-	fail_dump(attr);
+	fail_dump(attr);    /*打印栈信息*/
 
 	if (atomic_read(&attr->times) != -1)
 		atomic_dec_not_zero(&attr->times);

@@ -51,7 +51,7 @@ static inline int zref_in_nodemask(struct zoneref *zref, nodemask_t *nodes)
 #endif /* CONFIG_NUMA */
 }
 
-/* Returns the next zone at or below highest_zoneidx in a zonelist */ /*找到zonelist中小于highest_zoneidx的zone*/
+/* Returns the next zone at or below highest_zoneidx in a zonelist */ /*找到zonelist中小于或等于highest_zoneidx的zone*/
 struct zoneref *next_zones_zonelist(struct zoneref *z,
 					enum zone_type highest_zoneidx,
 					nodemask_t *nodes,

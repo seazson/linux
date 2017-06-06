@@ -1215,7 +1215,7 @@ out:
 /*
  * Scan the objects already referenced (gray objects). More objects will be
  * referenced and, if there are no memory leaks, all the objects are scanned.
- */
+ */ /*分配一块内存（一般是分配数据结构），内部的成员变量是指针，所以这部分也需要检测*/
 static void scan_gray_list(void)
 {
 	struct kmemleak_object *object, *tmp;
@@ -1283,7 +1283,7 @@ static void kmemleak_scan(void)
 	}
 	rcu_read_unlock();
 
-	/* data/bss scanning */
+	/* data/bss scanning */ /*全局指针变量*/
 	scan_block(_sdata, _edata, NULL, 1);
 	scan_block(__bss_start, __bss_stop, NULL, 1);
 
@@ -1296,7 +1296,7 @@ static void kmemleak_scan(void)
 
 	/*
 	 * Struct page scanning for each node.
-	 */
+	 */ /*扫描所有页*/
 	lock_memory_hotplug();
 	for_each_online_node(i) {
 		unsigned long start_pfn = node_start_pfn(i);
@@ -1319,7 +1319,7 @@ static void kmemleak_scan(void)
 
 	/*
 	 * Scanning the task stacks (may introduce false negatives).
-	 */
+	 */ /*扫描所有进程的栈*/
 	if (kmemleak_stack_scan) {
 		struct task_struct *p, *g;
 
@@ -1334,7 +1334,7 @@ static void kmemleak_scan(void)
 	/*
 	 * Scan the objects already referenced from the sections scanned
 	 * above.
-	 */
+	 */ /*分配一块内存（一般是分配数据结构），内部的成员变量是指针，所以这部分也需要检测*/
 	scan_gray_list();
 
 	/*

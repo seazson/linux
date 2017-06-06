@@ -233,7 +233,7 @@ int page_group_by_mobility_disabled __read_mostly;
 /*设置大块的迁移属性*/
 void set_pageblock_migratetype(struct page *page, int migratetype)
 {
-	pr_sea_start("set pageblock %d migratetype %d\n",page_to_pfn(page), migratetype);
+	pr_sea_start("set pageblock %ld migratetype %d\n",page_to_pfn(page), migratetype);
 	if (unlikely(page_group_by_mobility_disabled))
 		migratetype = MIGRATE_UNMOVABLE;
 
@@ -1620,7 +1620,7 @@ static inline bool should_fail_alloc_page(gfp_t gfp_mask, unsigned int order)
 /*
  * Return true if free pages are above 'mark'. This takes into account the order
  * of the allocation.
- */
+ */ /*classzone_idx是最开始想要分配的zone*/
 static bool __zone_watermark_ok(struct zone *z, int order, unsigned long mark,
 		      int classzone_idx, int alloc_flags, long free_pages)
 {
@@ -1631,7 +1631,7 @@ static bool __zone_watermark_ok(struct zone *z, int order, unsigned long mark,
 	long free_cma = 0;
 
 	free_pages -= (1 << order) - 1;
-	if (alloc_flags & ALLOC_HIGH)
+	if (alloc_flags & ALLOC_HIGH)    /*可以用的最多*/
 		min -= min / 2;
 	if (alloc_flags & ALLOC_HARDER)
 		min -= min / 4;
@@ -1641,8 +1641,10 @@ static bool __zone_watermark_ok(struct zone *z, int order, unsigned long mark,
 		free_cma = zone_page_state(z, NR_FREE_CMA_PAGES);
 #endif
 
+	pr_sea_mem("free pages %ld, watermark %ld lowmem_reserve %ld\n",free_pages, min , lowmem_reserve);
 	if (free_pages - free_cma <= min + lowmem_reserve)   /*剩余的页框数少于保留页+low/min/high中的一个，具体是哪个由传入参数决定*/
 		return false;
+
 	for (o = 0; o < order; o++) {
 		/* At the next order, this order's pages become unavailable */
 		free_pages -= z->free_area[o].nr_free << o;
@@ -1863,7 +1865,7 @@ zonelist_scan:
 	 * See also cpuset_zone_allowed() comment in kernel/cpuset.c.
 	 */
 	for_each_zone_zonelist_nodemask(zone, z, zonelist,
-						high_zoneidx, nodemask) {   /*遍历zonelist来寻找*/
+						high_zoneidx, nodemask) {   /*从high_zoneidx开始，遍历zonelist来寻找*/
 		if (IS_ENABLED(CONFIG_NUMA) && zlc_active &&
 			!zlc_zone_worth_trying(zonelist, z, allowednodes))
 				continue;
@@ -1897,11 +1899,11 @@ zonelist_scan:
 		 * dirty-throttling and the flusher threads.
 		 */
 		if ((alloc_flags & ALLOC_WMARK_LOW) &&
-		    (gfp_mask & __GFP_WRITE) && !zone_dirty_ok(zone))
+		    (gfp_mask & __GFP_WRITE) && !zone_dirty_ok(zone))   /*想分配脏页的，必须检查当前脏页是否超出限制*/
 			goto this_zone_full;
 
 		BUILD_BUG_ON(ALLOC_NO_WATERMARKS < NR_WMARK);
-		if (!(alloc_flags & ALLOC_NO_WATERMARKS)) {
+		if (!(alloc_flags & ALLOC_NO_WATERMARKS)) {   /*需要检查剩余内存*/
 			unsigned long mark;
 			int ret;
 
@@ -1923,7 +1925,7 @@ zonelist_scan:
 			}
 
 			if (zone_reclaim_mode == 0 ||
-			    !zone_allows_reclaim(preferred_zone, zone))
+			    !zone_allows_reclaim(preferred_zone, zone))   /*是否允许单个zone回收，uma系统不允许*/
 				goto this_zone_full;
 
 			/*
@@ -1970,7 +1972,7 @@ try_this_zone:
 						gfp_mask, migratetype);                  /*实际的分配操作*/
 		if (page)
 			break;
-this_zone_full:
+this_zone_full:                                    /*这个zone满了，尝试下一个zone*/
 		if (IS_ENABLED(CONFIG_NUMA))
 			zlc_mark_zone_full(zonelist, z);
 	}
@@ -2131,10 +2133,10 @@ __alloc_pages_may_oom(gfp_t gfp_mask, unsigned int order,
 
 	if (!(gfp_mask & __GFP_NOFAIL)) {
 		/* The OOM killer will not help higher order allocs */
-		if (order > PAGE_ALLOC_COSTLY_ORDER)
+		if (order > PAGE_ALLOC_COSTLY_ORDER)   /*order太大是不会启动oom的*/
 			goto out;
 		/* The OOM killer does not needlessly kill tasks for lowmem */
-		if (high_zoneidx < ZONE_NORMAL)
+		if (high_zoneidx < ZONE_NORMAL)  /*为DMA分配内存也不需要启动oom*/
 			goto out;
 		/*
 		 * GFP_THISNODE contains __GFP_NORETRY and we never hit this.
@@ -2348,7 +2350,7 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	 * policy or is asking for __GFP_HIGH memory.  GFP_ATOMIC requests will
 	 * set both ALLOC_HARDER (!wait) and ALLOC_HIGH (__GFP_HIGH).
 	 */
-	alloc_flags |= (__force int) (gfp_mask & __GFP_HIGH);
+	alloc_flags |= (__force int) (gfp_mask & __GFP_HIGH);  /*如果参入了高优先级标志，使用更高优先级分配,预留1/2*low*/
 
 	if (!wait) {
 		/*
@@ -2362,17 +2364,17 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 		 * See also cpuset_zone_allowed() comment in kernel/cpuset.c.
 		 */
 		alloc_flags &= ~ALLOC_CPUSET;
-	} else if (unlikely(rt_task(current)) && !in_interrupt())
+	} else if (unlikely(rt_task(current)) && !in_interrupt())  /*实时进程可以多用点内存，预留3/4*low*/
 		alloc_flags |= ALLOC_HARDER;
 
-	if (likely(!(gfp_mask & __GFP_NOMEMALLOC))) {
-		if (gfp_mask & __GFP_MEMALLOC)
+	if (likely(!(gfp_mask & __GFP_NOMEMALLOC))) { /*没有定义不使用预留内存*/
+		if (gfp_mask & __GFP_MEMALLOC)            /*定义了这个标志，可以使用预留内存*/
 			alloc_flags |= ALLOC_NO_WATERMARKS;
 		else if (in_serving_softirq() && (current->flags & PF_MEMALLOC))
 			alloc_flags |= ALLOC_NO_WATERMARKS;
 		else if (!in_interrupt() &&
 				((current->flags & PF_MEMALLOC) ||
-				 unlikely(test_thread_flag(TIF_MEMDIE))))
+				 unlikely(test_thread_flag(TIF_MEMDIE)))) /*进程正在退出也可以使用预留内存*/
 			alloc_flags |= ALLOC_NO_WATERMARKS;
 	}
 #ifdef CONFIG_CMA
@@ -2397,7 +2399,7 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	struct page *page = NULL;
 	int alloc_flags;
 	unsigned long pages_reclaimed = 0;
-	unsigned long did_some_progress;
+	unsigned long did_some_progress;   /*表示是否回收到页了*/
 	bool sync_migration = false;
 	bool deferred_compaction = false;
 	bool contended_compaction = false;
@@ -2426,6 +2428,7 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 		goto nopage;
 
 restart:
+	pr_sea_mem("step 1 wake_all_kswapd %ld\n",global_page_state(NR_FREE_PAGES));
 	if (!(gfp_mask & __GFP_NO_KSWAPD))
 		wake_all_kswapd(order, zonelist, high_zoneidx,
 						zone_idx(preferred_zone));    /*策略1:唤醒kswapd进程，进行页回收*/
@@ -2446,15 +2449,16 @@ restart:
 					&preferred_zone);
 
 rebalance:
+	pr_sea_mem("step 2 get_page_from_freelist free %ld\n",global_page_state(NR_FREE_PAGES));
 	/* This is the last chance, in general, before the goto nopage. */
-	page = get_page_from_freelist(gfp_mask, nodemask, order, zonelist,   /*第二次尝试分配内存*/
+	page = get_page_from_freelist(gfp_mask, nodemask, order, zonelist,   /*第二次尝试分配内存，使用更高优先级的标志*/
 			high_zoneidx, alloc_flags & ~ALLOC_NO_WATERMARKS,
 			preferred_zone, migratetype);
 	if (page)
 		goto got_pg;
 
 	/* Allocate without watermarks if the context allows */
-	if (alloc_flags & ALLOC_NO_WATERMARKS) {
+	if (alloc_flags & ALLOC_NO_WATERMARKS) {  /*只有在设置了__GFP_MEMALLOC标志才会进来*/
 		/*
 		 * Ignore mempolicies if ALLOC_NO_WATERMARKS on the grounds
 		 * the allocation is high priority and these type of
@@ -2462,8 +2466,10 @@ rebalance:
 		 */
 		zonelist = node_zonelist(numa_node_id(), gfp_mask);
 
-		page = __alloc_pages_high_priority(gfp_mask, order,             /*第三次尝试，忽略水印*/
-				zonelist, high_zoneidx, nodemask,
+		pr_sea_mem("step 3 __alloc_pages_high_priority ALLOC_NO_WATERMARKS free %ld\n",global_page_state(NR_FREE_PAGES));
+
+		page = __alloc_pages_high_priority(gfp_mask, order,             /*第三次尝试，忽略水印，可以尝试保留内存。如果不允许失败就会一直在这里循环分配*/
+				zonelist, high_zoneidx, nodemask,                       /*能够将内存完全分完*/
 				preferred_zone, migratetype);
 		if (page) {
 			goto got_pg;
@@ -2475,7 +2481,7 @@ rebalance:
 		goto nopage;
 
 	/* Avoid recursion of direct reclaim */
-	if (current->flags & PF_MEMALLOC)                                 /*分配器自身需要更过内存*/
+	if (current->flags & PF_MEMALLOC)                                 /*分配器自身需要更多内存*/
 		goto nopage;
 
 	/* Avoid allocations with no watermarks from looping endlessly */
@@ -2494,6 +2500,8 @@ rebalance:
 					&contended_compaction,
 					&deferred_compaction,
 					&did_some_progress);
+	pr_sea_mem("step 4 __alloc_pages_direct_compact，released %ld free %ld\n",did_some_progress,global_page_state(NR_FREE_PAGES));
+
 	if (page)
 		goto got_pg;
 	sync_migration = true;               /*后面一次压缩使用同步模式*/
@@ -2509,19 +2517,21 @@ rebalance:
 		goto nopage;
 
 	/* Try direct reclaim and then allocating */
-	page = __alloc_pages_direct_reclaim(gfp_mask, order,             /*第五次尝试:调度后调用直接开始内存回收try_to_free_pages，再执行分配(慢路径)*/
+	page = __alloc_pages_direct_reclaim(gfp_mask, order,             /*第五次尝试:调度后调用直接开始内存回收try_to_free_pages，再执行分配*/
 					zonelist, high_zoneidx,
 					nodemask,
 					alloc_flags, preferred_zone,
 					migratetype, &did_some_progress);
+	pr_sea_mem("step 5 __alloc_pages_direct_reclaim，released %ld free %ld\n",did_some_progress,global_page_state(NR_FREE_PAGES));
+
 	if (page)
 		goto got_pg;
-
+	
 	/*
 	 * If we failed to make any progress reclaiming, then we are
 	 * running out of options and have to consider going OOM
 	 */
-	if (!did_some_progress) {
+	if (!did_some_progress) {   /*如果前面回收到了页，did_some_progress就不是0*/
 		if ((gfp_mask & __GFP_FS) && !(gfp_mask & __GFP_NORETRY)) {
 			if (oom_killer_disabled)
 				goto nopage;
@@ -2529,6 +2539,8 @@ rebalance:
 			if ((current->flags & PF_DUMPCORE) &&
 			    !(gfp_mask & __GFP_NOFAIL))
 				goto nopage;
+
+			pr_sea_mem("step 6 __alloc_pages_may_oom\n");
 			page = __alloc_pages_may_oom(gfp_mask, order,             /*第六次尝试:触发oom*/
 					zonelist, high_zoneidx,
 					nodemask, preferred_zone,
@@ -2571,7 +2583,8 @@ rebalance:
 		 * direct reclaim and reclaim/compaction depends on compaction
 		 * being called after reclaim so call directly if necessary
 		 */
-		page = __alloc_pages_direct_compact(gfp_mask, order,         /*第七次:最后在压缩一次尝试*/
+		pr_sea_mem("step 7 __alloc_pages_direct_compact\n");
+		page = __alloc_pages_direct_compact(gfp_mask, order,         /*第七次:最后再压缩一次尝试*/
 					zonelist, high_zoneidx,
 					nodemask,
 					alloc_flags, preferred_zone,
@@ -2600,12 +2613,12 @@ struct page *
 __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 			struct zonelist *zonelist, nodemask_t *nodemask)
 {
-	enum zone_type high_zoneidx = gfp_zone(gfp_mask);     /*根据flag获取要分配的zone类型*/
+	enum zone_type high_zoneidx = gfp_zone(gfp_mask);     /*根据flag获取允许分配的zone最高的类型*/
 	struct zone *preferred_zone;
 	struct page *page = NULL;
 	int migratetype = allocflags_to_migratetype(gfp_mask); /*获取迁移类型*/
 	unsigned int cpuset_mems_cookie;
-	int alloc_flags = ALLOC_WMARK_LOW|ALLOC_CPUSET;
+	int alloc_flags = ALLOC_WMARK_LOW|ALLOC_CPUSET;  /*使用low水标分配*/
 	struct mem_cgroup *memcg = NULL;
 
 	gfp_mask &= gfp_allowed_mask;
@@ -2614,7 +2627,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 
 	might_sleep_if(gfp_mask & __GFP_WAIT);
 
-	if (should_fail_alloc_page(gfp_mask, order))
+	if (should_fail_alloc_page(gfp_mask, order))   /*故障注入，强制产生分配失败*/
 		return NULL;
 
 	/*
@@ -2622,7 +2635,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 	 * valid zone. It's possible to have an empty zonelist as a result
 	 * of GFP_THISNODE and a memoryless node
 	 */
-	if (unlikely(!zonelist->_zonerefs->zone))   /*当前要分配的内存域不能为空*/
+	if (unlikely(!zonelist->_zonerefs->zone))   /*当前要分配的内存域链表不能为空*/
 		return NULL;
 
 	/*
@@ -2635,7 +2648,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 retry_cpuset:
 	cpuset_mems_cookie = get_mems_allowed();
 
-	/* The preferred zone is used for statistics later */
+	/* The preferred zone is used for statistics later */ /*找到小于或等于high_zoneidx的第一个zone给preferred_zone*/
 	first_zones_zonelist(zonelist, high_zoneidx,
 				nodemask ? : &cpuset_current_mems_allowed,
 				&preferred_zone);
@@ -5415,7 +5428,7 @@ static void calculate_totalreserve_pages(void)
 	}
 	dirty_balance_reserve = reserve_pages;
 	totalreserve_pages = reserve_pages;
-	pr_sea_start("totalreserve_pages %d\n",reserve_pages);
+	pr_sea_start("totalreserve_pages %ld\n",reserve_pages);
 }
 
 /*
@@ -5449,7 +5462,7 @@ static void setup_per_zone_lowmem_reserve(void)
 				lower_zone->lowmem_reserve[j] = managed_pages /
 					sysctl_lowmem_reserve_ratio[idx];
 				managed_pages += lower_zone->managed_pages;
-				pr_sea_start("lowmem_reserve %d\n",lower_zone->lowmem_reserve[j]);
+				pr_sea_start("lowmem_reserve %ld\n",lower_zone->lowmem_reserve[j]);
 			}
 		}
 	}
@@ -5600,7 +5613,7 @@ int __meminit init_per_zone_wmark_min(void)
 	lowmem_kbytes = nr_free_buffer_pages() * (PAGE_SIZE >> 10);    /*可管理内存高于高水标的数。启动的时候高水标为0，可管理内存还不包括内核最后free的*/
 	new_min_free_kbytes = int_sqrt(lowmem_kbytes * 16);
 	/*对于64M的内存，lowmem_kbytes=41716 new_min_free_kbytes=816*/
-	printk("init_per_zone_wmark_min %ldK %ldK %ldK\n",lowmem_kbytes,new_min_free_kbytes,user_min_free_kbytes);
+	printk("init_per_zone_wmark_min %ldK %dK %dK\n",lowmem_kbytes,new_min_free_kbytes,user_min_free_kbytes);
 	if (new_min_free_kbytes > user_min_free_kbytes) {
 		min_free_kbytes = new_min_free_kbytes;
 		if (min_free_kbytes < 128)

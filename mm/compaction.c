@@ -907,7 +907,7 @@ unsigned long compaction_suitable(struct zone *zone, int order)
 	 * index towards 1000 implies failure is due to fragmentation
 	 *
 	 * Only compact if a failure would be due to fragmentation.
-	 */
+	 */ /*±È½ÏËéÆ¬Öµ*/
 	fragindex = fragmentation_index(zone, order);
 	if (fragindex >= 0 && fragindex <= sysctl_extfrag_threshold)
 		return COMPACT_SKIPPED;

@@ -1089,6 +1089,7 @@ static const struct file_operations proc_zoneinfo_file_operations = {
 };
 
 #include <asm/uaccess.h>
+#include <linux/vmalloc.h>
 static int allocmem_open(struct inode *inode, struct file *file)
 {
 	return 0;
@@ -1140,7 +1141,7 @@ done:
 		printk("alloc page order%d %x\n",allocorder,allocflag);
 		alloc_pages(allocflag,allocorder);
 	}
-	else if(strncmp("kmalloc",argv[0],4) == 0)
+	else if(strncmp("kmalloc",argv[0],7) == 0)
 	{
 		allocorder = simple_strtol(argv[1],NULL,0);
 		allocflag = simple_strtol(argv[2],NULL,0);
@@ -1148,7 +1149,41 @@ done:
 		printk("kmalloc size %d %x\n",allocorder,allocflag);
 		kmalloc(allocorder,allocflag);
 	}
+	else if(strncmp("vmalloc",argv[0],7) == 0)
+	{
+		allocorder = simple_strtol(argv[1],NULL,0);
 
+		printk("vmalloc size %d %x\n",allocorder);
+		vmalloc(allocorder);
+	}
+	else if(strncmp("allocdebug",argv[0],10) == 0)
+	{
+		struct page *pg;
+		unsigned long vaddr;
+		pg = alloc_pages(allocflag,1);
+		vaddr = (unsigned long)page_address(pg);
+		printk("vaddr %x\n",vaddr);
+		__free_pages(pg,1);
+		printk("make a write\n");
+		*(volatile u32 __force *) vaddr = 1;
+	}
+	else if(strncmp("allocwhile",argv[0],10) == 0)
+	{
+		struct page *pg;
+
+		allocorder = simple_strtol(argv[1],NULL,0);
+		allocflag = simple_strtol(argv[2],NULL,0);
+		do
+		{
+			pg = alloc_pages(allocflag,allocorder);
+		}while(pg!=NULL);
+	}
+	else if(strncmp("dumpstack",argv[0],9) == 0)
+	{
+		dump_stack();
+	}
+
+	
 	return ret;
 }
 

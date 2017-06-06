@@ -2474,7 +2474,7 @@ void exit_signals(struct task_struct *tsk)
 	 */
 	threadgroup_change_begin(tsk);
 
-	if (thread_group_empty(tsk) || signal_group_exit(tsk->signal)) {/*最后一个线程，进程，或者设置了SIGNAL_GROUP_EXIT*/
+	if (thread_group_empty(tsk) || signal_group_exit(tsk->signal)) {/*最后一个线程，进程，或者设置了SIGNAL_GROUP_EXIT(默认是终止的信号会设置)*/
 		tsk->flags |= PF_EXITING;
 		threadgroup_change_end(tsk);
 		return;

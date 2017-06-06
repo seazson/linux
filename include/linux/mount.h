@@ -51,7 +51,7 @@ struct mnt_namespace;
 
 struct vfsmount {
 	struct dentry *mnt_root;	/* root of the mounted tree */ /*挂载点的根节点*/
-	struct super_block *mnt_sb;	/* pointer to superblock */
+	struct super_block *mnt_sb;	/* pointer to superblock */  /*挂载点对应的超级块*/
 	int mnt_flags;
 };
 

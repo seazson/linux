@@ -2832,7 +2832,7 @@ int __init shmem_init(void)
 	}
 
 	shm_mnt = vfs_kern_mount(&shmem_fs_type, MS_NOUSER,
-				 shmem_fs_type.name, NULL);
+				 shmem_fs_type.name, NULL);  /*启动时候会自动挂载tmpfs*/
 	if (IS_ERR(shm_mnt)) {
 		error = PTR_ERR(shm_mnt);
 		printk(KERN_ERR "Could not kern_mount tmpfs\n");

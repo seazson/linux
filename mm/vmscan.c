@@ -3482,7 +3482,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
 	struct task_struct *p = current;
 	struct reclaim_state reclaim_state;
 	struct scan_control sc = {
-		.may_writepage = !!(zone_reclaim_mode & RECLAIM_WRITE),  /*zone_reclaim_mode表示是否允许回写操作。快速内存回收及时允许也不会回写文件页，匿名页可以*/
+		.may_writepage = !!(zone_reclaim_mode & RECLAIM_WRITE),  /*zone_reclaim_mode表示是否允许回写操作。快速内存回收即使允许也不会回写文件页，匿名页可以*/
 		.may_unmap = !!(zone_reclaim_mode & RECLAIM_SWAP),
 		.may_swap = 1,
 		.nr_to_reclaim = max(nr_pages, SWAP_CLUSTER_MAX),   /*一次回收至少32个*/
@@ -3495,6 +3495,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
 	};
 	unsigned long nr_slab_pages0, nr_slab_pages1;
 
+	pr_sea_mem("at order %d\n",order);
 	cond_resched();
 	/*
 	 * We need to be able to allocate from the reserves for RECLAIM_SWAP

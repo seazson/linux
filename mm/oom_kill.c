@@ -250,29 +250,29 @@ enum oom_scan_t oom_scan_process_thread(struct task_struct *task,
 		unsigned long totalpages, const nodemask_t *nodemask,
 		bool force_kill)
 {
-	if (task->exit_state)
+	if (task->exit_state)     /*已经退出的进行不用杀*/
 		return OOM_SCAN_CONTINUE;
-	if (oom_unkillable_task(task, NULL, nodemask))
+	if (oom_unkillable_task(task, NULL, nodemask))   /*init和内核线程不用杀*/
 		return OOM_SCAN_CONTINUE;
 
 	/*
 	 * This task already has access to memory reserves and is being killed.
 	 * Don't allow any other task to have access to the reserves.
 	 */
-	if (test_tsk_thread_flag(task, TIF_MEMDIE)) {
+	if (test_tsk_thread_flag(task, TIF_MEMDIE)) {/*有因为内存不足而正在杀死的进程，停止查找*/
 		if (unlikely(frozen(task)))
 			__thaw_task(task);
 		if (!force_kill)
 			return OOM_SCAN_ABORT;
 	}
-	if (!task->mm)
+	if (!task->mm)            /*内核线程不让杀*/
 		return OOM_SCAN_CONTINUE;
 
 	/*
 	 * If task is allocating a lot of memory and has been marked to be
 	 * killed first if it triggers an oom, then select it.
 	 */
-	if (oom_task_origin(task))
+	if (oom_task_origin(task))   /*手动被设置为OOM_FLAG_ORIGIN标志的进程优先被选取*/
 		return OOM_SCAN_SELECT;
 
 	if (task->flags & PF_EXITING && !force_kill) {
@@ -283,7 +283,7 @@ enum oom_scan_t oom_scan_process_thread(struct task_struct *task,
 		if (!(task->group_leader->ptrace & PT_TRACE_EXIT))
 			return OOM_SCAN_ABORT;
 	}
-	return OOM_SCAN_OK;
+	return OOM_SCAN_OK;  /*表示当前进程可被选为那个进程*/
 }
 
 /*
@@ -308,7 +308,7 @@ static struct task_struct *select_bad_process(unsigned int *ppoints,
 						force_kill)) {
 		case OOM_SCAN_SELECT:
 			chosen = p;
-			chosen_points = ULONG_MAX;
+			chosen_points = ULONG_MAX;  /*设置了OOM_FLAG_ORIGIN进程是最坏的，优先被杀*/
 			/* fall through */
 		case OOM_SCAN_CONTINUE:
 			continue;
@@ -318,8 +318,8 @@ static struct task_struct *select_bad_process(unsigned int *ppoints,
 		case OOM_SCAN_OK:
 			break;
 		};
-		points = oom_badness(p, NULL, nodemask, totalpages);
-		if (points > chosen_points) {
+		points = oom_badness(p, NULL, nodemask, totalpages); /*计算进程坏的程度，根据占用内存的大小*/
+		if (points > chosen_points) { /*始终选择那个最坏的进程*/
 			chosen = p;
 			chosen_points = points;
 		}
@@ -390,7 +390,7 @@ static void dump_header(struct task_struct *p, gfp_t gfp_mask, int order,
 		mem_cgroup_print_oom_info(memcg, p);
 	else
 		show_mem(SHOW_MEM_FILTER_NODES);
-	if (sysctl_oom_dump_tasks)
+	if (sysctl_oom_dump_tasks)   /*设置这个会打印所有进程内存占用情况*/
 		dump_tasks(memcg, nodemask);
 }
 
@@ -422,7 +422,7 @@ void oom_kill_process(struct task_struct *p, gfp_t gfp_mask, int order,
 		return;
 	}
 
-	if (__ratelimit(&oom_rs))
+	if (__ratelimit(&oom_rs))   /*打印限速*/
 		dump_header(p, gfp_mask, order, memcg, nodemask);
 
 	task_lock(p);
@@ -438,7 +438,7 @@ void oom_kill_process(struct task_struct *p, gfp_t gfp_mask, int order,
 	 */
 	read_lock(&tasklist_lock);
 	do {
-		list_for_each_entry(child, &t->children, sibling) {
+		list_for_each_entry(child, &t->children, sibling) {  /*寻找最坏的children*/
 			unsigned int child_points;
 
 			if (child->mm == p->mm)
@@ -459,7 +459,7 @@ void oom_kill_process(struct task_struct *p, gfp_t gfp_mask, int order,
 	read_unlock(&tasklist_lock);
 
 	rcu_read_lock();
-	p = find_lock_task_mm(victim);
+	p = find_lock_task_mm(victim);  /*找到拥有线程组长mm的线程，因为有可能当前线程已经和线程组长分离了mm*/
 	if (!p) {
 		rcu_read_unlock();
 		put_task_struct(victim);
@@ -497,12 +497,12 @@ void oom_kill_process(struct task_struct *p, gfp_t gfp_mask, int order,
 			pr_err("Kill process %d (%s) sharing same memory\n",
 				task_pid_nr(p), p->comm);
 			task_unlock(p);
-			do_send_sig_info(SIGKILL, SEND_SIG_FORCED, p, true);
+			do_send_sig_info(SIGKILL, SEND_SIG_FORCED, p, true);  /*杀掉跟victim公用mm的其他线程组*/
 		}
 	rcu_read_unlock();
 
 	set_tsk_thread_flag(victim, TIF_MEMDIE);
-	do_send_sig_info(SIGKILL, SEND_SIG_FORCED, victim, true);
+	do_send_sig_info(SIGKILL, SEND_SIG_FORCED, victim, true);  /*杀掉victim线程组*/
 	put_task_struct(victim);
 }
 #undef K
@@ -627,7 +627,7 @@ void out_of_memory(struct zonelist *zonelist, gfp_t gfp_mask,
 	 * select it.  The goal is to allow it to allocate so that it may
 	 * quickly exit and free its memory.
 	 */
-	if (fatal_signal_pending(current) || current->flags & PF_EXITING) {
+	if (fatal_signal_pending(current) || current->flags & PF_EXITING) { /*如果当前进程收到kill信号，并且处于退出状态，返回*/
 		set_thread_flag(TIF_MEMDIE);
 		return;
 	}
@@ -639,10 +639,10 @@ void out_of_memory(struct zonelist *zonelist, gfp_t gfp_mask,
 	constraint = constrained_alloc(zonelist, gfp_mask, nodemask,
 						&totalpages);
 	mpol_mask = (constraint == CONSTRAINT_MEMORY_POLICY) ? nodemask : NULL;
-	check_panic_on_oom(constraint, gfp_mask, order, mpol_mask);
+	check_panic_on_oom(constraint, gfp_mask, order, mpol_mask);   /*panic_on_oom=1 表示发生oom需要panic*/
 
-	if (sysctl_oom_kill_allocating_task && current->mm &&
-	    !oom_unkillable_task(current, NULL, nodemask) &&
+	if (sysctl_oom_kill_allocating_task && current->mm &&  /*设置这个标志表示杀死分配的进程*/
+	    !oom_unkillable_task(current, NULL, nodemask) &&  /*init 和 内核线程不能被杀掉*/
 	    current->signal->oom_score_adj != OOM_SCORE_ADJ_MIN) {
 		get_task_struct(current);
 		oom_kill_process(current, gfp_mask, order, 0, totalpages, NULL,
@@ -651,11 +651,11 @@ void out_of_memory(struct zonelist *zonelist, gfp_t gfp_mask,
 		goto out;
 	}
 
-	p = select_bad_process(&points, totalpages, mpol_mask, force_kill);
+	p = select_bad_process(&points, totalpages, mpol_mask, force_kill);   /*选择一个合适的进程*/
 	/* Found nothing?!?! Either we hang forever, or we panic. */
 	if (!p) {
 		dump_header(NULL, gfp_mask, order, NULL, mpol_mask);
-		panic("Out of memory and no killable processes...\n");
+		panic("Out of memory and no killable processes...\n");  /*没有进程可以杀掉就会panic*/
 	}
 	if (PTR_ERR(p) != -1UL) {
 		oom_kill_process(p, gfp_mask, order, points, totalpages, NULL,
