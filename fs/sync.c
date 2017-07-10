@@ -26,17 +26,17 @@
  * submit IO for these buffers via __sync_blockdev(). This also speeds up the
  * wait == 1 case since in that case write_inode() functions do
  * sync_dirty_buffer() and thus effectively write one block at a time.
- */
+ *//*同步一个单独的文件系统*/
 static int __sync_filesystem(struct super_block *sb, int wait)
 {
 	if (wait)
-		sync_inodes_sb(sb);
+		sync_inodes_sb(sb);    /*如果需要等待回写完成，则使用同步的方式回写*/
 	else
-		writeback_inodes_sb(sb, WB_REASON_SYNC);
+		writeback_inodes_sb(sb, WB_REASON_SYNC);  /*异步方式，不等待回写结束*/
 
 	if (sb->s_op->sync_fs)
 		sb->s_op->sync_fs(sb, wait);
-	return __sync_blockdev(sb->s_bdev, wait);
+	return __sync_blockdev(sb->s_bdev, wait);  /*回写块设备*/
 }
 
 /*
@@ -104,11 +104,11 @@ SYSCALL_DEFINE0(sync)
 	int nowait = 0, wait = 1;
 
 	wakeup_flusher_threads(0, WB_REASON_SYNC);
-	iterate_supers(sync_inodes_one_sb, NULL);
-	iterate_supers(sync_fs_one_sb, &nowait);
+	iterate_supers(sync_inodes_one_sb, NULL);  /*提交同步work，并等待所有超级块的inode回写完成*/
+	iterate_supers(sync_fs_one_sb, &nowait);   /*调用所有超级块的同步函数*/
 	iterate_supers(sync_fs_one_sb, &wait);
-	iterate_bdevs(fdatawrite_one_bdev, NULL);
-	iterate_bdevs(fdatawait_one_bdev, NULL);
+	iterate_bdevs(fdatawrite_one_bdev, NULL);  /*回写bdev*/
+	iterate_bdevs(fdatawait_one_bdev, NULL);   /*等待bdev回写完成*/
 	if (unlikely(laptop_mode))
 		laptop_sync_completion();
 	return 0;
@@ -208,12 +208,12 @@ static int do_fsync(unsigned int fd, int datasync)
 	}
 	return ret;
 }
-
+/*同步数据和元数据*/
 SYSCALL_DEFINE1(fsync, unsigned int, fd)
 {
 	return do_fsync(fd, 0);
 }
-
+/*仅同步数据*/
 SYSCALL_DEFINE1(fdatasync, unsigned int, fd)
 {
 	return do_fsync(fd, 1);

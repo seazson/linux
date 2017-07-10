@@ -22,10 +22,10 @@
 #define NR_OPEN_DEFAULT BITS_PER_LONG
 
 struct fdtable {
-	unsigned int max_fds;
+	unsigned int max_fds;        /*进程当前可以处理的最大文件描述符数目，用于下面访问fd的最大下标*/
 	struct file __rcu **fd;      /* current fd array */
 	unsigned long *close_on_exec;   /*执行exec的时候是否需要关闭之前的fd*/
-	unsigned long *open_fds;
+	unsigned long *open_fds;     /*当前打开的文件位图*/
 	struct rcu_head rcu;
 };
 
@@ -51,12 +51,12 @@ struct files_struct {
 	struct fdtable fdtab;
   /*
    * written part on a separate cache line in SMP
-   */
+   */ /*为了加快访问静态定义了32个文件描述符*/
 	spinlock_t file_lock ____cacheline_aligned_in_smp;
 	int next_fd;
-	unsigned long close_on_exec_init[1];
+	unsigned long close_on_exec_init[1];   /*exec时需要关闭的文件位图*/
 	unsigned long open_fds_init[1];
-	struct file __rcu * fd_array[NR_OPEN_DEFAULT];
+	struct file __rcu * fd_array[NR_OPEN_DEFAULT];  /*固定32个文件结构体*/
 };
 
 #define rcu_dereference_check_fdtable(files, fdtfd) \

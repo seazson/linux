@@ -75,7 +75,7 @@ static int sig_task_ignored(struct task_struct *t, int sig, bool force)
 
 	return sig_handler_ignored(handler, sig);
 }
-
+/*被阻塞的信号就算默认处理是忽略也会提交到队列中*/
 static int sig_ignored(struct task_struct *t, int sig, bool force)
 {
 	/*
@@ -551,7 +551,7 @@ static void collect_signal(int sig, struct sigpending *list, siginfo_t *info)
 	list_for_each_entry(q, &list->list, list) {
 		if (q->info.si_signo == sig) {
 			if (first)
-				goto still_pending;
+				goto still_pending;    /*说明有相同的信号排队在*/
 			first = q;
 		}
 	}
@@ -1059,13 +1059,14 @@ static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
 		goto ret;
 
 	pending = group ? &t->signal->shared_pending : &t->pending;
+
 	/*
 	 * Short-circuit ignored signals and support queuing
 	 * exactly one non-rt signal, so that we can get more
 	 * detailed information about the cause of the signal.
 	 */
 	result = TRACE_SIGNAL_ALREADY_PENDING;
-	if (legacy_queue(pending, sig))
+	if (legacy_queue(pending, sig))    /*传统信号只能添加一次到队列中，而实时信号可以添加多次*/
 		goto ret;
 
 	result = TRACE_SIGNAL_DELIVERED;
@@ -1097,7 +1098,7 @@ static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
 		switch ((unsigned long) info) {
 		case (unsigned long) SEND_SIG_NOINFO:
 			q->info.si_signo = sig;
-			q->info.si_errno = 0;
+			q->info.si_errno = 0; 
 			q->info.si_code = SI_USER;
 			q->info.si_pid = task_tgid_nr_ns(current,
 							task_active_pid_ns(t));
@@ -1597,6 +1598,7 @@ int siqueue_to_id(struct sigqueue *q)
 	return (sigval_t)(((struct timer*)(q->info._sifields._timer._sigval.sival_ptr))->sival).sival_int;
 }
 #endif
+/*这个函数实际上是为posix timer准备的。里面会处理timer溢出的情况*/
 int send_sigqueue(struct sigqueue *q, struct task_struct *t, int group)
 {
 	int sig = q->info.si_signo;
@@ -1612,7 +1614,7 @@ int send_sigqueue(struct sigqueue *q, struct task_struct *t, int group)
 
 	ret = 1; /* the signal is ignored */
 	result = TRACE_SIGNAL_IGNORED;
-	if (!prepare_signal(sig, t, false)) /*检查信号是否被忽略*/
+	if (!prepare_signal(sig, t, false)) /*检查信号是否被忽略。默认是忽略，但是被阻塞了函数会添加*/
 		goto out;
 
 	ret = 0;
@@ -2707,7 +2709,7 @@ static int do_sigpending(void *set, unsigned long sigsetsize)
  *			while blocked
  *  @uset: stores pending signals
  *  @sigsetsize: size of sigset_t type or larger
- */
+ */ /*返回的是因为阻塞而导致未处理的信号。未处理但是不阻塞的信号不算*/
 SYSCALL_DEFINE2(rt_sigpending, sigset_t __user *, uset, size_t, sigsetsize)
 {
 	sigset_t set;
@@ -3036,7 +3038,7 @@ static int do_rt_sigqueueinfo(pid_t pid, int sig, siginfo_t *info)
  *  @pid: the PID of the thread
  *  @sig: signal to be sent
  *  @uinfo: signal info to be sent
- */
+ */ /*对应sigqueue的系统调用*/
 SYSCALL_DEFINE3(rt_sigqueueinfo, pid_t, pid, int, sig,
 		siginfo_t __user *, uinfo)
 {
@@ -3176,7 +3178,7 @@ do_sigaltstack (const stack_t __user *uss, stack_t __user *uoss, unsigned long s
 			goto out;
 
 		error = -EPERM;
-		if (on_sig_stack(sp))
+		if (on_sig_stack(sp))   /*如果已经建立了替换栈帧，不能再建立*/
 			goto out;
 
 		error = -EINVAL;
@@ -3216,6 +3218,7 @@ do_sigaltstack (const stack_t __user *uss, stack_t __user *uoss, unsigned long s
 out:
 	return error;
 }
+/*替换栈帧*/
 SYSCALL_DEFINE2(sigaltstack,const stack_t __user *,uss, stack_t __user *,uoss)
 {
 	return do_sigaltstack(uss, uoss, current_user_stack_pointer());

@@ -229,8 +229,8 @@ struct swap_list_t {
 
 /* linux/mm/page_alloc.c */
 extern unsigned long totalram_pages;
-extern unsigned long totalreserve_pages;
-extern unsigned long dirty_balance_reserve;
+extern unsigned long totalreserve_pages;      /*所有zone的(lowmem_reserve + 高水标的值)的和值*/
+extern unsigned long dirty_balance_reserve;   /*所有zone的(lowmem_reserve + 高水标的值)的和值*/
 extern unsigned long nr_free_buffer_pages(void);
 extern unsigned long nr_free_pagecache_pages(void);
 

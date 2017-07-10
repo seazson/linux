@@ -211,7 +211,7 @@ static struct inode *alloc_inode(struct super_block *sb)
 	if (!inode)
 		return NULL;
 
-	if (unlikely(inode_init_always(sb, inode))) {
+	if (unlikely(inode_init_always(sb, inode))) {   /*先简单初始化inode，建立inode和sb的关联*/
 		if (inode->i_sb->s_op->destroy_inode)
 			inode->i_sb->s_op->destroy_inode(inode);
 		else
@@ -936,7 +936,7 @@ struct inode *new_inode(struct super_block *sb)
 
 	inode = new_inode_pseudo(sb);
 	if (inode)
-		inode_sb_list_add(inode);
+		inode_sb_list_add(inode);   /*添加到sb的inode链上*/
 	return inode;
 }
 EXPORT_SYMBOL(new_inode);

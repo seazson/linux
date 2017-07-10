@@ -63,7 +63,7 @@ struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned 
 		return ERR_PTR(-ENAMETOOLONG);
 	if (!dentry->d_sb->s_d_op)
 		d_set_d_op(dentry, &simple_dentry_operations);  /*关联dentry和它的操作函数*/
-	d_add(dentry, NULL);       /*关联dentry和inode，并将dentry加入链表，对于ramfs来说没有inode?*/
+	d_add(dentry, NULL);       /*关联dentry和inode，并将dentry加入链表，对于ramfs来说走到这里肯定是不存在这个对象的。因为它的对象都应该有dentry，而不需要调用inode来查找dentry*/
 	return NULL;
 }
 /*创建本目录的dentry*/
@@ -906,7 +906,7 @@ int generic_file_fsync(struct file *file, loff_t start, loff_t end,
 		return err;
 
 	mutex_lock(&inode->i_mutex);
-	ret = sync_mapping_buffers(inode->i_mapping);
+	ret = sync_mapping_buffers(inode->i_mapping);   /*回写私有管理数据*/
 	if (!(inode->i_state & I_DIRTY))
 		goto out;
 	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))

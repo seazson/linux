@@ -1215,8 +1215,8 @@ struct task_struct {
 	sigset_t saved_sigmask;	/* restored if set_restore_sigmask() was used */
 	struct sigpending pending;
 
-	unsigned long sas_ss_sp;
-	size_t sas_ss_size;
+	unsigned long sas_ss_sp;   /*信号栈帧分配在堆上时，记录sp的位置*/
+	size_t sas_ss_size;        /*信号栈帧大小*/
 	int (*notifier)(void *priv);
 	void *notifier_data;
 	sigset_t *notifier_mask;
@@ -2395,7 +2395,7 @@ static inline int fatal_signal_pending(struct task_struct *p)
 
 static inline int signal_pending_state(long state, struct task_struct *p)
 {
-	if (!(state & (TASK_INTERRUPTIBLE | TASK_WAKEKILL)))
+	if (!(state & (TASK_INTERRUPTIBLE | TASK_WAKEKILL)))  /*发生调度前如果设置了进程状态不是running，则会从rq中移除*/
 		return 0;
 	if (!signal_pending(p))
 		return 0;

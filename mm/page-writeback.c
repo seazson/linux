@@ -84,20 +84,20 @@ int vm_highmem_is_dirtyable;
 /*
  * The generator of dirty data starts writeback at this percentage
  */
-int vm_dirty_ratio = 20;
+int vm_dirty_ratio = 20;      /*开始回写的脏页阈值比例*/
 
 /*
  * vm_dirty_bytes starts at 0 (disabled) so that it is a function of
  * vm_dirty_ratio * the amount of dirtyable memory
  */
-unsigned long vm_dirty_bytes;
+unsigned long vm_dirty_bytes;   /*开始回写的脏页阈值*/
 
 /*
  * The interval between `kupdate'-style writebacks
  */
 unsigned int dirty_writeback_interval = 5 * 100; /* centiseconds */
 
-EXPORT_SYMBOL_GPL(dirty_writeback_interval);
+EXPORT_SYMBOL_GPL(dirty_writeback_interval);   /*周期回写间隔*/
 
 /*
  * The longest time for which data is allowed to remain dirty
@@ -230,13 +230,13 @@ static unsigned long highmem_dirtyable_memory(unsigned long total)
  *
  * Returns the global number of pages potentially available for dirty
  * page cache.  This is the base value for the global dirty limits.
- */
+ */ /*可用内存 - 所有zone的(lowmem_reserve + 高水标的值)的和值 - min_free_kbytes*/
 static unsigned long global_dirtyable_memory(void)
 {
 	unsigned long x;
 
 	x = global_page_state(NR_FREE_PAGES) + global_reclaimable_pages();
-	x -= min(x, dirty_balance_reserve);
+	x -= min(x, dirty_balance_reserve);   /*可用内存减去预留的内存*/
 
 	if (!vm_highmem_is_dirtyable)
 		x -= highmem_dirtyable_memory(x);
@@ -276,10 +276,10 @@ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty)
 	else
 		background = (dirty_background_ratio * available_memory) / 100;
 
-	if (background >= dirty)
+	if (background >= dirty)      /*最多是可设置脏页数量的一半*/
 		background = dirty / 2;
 	tsk = current;
-	if (tsk->flags & PF_LESS_THROTTLE || rt_task(tsk)) {
+	if (tsk->flags & PF_LESS_THROTTLE || rt_task(tsk)) {  /*实时进程和少流控的进程可以多用点脏页*/
 		background += background / 4;
 		dirty += dirty / 4;
 	}
@@ -1722,7 +1722,7 @@ EXPORT_SYMBOL(tag_pages_for_writeback);
  * not miss some pages (e.g., because some other process has cleared TOWRITE
  * tag we set). The rule we follow is that TOWRITE tag can be cleared only
  * by the process clearing the DIRTY tag (and submitting the page for IO).
- */
+ *//*一页一页的进行回写*/
 int write_cache_pages(struct address_space *mapping,
 		      struct writeback_control *wbc, writepage_t writepage,
 		      void *data)
@@ -1767,7 +1767,7 @@ retry:
 		int i;
 
 		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
-			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);    /*查找特定tag的page*/
 		if (nr_pages == 0)
 			break;
 
@@ -1813,19 +1813,19 @@ continue_unlock:
 				goto continue_unlock;
 			}
 
-			if (PageWriteback(page)) {
+			if (PageWriteback(page)) {                   /*如果page已经在回写了，返回或者等待page回写完成*/
 				if (wbc->sync_mode != WB_SYNC_NONE)
 					wait_on_page_writeback(page);
 				else
 					goto continue_unlock;
 			}
 
-			BUG_ON(PageWriteback(page));
+			BUG_ON(PageWriteback(page));                 /*走到这里如果还是处于回写状态说明有问题*/
 			if (!clear_page_dirty_for_io(page))
 				goto continue_unlock;
 
 			trace_wbc_writepage(wbc, mapping->backing_dev_info);
-			ret = (*writepage)(page, wbc, data);
+			ret = (*writepage)(page, wbc, data);         /*发起回写操作*/
 			if (unlikely(ret)) {
 				if (ret == AOP_WRITEPAGE_ACTIVATE) {
 					unlock_page(page);
@@ -1917,7 +1917,7 @@ int generic_writepages(struct address_space *mapping,
 }
 
 EXPORT_SYMBOL(generic_writepages);
-
+/*页回写*/
 int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
 {
 	int ret;

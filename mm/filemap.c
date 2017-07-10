@@ -213,7 +213,7 @@ static int filemap_check_errors(struct address_space *mapping)
  * opposed to a regular memory cleansing writeback.  The difference between
  * these two operations is that if a dirty page/buffer is encountered, it must
  * be waited upon, and not just skipped over.
- */
+ */ /*回写地址范围里的脏页*/
 int __filemap_fdatawrite_range(struct address_space *mapping, loff_t start,
 				loff_t end, int sync_mode)
 {
@@ -225,7 +225,7 @@ int __filemap_fdatawrite_range(struct address_space *mapping, loff_t start,
 		.range_end = end,
 	};
 
-	if (!mapping_cap_writeback_dirty(mapping))
+	if (!mapping_cap_writeback_dirty(mapping))  /*检查后备存储器是否支持回写*/
 		return 0;
 
 	ret = do_writepages(mapping, &wbc);
@@ -272,7 +272,7 @@ EXPORT_SYMBOL(filemap_flush);
  *
  * Walk the list of under-writeback pages of the given address space
  * in the given range and wait for all of them.
- */
+ */ /*等待一个文件的指定范围回写完成*/
 int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
 			    loff_t end_byte)
 {
@@ -287,7 +287,7 @@ int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
 
 	pagevec_init(&pvec, 0);
 	while ((index <= end) &&
-			(nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
+			(nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,   /*查找基数树中正在回写的页*/
 			PAGECACHE_TAG_WRITEBACK,
 			min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1)) != 0) {
 		unsigned i;
@@ -299,7 +299,7 @@ int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
 			if (page->index > end)
 				continue;
 
-			wait_on_page_writeback(page);
+			wait_on_page_writeback(page);                             /*等待页回写完成*/
 			if (TestClearPageError(page))
 				ret = -EIO;
 		}
@@ -321,7 +321,7 @@ EXPORT_SYMBOL(filemap_fdatawait_range);
  *
  * Walk the list of under-writeback pages of the given address space
  * and wait for all of them.
- */
+ */ /*等待整个文件回写完成*/
 int filemap_fdatawait(struct address_space *mapping)
 {
 	loff_t i_size = i_size_read(mapping->host);

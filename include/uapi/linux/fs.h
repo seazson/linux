@@ -91,7 +91,7 @@ struct inodes_stat_t {
 #define MS_NOSEC	(1<<28)
 #define MS_BORN		(1<<29)
 #define MS_ACTIVE	(1<<30)
-#define MS_NOUSER	(1<<31)
+#define MS_NOUSER	(1<<31)     /*伪文件系统，不能被用户空间挂载。例如bdev，pipefs*/
 
 /*
  * Superblock flags that can be altered by MS_REMOUNT

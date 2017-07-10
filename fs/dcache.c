@@ -388,7 +388,7 @@ static struct dentry *d_kill(struct dentry *dentry, struct dentry *parent)
  * Unhash a dentry without inserting an RCU walk barrier or checking that
  * dentry->d_lock is locked.  The caller must take care of that, if
  * appropriate.
- */
+ */ /*从hash中移除dentry*/
 static void __d_shrink(struct dentry *dentry)
 {
 	if (!d_unhashed(dentry)) {
@@ -428,7 +428,7 @@ void __d_drop(struct dentry *dentry)
 	}
 }
 EXPORT_SYMBOL(__d_drop);
-
+/*从hash表中移除dentry*/
 void d_drop(struct dentry *dentry)
 {
 	spin_lock(&dentry->d_lock);
@@ -529,11 +529,11 @@ repeat:
 	}
 
 	/* Unreachable? Get rid of it */
- 	if (d_unhashed(dentry))
+ 	if (d_unhashed(dentry))             /*如果dentry已经不在散列表上了就必须销毁*/
 		goto kill_it;
 
 	dentry->d_flags |= DCACHE_REFERENCED;
-	dentry_lru_add(dentry);
+	dentry_lru_add(dentry);             /*不要直接释放，而是先放到lru中*/
 
 	dentry->d_count--;
 	spin_unlock(&dentry->d_lock);
@@ -1233,7 +1233,7 @@ EXPORT_SYMBOL(shrink_dcache_parent);
  * available. On a success the dentry is returned. The name passed in is
  * copied and the copy passed in may be reused after this call.
  */
- 
+/*分配dentry*/ 
 struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
 {
 	struct dentry *dentry;
@@ -1393,11 +1393,11 @@ static void __d_instantiate(struct dentry *dentry, struct inode *inode)
  * NOTE! This assumes that the inode count has been incremented
  * (or otherwise set) by the caller to indicate that it is now
  * in use by the dcache.
- */
- 
+ */ 
+/*关联dentry和inode*/ 
 void d_instantiate(struct dentry *entry, struct inode * inode)
 {
-	BUG_ON(!hlist_unhashed(&entry->d_alias));
+	BUG_ON(!hlist_unhashed(&entry->d_alias));   /*这个dentry不能已经连接*/
 	if (inode)
 		spin_lock(&inode->i_lock);
 	__d_instantiate(entry, inode);
@@ -1481,7 +1481,7 @@ struct dentry *d_instantiate_unique(struct dentry *entry, struct inode *inode)
 }
 
 EXPORT_SYMBOL(d_instantiate_unique);
-
+/*创建一个根dentry，并关联inode*/
 struct dentry *d_make_root(struct inode *root_inode)
 {
 	struct dentry *res = NULL;
@@ -1616,7 +1616,7 @@ EXPORT_SYMBOL(d_obtain_alias);
  * In that case, we know that the inode will be a regular file, and also this
  * will only occur during atomic_open. So we need to check for the dentry
  * being already hashed only in the final case.
- */
+ */ /*将一个断开连接的dentry对象连接到dentry树中*/
 struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
 {
 	struct dentry *new = NULL;
@@ -1910,13 +1910,13 @@ EXPORT_SYMBOL(d_lookup);
  * the case of failure.
  *
  * __d_lookup callers must be commented.
- */
+ */ /*在dentry散列表中查找*/
 struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
 {
 	unsigned int len = name->len;
 	unsigned int hash = name->hash;
 	const unsigned char *str = name->name;
-	struct hlist_bl_head *b = d_hash(parent, hash);
+	struct hlist_bl_head *b = d_hash(parent, hash);   /*由父节点的dentry和本节点的名字的hash值，得出散列表头*/
 	struct hlist_bl_node *node;
 	struct dentry *found = NULL;
 	struct dentry *dentry;
@@ -1945,7 +1945,7 @@ struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
 	
 	hlist_bl_for_each_entry_rcu(dentry, node, b, d_hash) {
 
-		if (dentry->d_name.hash != hash)
+		if (dentry->d_name.hash != hash)      /*找到的hash值必须相同*/
 			continue;
 
 		spin_lock(&dentry->d_lock);
@@ -1964,7 +1964,7 @@ struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
 			if (parent->d_op->d_compare(parent, dentry, tlen, tname, name))
 				goto next;
 		} else {
-			if (dentry->d_name.len != len)
+			if (dentry->d_name.len != len)      /*名字长度和内容必须相同*/
 				goto next;
 			if (dentry_cmp(dentry, str, len))
 				goto next;
@@ -2057,7 +2057,7 @@ EXPORT_SYMBOL(d_validate);
  * Turn the dentry into a negative dentry if possible, otherwise
  * remove it from the hash queues so it can be deleted later
  */
- 
+/*delete优先选择置为负值，如果有多个人引用，就调用drop丢掉*/ 
 void d_delete(struct dentry * dentry)
 {
 	struct inode *inode;
@@ -2076,7 +2076,7 @@ again:
 			goto again;
 		}
 		dentry->d_flags &= ~DCACHE_CANT_MOUNT;
-		dentry_unlink_inode(dentry);
+		dentry_unlink_inode(dentry);     /*减少inode的计数，如果为零，销毁inode*/
 		fsnotify_nameremove(dentry, isdir);
 		return;
 	}

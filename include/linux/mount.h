@@ -48,7 +48,7 @@ struct mnt_namespace;
 #define MNT_INTERNAL	0x4000
 
 #define MNT_LOCK_READONLY	0x400000
-
+/*本文件系统对应的挂载点信息*/
 struct vfsmount {
 	struct dentry *mnt_root;	/* root of the mounted tree */ /*挂载点的根节点*/
 	struct super_block *mnt_sb;	/* pointer to superblock */  /*挂载点对应的超级块*/

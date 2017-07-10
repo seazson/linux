@@ -347,11 +347,11 @@ static int grab_super(struct super_block *s) __releases(sb_lock)
 	down_write(&s->s_umount);
 	if ((s->s_flags & MS_BORN) && atomic_inc_not_zero(&s->s_active)) {
 		put_super(s);
-		return 1;
+		return 1;      /*超级块可用返回1*/
 	}
 	up_write(&s->s_umount);
 	put_super(s);
-	return 0;
+	return 0;          /*超级块不可用返回0*/
 }
 
 /*
@@ -435,11 +435,11 @@ EXPORT_SYMBOL(generic_shutdown_super);
 /**
  *	sget	-	find or create a superblock
  *	@type:	filesystem type superblock should belong to
- *	@test:	comparison callback
- *	@set:	setup callback
+ *	@test:	comparison callback   用来检查一个超级块是否分配过，分配过返回1
+ *	@set:	setup callback        用特定的数据来初始化超级块
  *	@flags:	mount flags
  *	@data:	argument to each of them
- */
+ */ /*分配一个超级块。首先从对应文件系统类型中查找之前是否分配过*/
 struct super_block *sget(struct file_system_type *type,
 			int (*test)(struct super_block *,void *),
 			int (*set)(struct super_block *,void *),
@@ -453,17 +453,17 @@ struct super_block *sget(struct file_system_type *type,
 retry:
 	spin_lock(&sb_lock);
 	if (test) {
-		hlist_for_each_entry(old, &type->fs_supers, s_instances) { /*首先遍历本文件系统类型下有没有超级块可用*/
-			if (!test(old, data))
+		hlist_for_each_entry(old, &type->fs_supers, s_instances) { /*首先遍历本文件系统类型下已经注册的超级块*/
+			if (!test(old, data))   /*超级块使用的设备和当前的设备(data)是否是一个,是的话返回1*/
 				continue;
-			if (!grab_super(old))
+			if (!grab_super(old))   /*超级块可用返回1*/
 				goto retry;
 			if (s) {
 				up_write(&s->s_umount);
 				destroy_super(s);
 				s = NULL;
 			}
-			return old;
+			return old;             /*返回这个超级块*/
 		}
 	}
 	if (!s) {
@@ -483,8 +483,8 @@ retry:
 	}
 	s->s_type = type;
 	strlcpy(s->s_id, type->name, sizeof(s->s_id));
-	list_add_tail(&s->s_list, &super_blocks);
-	hlist_add_head(&s->s_instances, &type->fs_supers);
+	list_add_tail(&s->s_list, &super_blocks);              /*所有的超级块都会链接到一起*/
+	hlist_add_head(&s->s_instances, &type->fs_supers);     /*同一个类型的超级块链接到对应文件系统类型下*/
 	spin_unlock(&sb_lock);
 	get_filesystem(type);
 	register_shrinker(&s->s_shrink);     /*注册超级块回收函数*/
@@ -508,14 +508,14 @@ EXPORT_SYMBOL(drop_super);
  *
  *	Scans the superblock list and calls given function, passing it
  *	locked superblock and given argument.
- */
+ */ /*遍历所有超级块执行处理函数*/
 void iterate_supers(void (*f)(struct super_block *, void *), void *arg)
 {
 	struct super_block *sb, *p = NULL;
 
 	spin_lock(&sb_lock);
 	list_for_each_entry(sb, &super_blocks, s_list) {
-		if (hlist_unhashed(&sb->s_instances))
+		if (hlist_unhashed(&sb->s_instances))   /*说明文件系统并没有挂载*/
 			continue;
 		sb->s_count++;
 		spin_unlock(&sb_lock);

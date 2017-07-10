@@ -593,7 +593,7 @@ void emergency_thaw_all(void)
  * Basically, this is a convenience function for fsync().
  * @mapping is a file or directory which needs those buffers to be written for
  * a successful fsync().
- */
+ */ /*回写私有数据*/
 int sync_mapping_buffers(struct address_space *mapping)
 {
 	struct address_space *buffer_mapping = mapping->private_data;

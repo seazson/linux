@@ -553,7 +553,7 @@ static void free_vfsmnt(struct mount *mnt)
  * find the first or last mount at @dentry on vfsmount @mnt depending on
  * @dir. If @dir is set return the first mount else return the last mount.
  * vfsmount_lock must be held for read or write.
- */
+ */ /*该函数可以找到指定目录上挂载的最后一个挂载mnt。也可以找第一个(dir==1)。*/
 struct mount *__lookup_mnt(struct vfsmount *mnt, struct dentry *dentry,
 			      int dir)
 {
@@ -590,7 +590,7 @@ struct mount *__lookup_mnt(struct vfsmount *mnt, struct dentry *dentry,
  * /dev/sda2, then /dev/sda3, then NULL.
  *
  * lookup_mnt takes a reference to the found vfsmount.
- */
+ */ /*寻找第一个mnt*/
 struct vfsmount *lookup_mnt(struct path *path)
 {
 	struct mount *child_mnt;
@@ -734,14 +734,14 @@ static void commit_tree(struct mount *mnt)
 	BUG_ON(parent == mnt);
 
 	list_add_tail(&head, &mnt->mnt_list);
-	list_for_each_entry(m, &head, mnt_list)
+	list_for_each_entry(m, &head, mnt_list)    /*修改mnt下挂的所有挂载点的命名空间*/
 		m->mnt_ns = n;
 
 	list_splice(&head, n->list.prev);
 
 	list_add_tail(&mnt->mnt_hash, mount_hashtable +
-				hash(&parent->mnt, mnt->mnt_mountpoint));
-	list_add_tail(&mnt->mnt_child, &parent->mnt_mounts);
+				hash(&parent->mnt, mnt->mnt_mountpoint));  /*将mnt添加到hash表上，是以父节点的mnt和dentry作为键值计算的*/
+	list_add_tail(&mnt->mnt_child, &parent->mnt_mounts);   /*指向父节点*/
 	touch_mnt_namespace(n);
 }
 
@@ -780,7 +780,7 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	if (!type)
 		return ERR_PTR(-ENODEV);
 
-	mnt = alloc_vfsmnt(name);                  /*分配一个mount结构体*/
+	mnt = alloc_vfsmnt(name);                  /*从slab中分配一个mount结构体*/
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
 
@@ -1555,7 +1555,7 @@ static int attach_recursive_mnt(struct mount *source_mnt,
 	LIST_HEAD(tree_list);
 	struct mount *child, *p;
 	int err;
-
+	/*处理共享属性*/
 	if (IS_MNT_SHARED(dest_mnt)) {
 		err = invent_group_ids(source_mnt, true);
 		if (err)
@@ -1566,7 +1566,7 @@ static int attach_recursive_mnt(struct mount *source_mnt,
 		goto out_cleanup_ids;
 
 	br_write_lock(&vfsmount_lock);
-
+	/*如果被挂载的目录是共享的，新挂载的所有挂载点都要共享*/
 	if (IS_MNT_SHARED(dest_mnt)) {
 		for (p = source_mnt; p; p = next_mnt(p, source_mnt))
 			set_mnt_shared(p);
@@ -1576,8 +1576,8 @@ static int attach_recursive_mnt(struct mount *source_mnt,
 		attach_mnt(source_mnt, dest_mnt, dest_mp);
 		touch_mnt_namespace(source_mnt->mnt_ns);
 	} else {
-		mnt_set_mountpoint(dest_mnt, dest_mp, source_mnt);
-		commit_tree(source_mnt);
+		mnt_set_mountpoint(dest_mnt, dest_mp, source_mnt);  /*关联父子目录*/
+		commit_tree(source_mnt);                            /*将新mnt添加到全局hash表*/
 	}
 
 	list_for_each_entry_safe(child, p, &tree_list, mnt_hash) {
@@ -1594,7 +1594,7 @@ static int attach_recursive_mnt(struct mount *source_mnt,
  out:
 	return err;
 }
-
+/*从根path，一级一级往mount层中找，先找第一个mount的，然后从第一个mount的找第二个，一直找到最后一个*/
 static struct mountpoint *lock_mount(struct path *path)
 {
 	struct vfsmount *mnt;
@@ -1631,17 +1631,17 @@ static void unlock_mount(struct mountpoint *where)
 	namespace_unlock();
 	mutex_unlock(&dentry->d_inode->i_mutex);
 }
-
+/*将mnt嫁接到p上，mp是为这次挂载新分配的*/
 static int graft_tree(struct mount *mnt, struct mount *p, struct mountpoint *mp)
 {
 	if (mnt->mnt.mnt_sb->s_flags & MS_NOUSER)
 		return -EINVAL;
 
 	if (S_ISDIR(mp->m_dentry->d_inode->i_mode) !=
-	      S_ISDIR(mnt->mnt.mnt_root->d_inode->i_mode))
+	      S_ISDIR(mnt->mnt.mnt_root->d_inode->i_mode))  /*要挂载的和被挂载的必须都是目录*/
 		return -ENOTDIR;
 
-	return attach_recursive_mnt(mnt, p, mp, NULL);
+	return attach_recursive_mnt(mnt, p, mp, NULL);  /*实际操作*/
 }
 
 /*
@@ -1929,13 +1929,13 @@ static int do_add_mount(struct mount *newmnt, struct path *path, int mnt_flags)
 
 	mnt_flags &= ~(MNT_SHARED | MNT_WRITE_HOLD | MNT_INTERNAL);
 
-	mp = lock_mount(path);
+	mp = lock_mount(path);   /*锁住这个路径，防止其他人在上面mount。并找到这个目录上最后一次挂载点，因为可能挂载过好几个*/
 	if (IS_ERR(mp))
 		return PTR_ERR(mp);
 
 	parent = real_mount(path->mnt);
 	err = -EINVAL;
-	if (unlikely(!check_mnt(parent))) {
+	if (unlikely(!check_mnt(parent))) {/*检查namespace是否是当前进程的namespace*/  
 		/* that's acceptable only for automounts done in private ns */
 		if (!(mnt_flags & MNT_SHRINKABLE))
 			goto unlock;
@@ -1947,15 +1947,15 @@ static int do_add_mount(struct mount *newmnt, struct path *path, int mnt_flags)
 	/* Refuse the same filesystem on the same mount point */
 	err = -EBUSY;
 	if (path->mnt->mnt_sb == newmnt->mnt.mnt_sb &&
-	    path->mnt->mnt_root == path->dentry)
+	    path->mnt->mnt_root == path->dentry)     /*检查同一个文件系统是否已经在此挂载了*/
 		goto unlock;
 
 	err = -EINVAL;
-	if (S_ISLNK(newmnt->mnt.mnt_root->d_inode->i_mode))
+	if (S_ISLNK(newmnt->mnt.mnt_root->d_inode->i_mode)) /*需要挂载的文件系统的根不能是个软连接*/
 		goto unlock;
 
 	newmnt->mnt.mnt_flags = mnt_flags;
-	err = graft_tree(newmnt, parent, mp);
+	err = graft_tree(newmnt, parent, mp);   /*将文件系统嫁接到要挂载的目录上去*/
 
 unlock:
 	unlock_mount(mp);
@@ -1965,7 +1965,7 @@ unlock:
 /*
  * create a new mount for userspace and request it to be added into the
  * namespace's tree
- */
+ */ /*name是设备名称dev_name*/
 static int do_new_mount(struct path *path, const char *fstype, int flags,
 			int mnt_flags, const char *name, void *data)
 {
@@ -1977,7 +1977,7 @@ static int do_new_mount(struct path *path, const char *fstype, int flags,
 	if (!fstype)
 		return -EINVAL;
 
-	type = get_fs_type(fstype);
+	type = get_fs_type(fstype);  /*获取要挂载的文件系统类型，纯粹是名字匹配*/
 	if (!type)
 		return -ENODEV;
 
@@ -1995,7 +1995,7 @@ static int do_new_mount(struct path *path, const char *fstype, int flags,
 		}
 	}
 
-	mnt = vfs_kern_mount(type, flags, name, data);
+	mnt = vfs_kern_mount(type, flags, name, data);  /*非挂载操作，只是创建超级块，根dentry和inode*/
 	if (!IS_ERR(mnt) && (type->fs_flags & FS_HAS_SUBTYPE) &&
 	    !mnt->mnt_sb->s_subtype)
 		mnt = fs_set_subtype(mnt, fstype);
@@ -2004,7 +2004,7 @@ static int do_new_mount(struct path *path, const char *fstype, int flags,
 	if (IS_ERR(mnt))
 		return PTR_ERR(mnt);
 
-	err = do_add_mount(real_mount(mnt), path, mnt_flags);
+	err = do_add_mount(real_mount(mnt), path, mnt_flags);  /*挂载到指定目录上去*/
 	if (err)
 		mntput(mnt);
 	return err;
@@ -2265,6 +2265,7 @@ long do_mount(const char *dev_name, const char *dir_name,
 	int retval = 0;
 	int mnt_flags = 0;
 
+	pr_sea_fs("mount %s to %s, type %s, flag %lx\n",dev_name,dir_name,type_page,flags);
 	/* Discard magic */
 	if ((flags & MS_MGC_MSK) == MS_MGC_VAL)
 		flags &= ~MS_MGC_MSK;
@@ -2278,17 +2279,17 @@ long do_mount(const char *dev_name, const char *dir_name,
 		((char *)data_page)[PAGE_SIZE - 1] = 0;
 
 	/* ... and get the mountpoint */
-	retval = kern_path(dir_name, LOOKUP_FOLLOW, &path);
+	retval = kern_path(dir_name, LOOKUP_FOLLOW, &path);  /* 获取挂载点的path结构。获取的是最后一次挂载的*/
 	if (retval)
 		return retval;
 
 	retval = security_sb_mount(dev_name, &path,
 				   type_page, flags, data_page);
-	if (!retval && !may_mount())
+	if (!retval && !may_mount())   /*mount权限检查*/
 		retval = -EPERM;
 	if (retval)
 		goto dput_out;
-
+/*将用户态传入的flag转换成内核使用的*/
 	/* Default to relatime unless overriden */
 	if (!(flags & MS_NOATIME))
 		mnt_flags |= MNT_RELATIME;
@@ -2313,16 +2314,16 @@ long do_mount(const char *dev_name, const char *dir_name,
 		   MS_NOATIME | MS_NODIRATIME | MS_RELATIME| MS_KERNMOUNT |
 		   MS_STRICTATIME);
 
-	if (flags & MS_REMOUNT)
+	if (flags & MS_REMOUNT)          /*修改一个已经装载的文件系统的选项*/
 		retval = do_remount(&path, flags & ~MS_REMOUNT, mnt_flags,
 				    data_page);
-	else if (flags & MS_BIND)
+	else if (flags & MS_BIND)        /*通过环回接口装载一个文件系统。换回接口指的是挂载的源是一个文件，而不是设备*/
 		retval = do_loopback(&path, dev_name, flags & MS_REC);
-	else if (flags & (MS_SHARED | MS_PRIVATE | MS_SLAVE | MS_UNBINDABLE))
+	else if (flags & (MS_SHARED | MS_PRIVATE | MS_SLAVE | MS_UNBINDABLE))  /*处理共享，从属和不可绑定装载，改变装载标志*/
 		retval = do_change_type(&path, flags);
-	else if (flags & MS_MOVE)
+	else if (flags & MS_MOVE)        /*移动一个已经装载的文件系统*/
 		retval = do_move_mount(&path, dev_name);
-	else
+	else                             /*新装载一个文件系统*/
 		retval = do_new_mount(&path, type_page, flags, mnt_flags,
 				      dev_name, data_page);
 dput_out:
@@ -2499,7 +2500,7 @@ struct dentry *mount_subtree(struct vfsmount *mnt, const char *name)
 	return path.dentry;
 }
 EXPORT_SYMBOL(mount_subtree);
-
+/*dev_name是要挂载的设备，dir_name是要挂载到的目录*/
 SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
 		char __user *, type, unsigned long, flags, void __user *, data)
 {
@@ -2509,17 +2510,17 @@ SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
 	char *kernel_dev;
 	unsigned long data_page;
 
-	ret = copy_mount_string(type, &kernel_type);
+	ret = copy_mount_string(type, &kernel_type); /*拷贝文件系统类型字符串*/
 	if (ret < 0)
 		goto out_type;
 
-	kernel_dir = getname(dir_name);
+	kernel_dir = getname(dir_name);  /*获取要挂载到的文件夹*/
 	if (IS_ERR(kernel_dir)) {
 		ret = PTR_ERR(kernel_dir);
 		goto out_dir;
 	}
 
-	ret = copy_mount_string(dev_name, &kernel_dev);
+	ret = copy_mount_string(dev_name, &kernel_dev); /*要挂载的设备名称*/
 	if (ret < 0)
 		goto out_dev;
 

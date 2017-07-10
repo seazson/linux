@@ -257,14 +257,14 @@ static int __init default_bdi_init(void)
 	int err;
 
 	bdi_wq = alloc_workqueue("writeback", WQ_MEM_RECLAIM | WQ_FREEZABLE |
-					      WQ_UNBOUND | WQ_SYSFS, 0);
+					      WQ_UNBOUND | WQ_SYSFS, 0);      /*创建一个工作队列*/
 	if (!bdi_wq)
 		return -ENOMEM;
 
-	err = bdi_init(&default_backing_dev_info);
+	err = bdi_init(&default_backing_dev_info);            /*创建一个默认的bdi*/
 	if (!err)
 		bdi_register(&default_backing_dev_info, NULL, "default");
-	err = bdi_init(&noop_backing_dev_info);
+   	err = bdi_init(&noop_backing_dev_info);               /*创建一个不需要回写的bdi*/
 
 	return err;
 }
@@ -319,7 +319,7 @@ int bdi_register(struct backing_dev_info *bdi, struct device *parent,
 		return 0;
 
 	va_start(args, fmt);
-	dev = device_create_vargs(bdi_class, parent, MKDEV(0, 0), bdi, fmt, args);
+	dev = device_create_vargs(bdi_class, parent, MKDEV(0, 0), bdi, fmt, args);  /*创建一个device*/
 	va_end(args);
 	if (IS_ERR(dev))
 		return PTR_ERR(dev);
@@ -441,7 +441,7 @@ int bdi_init(struct backing_dev_info *bdi)
 	INIT_LIST_HEAD(&bdi->bdi_list);
 	INIT_LIST_HEAD(&bdi->work_list);
 
-	bdi_wb_init(&bdi->wb, bdi);
+	bdi_wb_init(&bdi->wb, bdi);   /*初始化bdi_writeback结构*/
 
 	for (i = 0; i < NR_BDI_STAT_ITEMS; i++) {
 		err = percpu_counter_init(&bdi->bdi_stat[i], 0);
@@ -531,7 +531,7 @@ int bdi_setup_and_register(struct backing_dev_info *bdi, char *name,
 	return 0;
 }
 EXPORT_SYMBOL(bdi_setup_and_register);
-
+/*用于拥塞控制的两个队列。0代表异步队列，1代表同步队列*/
 static wait_queue_head_t congestion_wqh[2] = {
 		__WAIT_QUEUE_HEAD_INITIALIZER(congestion_wqh[0]),
 		__WAIT_QUEUE_HEAD_INITIALIZER(congestion_wqh[1])

@@ -995,7 +995,7 @@ static int follow_automount(struct path *path, unsigned flags,
  * This may only be called in refwalk mode.
  *
  * Serialization is taken care of in namespace.c
- */
+ */ /*处理找到的dentry可能是挂载点的情况，找到最后一次挂载的文件系统*/
 static int follow_managed(struct path *path, unsigned flags)
 {
 	struct vfsmount *mnt = path->mnt; /* held by caller, must be left alone */
@@ -1021,7 +1021,7 @@ static int follow_managed(struct path *path, unsigned flags)
 
 		/* Transit to a mounted filesystem. */
 		if (managed & DCACHE_MOUNTED) {
-			struct vfsmount *mounted = lookup_mnt(path);
+			struct vfsmount *mounted = lookup_mnt(path);   /*查找下一个挂载点*/
 			if (mounted) {
 				dput(path->dentry);
 				if (need_mntput)
@@ -1298,7 +1298,7 @@ static struct dentry *lookup_dcache(struct qstr *name, struct dentry *dir,
  * hashed if it was pouplated with DCACHE_NEED_LOOKUP.
  *
  * dir->d_inode->i_mutex must be held
- */
+ */ /*调用inode的方法在文件系统里查找inode，并关联dentry*/
 static struct dentry *lookup_real(struct inode *dir, struct dentry *dentry,
 				  unsigned int flags)
 {
@@ -1394,7 +1394,7 @@ unlazy:
 		if (unlazy_walk(nd, dentry))    /*散列表里没有，或者是挂载点跳过失败，走到walk路径*/
 			return -ECHILD;
 	} else {
-		dentry = __d_lookup(parent, &nd->last);   /*根据hash值查找dentry的链表，找到后返回找到的dentry*/
+		dentry = __d_lookup(parent, &nd->last);   /*根据hash值查找dentry的散链表，找到后返回找到的dentry*/
 	}
 
 	if (unlikely(!dentry))
@@ -1415,7 +1415,7 @@ unlazy:
 
 	path->mnt = mnt;
 	path->dentry = dentry;
-	err = follow_managed(path, nd->flags);
+	err = follow_managed(path, nd->flags);    /*处理此节点是挂载的情况?*/
 	if (unlikely(err < 0)) {
 		path_put_conditional(path, nd);
 		return err;
@@ -1768,7 +1768,7 @@ static int link_path_walk(const char *name, struct nameidata *nd)
  		if (err)
 			break;
 
-		len = hash_name(name, &this.hash);   /*提取路径中的第一个分量的长度*/
+		len = hash_name(name, &this.hash);   /*提取路径中的第一个分量的长度，并且计算这一个分量的hash值，存放到this.hash*/
 		this.name = name;                    /*name包括后面还未处理的名字*/
 		this.len = len;
 
@@ -1827,7 +1827,7 @@ static int link_path_walk(const char *name, struct nameidata *nd)
 	terminate_walk(nd);
 	return err;
 }
-
+/*初始化nd*/
 static int path_init(int dfd, const char *name, unsigned int flags,
 		     struct nameidata *nd, struct file **fp)
 {
@@ -1946,7 +1946,7 @@ static int path_lookupat(int dfd, const char *name,
 	 * be handled by restarting a traditional ref-walk (which will always
 	 * be able to complete).
 	 */
-	err = path_init(dfd, name, flags | LOOKUP_PARENT, nd, &base);
+	err = path_init(dfd, name, flags | LOOKUP_PARENT, nd, &base);  /*初始化nd，指定查找的起始路径*/
 
 	if (unlikely(err))
 		return err;
@@ -3255,7 +3255,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, d
 
 int vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	int error = may_create(dir, dentry);
+	int error = may_create(dir, dentry);         /*检查是否有权限创建*/
 	unsigned max_links = dir->i_sb->s_max_links;
 
 	if (error)

@@ -106,10 +106,10 @@ struct dentry {
 	seqcount_t d_seq;		/* per dentry seqlock */
 	struct hlist_bl_node d_hash;	/* lookup hash list */  /*链接到哈希表*/
 	struct dentry *d_parent;	/* parent directory */
-	struct qstr d_name;         /*文件或者目录的名称*/
+	struct qstr d_name;         /*文件或者目录的名称，只存最后一个分量*/
 	struct inode *d_inode;		/* Where the name belongs to - NULL is
 					 * negative */
-	unsigned char d_iname[DNAME_INLINE_LEN];	/* small names */
+	unsigned char d_iname[DNAME_INLINE_LEN];	/* small names */ /*如果文件名只有少数字符则存到这里*/
 
 	/* Ref lookup also touches following */
 	unsigned int d_count;		/* protected by d_lock */
@@ -119,16 +119,16 @@ struct dentry {
 	unsigned long d_time;		/* used by d_revalidate */
 	void *d_fsdata;			/* fs-specific data */
 
-	struct list_head d_lru;		/* LRU list */
+	struct list_head d_lru;		/* LRU list */ /*最近最少用链表。当d_count为0时会放到lru上*/
 	/*
 	 * d_child and d_rcu can share memory
 	 */
 	union {
-		struct list_head d_child;	/* child of parent list */ /*兄弟节点*/
+		struct list_head d_child;	/* child of parent list */ /*兄弟节点，链接到父dentry*/
 	 	struct rcu_head d_rcu;
 	} d_u;
 	struct list_head d_subdirs;	/* our children */  /*本dentry下的子节点*/
-	struct hlist_node d_alias;	/* inode alias list */
+	struct hlist_node d_alias;	/* inode alias list */ /*硬链接通过这里链接到一起*/
 };
 
 /*
@@ -144,11 +144,11 @@ enum dentry_d_lock_class
 };
 
 struct dentry_operations {
-	int (*d_revalidate)(struct dentry *, unsigned int);
+	int (*d_revalidate)(struct dentry *, unsigned int);          /*对网络系统而言，确保一致性*/
 	int (*d_weak_revalidate)(struct dentry *, unsigned int);
-	int (*d_hash)(const struct dentry *, struct qstr *);
+	int (*d_hash)(const struct dentry *, struct qstr *);         /*计算散列值*/
 	int (*d_compare)(const struct dentry *, const struct dentry *,
-			unsigned int, const char *, const struct qstr *);
+			unsigned int, const char *, const struct qstr *);     /*由于比较查找到的dentry是否是匹配的*/
 	int (*d_delete)(const struct dentry *);
 	void (*d_release)(struct dentry *);
 	void (*d_prune)(struct dentry *);
@@ -200,7 +200,7 @@ struct dentry_operations {
 #define DCACHE_FSNOTIFY_PARENT_WATCHED 0x4000
      /* Parent inode is watched by some fsnotify listener */
 
-#define DCACHE_MOUNTED		0x10000	/* is a mountpoint */
+#define DCACHE_MOUNTED		0x10000	/* is a mountpoint */  /*dentry被mount了会设置这个标志*/
 #define DCACHE_NEED_AUTOMOUNT	0x20000	/* handle automount on this dir */
 #define DCACHE_MANAGE_TRANSIT	0x40000	/* manage transit from this dirent */
 #define DCACHE_MANAGED_DENTRY \

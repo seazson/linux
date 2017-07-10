@@ -64,9 +64,9 @@ enum wb_reason {
  * in a manner such that unspecified fields are set to zero.
  */
 struct writeback_control {
-	long nr_to_write;		/* Write this many pages, and decrement
+	long nr_to_write;		/* Write this many pages, and decrement 需要回写的页数
 					   this for each page written */
-	long pages_skipped;		/* Pages which were not written */
+	long pages_skipped;		/* Pages which were not written */  /*回写中由于各种原因跳过而没有回写的页*/
 
 	/*
 	 * For a_ops->writepages(): if start or end are non-zero then this is
@@ -77,7 +77,7 @@ struct writeback_control {
 	loff_t range_end;
 
 	enum writeback_sync_modes sync_mode;
-
+/*下面的标志说明回写是由什么引起的*/
 	unsigned for_kupdate:1;		/* A kupdate writeback */
 	unsigned for_background:1;	/* A background writeback */
 	unsigned tagged_writepages:1;	/* tag-and-write to avoid livelock */

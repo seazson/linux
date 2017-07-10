@@ -9,9 +9,9 @@ struct fs_struct {
 	int users;
 	spinlock_t lock;
 	seqcount_t seq;
-	int umask;
+	int umask;       /*设置新文件的权限*/
 	int in_exec;
-	struct path root, pwd;
+	struct path root, pwd;  /*进程的根目录和当前目录*/
 };
 
 extern struct kmem_cache *fs_cachep;

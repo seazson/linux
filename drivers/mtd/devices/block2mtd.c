@@ -356,7 +356,7 @@ static int block2mtd_setup2(const char *val)
 	char *str = buf;
 	char *token[2];
 	char *name;
-	size_t erase_size = PAGE_SIZE;
+	size_t erase_size = 128*1024;
 	int i, ret;
 
 	if (strnlen(val, sizeof(buf)) >= sizeof(buf))

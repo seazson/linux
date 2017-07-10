@@ -17,16 +17,16 @@ struct mnt_pcp {
 	int mnt_count;
 	int mnt_writers;
 };
-
+/*挂载点，每挂载一次会创建一个。同一个路径上可能挂载多个文件系统。最后一次的会覆盖前面的*/
 struct mountpoint {
 	struct list_head m_hash;
 	struct dentry *m_dentry;
 	int m_count;
 };
-/*表示一个挂载点*/
+/*表示一个挂载点的挂载信息。每次挂载文件系统都会创建一个*/
 struct mount {
 	struct list_head mnt_hash;
-	struct mount *mnt_parent;       /*指向父目录的mount*/
+	struct mount *mnt_parent;       /*指向父目录所属的mount*/
 	struct dentry *mnt_mountpoint;  /*指向所挂载的父目录的dentry*/
 	struct vfsmount mnt;            /*本挂载点的mnt*/
 #ifdef CONFIG_SMP
@@ -35,17 +35,17 @@ struct mount {
 	int mnt_count;
 	int mnt_writers;
 #endif
-	struct list_head mnt_mounts;	/* list of children, anchored here */
-	struct list_head mnt_child;	/* and going through their mnt_child */
+	struct list_head mnt_mounts;	/* list of children, anchored here */  /*指向mnt下的所有子挂载点*/
+	struct list_head mnt_child;	/* and going through their mnt_child */    /*链接到父节点的mnt_mounts上*/
 	struct list_head mnt_instance;	/* mount instance on sb->s_mounts */
 	const char *mnt_devname;	/* Name of device e.g. /dev/dsk/hda1 */
-	struct list_head mnt_list;
-	struct list_head mnt_expire;	/* link in fs-specific expiry list */
-	struct list_head mnt_share;	/* circular list of shared mounts */
-	struct list_head mnt_slave_list;/* list of slave mounts */
+	struct list_head mnt_list;  /*链接本目录下的所有mnt*/
+	struct list_head mnt_expire;	/* link in fs-specific expiry list */  /*到期链表*/
+	struct list_head mnt_share;	/* circular list of shared mounts */       /*共享装载的循环链表*/
+	struct list_head mnt_slave_list;/* list of slave mounts */             /*从属装载的链表*/
 	struct list_head mnt_slave;	/* slave list entry */
-	struct mount *mnt_master;	/* slave is on master->mnt_slave_list */
-	struct mnt_namespace *mnt_ns;	/* containing namespace */
+	struct mount *mnt_master;	/* slave is on master->mnt_slave_list */   /*指向主装载*/
+	struct mnt_namespace *mnt_ns;	/* containing namespace */             /*所属命名空间*/
 	struct mountpoint *mnt_mp;	/* where is it mounted */
 #ifdef CONFIG_FSNOTIFY
 	struct hlist_head mnt_fsnotify_marks;
@@ -53,7 +53,7 @@ struct mount {
 #endif
 	int mnt_id;			/* mount identifier */
 	int mnt_group_id;		/* peer group identifier */
-	int mnt_expiry_mark;		/* true if marked for expiry */
+	int mnt_expiry_mark;		/* true if marked for expiry */    /*如果标记为到期其值为true*/
 	int mnt_pinned;
 	int mnt_ghosts;
 };

@@ -370,9 +370,9 @@ struct request_queue {
 	/*
 	 * queue settings
 	 */
-	unsigned long		nr_requests;	/* Max # of requests */
-	unsigned int		nr_congestion_on;
-	unsigned int		nr_congestion_off;
+	unsigned long		nr_requests;	/* Max # of requests */ /*请求的最大数目，默认128.可以通过sys/block修改*/
+	unsigned int		nr_congestion_on;  /*请求队列的数目达到拥塞的阈值*/
+	unsigned int		nr_congestion_off; /*解除拥塞的阈值*/
 	unsigned int		nr_batching;
 
 	unsigned int		dma_drain_size;

@@ -203,7 +203,7 @@ static char * const zone_names[MAX_NR_ZONES] = {
 	 "Movable",
 };
 
-int min_free_kbytes = 1024;
+int min_free_kbytes = 1024;     /*用于计算内存水标*/
 int user_min_free_kbytes;
 
 static unsigned long __meminitdata nr_kernel_pages;    /*不包含高端内存的页数。去除page数组占用的页*/

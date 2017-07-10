@@ -17,7 +17,7 @@ struct ucontext {
 	unsigned long	  uc_flags;
 	struct ucontext  *uc_link;
 	stack_t		  uc_stack;
-	struct sigcontext uc_mcontext;
+	struct sigcontext uc_mcontext;   /*用来保存用户态寄存器*/
 	sigset_t	  uc_sigmask;
 	/* Allow for uc_sigmask growth.  Glibc uses a 1024-bit sigset_t.  */
 	int		  __unused[32 - (sizeof (sigset_t) / sizeof (int))];

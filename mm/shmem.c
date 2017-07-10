@@ -2817,15 +2817,15 @@ int __init shmem_init(void)
 {
 	int error;
 
-	error = bdi_init(&shmem_backing_dev_info);
+	error = bdi_init(&shmem_backing_dev_info);  /*初始化bdi*/
 	if (error)
 		goto out4;
 
-	error = shmem_init_inodecache();
+	error = shmem_init_inodecache();  /*创建shmem的inode类型的slab*/
 	if (error)
 		goto out3;
 
-	error = register_filesystem(&shmem_fs_type);
+	error = register_filesystem(&shmem_fs_type); /*注册文件系统*/
 	if (error) {
 		printk(KERN_ERR "Could not register tmpfs\n");
 		goto out2;

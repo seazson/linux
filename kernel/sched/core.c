@@ -2416,7 +2416,7 @@ need_resched:
 	switch_count = &prev->nivcsw;
 	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) { /*被替换的进程处于运行状态，并且不是处于抢占状态*/
 		if (unlikely(signal_pending_state(prev->state, prev))) { /*如果进程此时还有信号未处理，继续运行*/
-			prev->state = TASK_RUNNING;
+			prev->state = TASK_RUNNING;    /*这里表示进程还是running状态，暂时不运行，需要给下个进程运行*/
 		} else {
 			deactivate_task(rq, prev, DEQUEUE_SLEEP);     /*暂停进程活动，将进程从rq中移除*/
 			prev->on_rq = 0;

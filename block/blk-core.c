@@ -95,7 +95,7 @@ static void drive_stat_acct(struct request *rq, int new_io)
 
 	part_stat_unlock();
 }
-
+/*计算拥塞和解除拥塞的阈值各是多少*/
 void blk_queue_congestion_threshold(struct request_queue *q)
 {
 	int nr;

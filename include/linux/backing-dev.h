@@ -49,22 +49,22 @@ enum bdi_stat_item {
 #define BDI_STAT_BATCH (8*(1+ilog2(nr_cpu_ids)))
 
 struct bdi_writeback {
-	struct backing_dev_info *bdi;	/* our parent bdi */
+	struct backing_dev_info *bdi;	/* our parent bdi */ /*指向所属backing_dev_info*/
 	unsigned int nr;
 
-	unsigned long last_old_flush;	/* last old data flush */
-
-	struct delayed_work dwork;	/* work item used for writeback */
-	struct list_head b_dirty;	/* dirty inodes */
-	struct list_head b_io;		/* parked for writeback */
-	struct list_head b_more_io;	/* parked for more writeback */
+	unsigned long last_old_flush;	/* last old data flush */ /*上一次回写的时间戳*/
+ 
+	struct delayed_work dwork;	/* work item used for writeback */ /*关联工作队列*/
+	struct list_head b_dirty;	/* dirty inodes */  /*管理脏页*/
+	struct list_head b_io;		/* parked for writeback */  /*需要回写的页*/
+	struct list_head b_more_io;	/* parked for more writeback */  /*由于种种原因上次回写未完成的，需要下次再回写的页*/
 	spinlock_t list_lock;		/* protects the b_* lists */
 };
 
 struct backing_dev_info {
-	struct list_head bdi_list;
+	struct list_head bdi_list;     /*所有的bdi通过链接到一个叫bdi_list的链表上*/
 	unsigned long ra_pages;	/* max readahead in PAGE_CACHE_SIZE units */ /*预读取页的最大数目*/
-	unsigned long state;	/* Always use atomic bitops on this */
+	unsigned long state;	/* Always use atomic bitops on this */   /*表示bdi当前操作的状态bdi_state*/
 	unsigned int capabilities; /* Device capabilities */                 /*设备能力，例如是否可以写回*/
 	congested_fn *congested_fn; /* Function pointer if device is md/dm */
 	void *congested_data;	/* Pointer to aux data for congested func */
@@ -97,7 +97,7 @@ struct backing_dev_info {
 	struct bdi_writeback wb;  /* default writeback info for this bdi */
 	spinlock_t wb_lock;	  /* protects work_list */
 
-	struct list_head work_list;
+	struct list_head work_list;     /*属于本bdi的work连接在这里*/
 
 	struct device *dev;
 

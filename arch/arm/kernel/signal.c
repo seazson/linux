@@ -322,13 +322,13 @@ setup_sigframe(struct sigframe __user *sf, struct pt_regs *regs, sigset_t *set)
 static inline void __user *
 get_sigframe(struct ksignal *ksig, struct pt_regs *regs, int framesize)
 {
-	unsigned long sp = sigsp(regs->ARM_sp, ksig);
+	unsigned long sp = sigsp(regs->ARM_sp, ksig);   /*使用用户态的栈，或者是替换栈*/
 	void __user *frame;
 
 	/*
 	 * ATPCS B01 mandates 8-byte alignment
 	 */
-	frame = (void __user *)((sp - framesize) & ~7);
+	frame = (void __user *)((sp - framesize) & ~7);  /*用户栈和信号栈帧之间留一个空间放sigframe结构体*/
 
 	/*
 	 * Check that we can actually write to the signal frame.
@@ -336,7 +336,7 @@ get_sigframe(struct ksignal *ksig, struct pt_regs *regs, int framesize)
 	if (!access_ok(VERIFY_WRITE, frame, framesize))
 		frame = NULL;
 
-	return frame;
+	return frame;   /*返回的是栈帧地址*/
 }
 
 /*
@@ -385,7 +385,7 @@ setup_return(struct pt_regs *regs, struct ksignal *ksig,
 			cpsr &= ~PSR_T_BIT;
 	}
 #endif
-
+	/*设置信号处理完成后恢复用户态用来环境的函数*/
 	if (ksig->ka.sa.sa_flags & SA_RESTORER) {
 		retcode = (unsigned long)ksig->ka.sa.sa_restorer;
 	} else {
@@ -439,7 +439,7 @@ setup_return(struct pt_regs *regs, struct ksignal *ksig,
 static int
 setup_frame(struct ksignal *ksig, sigset_t *set, struct pt_regs *regs)
 {
-	struct sigframe __user *frame = get_sigframe(ksig, regs, sizeof(*frame));
+	struct sigframe __user *frame = get_sigframe(ksig, regs, sizeof(*frame)); /*获取用户态栈帧*/
 	int err = 0;
 
 	if (!frame)
@@ -450,7 +450,7 @@ setup_frame(struct ksignal *ksig, sigset_t *set, struct pt_regs *regs)
 	 */
 	__put_user_error(0x5ac3c35a, &frame->uc.uc_flags, err);
 
-	err |= setup_sigframe(frame, regs, set);
+	err |= setup_sigframe(frame, regs, set);      /*保存用户态的寄存器到用户态栈和栈帧之间*/
 	if (err == 0)
 		err = setup_return(regs, ksig, frame->retcode, frame);
 
