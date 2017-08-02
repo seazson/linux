@@ -23,13 +23,13 @@ struct ipc_ids {
 	unsigned short seq;
 	unsigned short seq_max;
 	struct rw_semaphore rw_mutex;
-	struct idr ipcs_idr;
+	struct idr ipcs_idr;     /*用于将id关联到kern_ipc_perm。通过用户空间的key和ipc_ids.ipcs_idr寻找*/
 	int next_id;
 };
 
 struct ipc_namespace {
 	atomic_t	count;
-	struct ipc_ids	ids[3];
+	struct ipc_ids	ids[3];  /*0是信号量，1是消息队列，2是共享内存*/
 
 	int		sem_ctls[4];
 	int		used_sems;

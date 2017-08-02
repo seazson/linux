@@ -36,6 +36,9 @@
  * store exclusive to ensure that these are atomic.  We may loop
  * to ensure that the update happens.
  */
+/*ldrex会将内存标记为独占，strex在回写的时候会判断独占标志是否存在，如果存在的话写回内存，同时清除独占标记。
+如果不存在就会返回1到%1中，而且不会写内存。
+*/
 static inline void atomic_add(int i, atomic_t *v)
 {
 	unsigned long tmp;
@@ -111,7 +114,7 @@ static inline int atomic_sub_return(int i, atomic_t *v)
 
 	return result;
 }
-
+/*如果ptr中的值等于old，则将ptr的值修改为new*/
 static inline int atomic_cmpxchg(atomic_t *ptr, int old, int new)
 {
 	unsigned long oldval, res;

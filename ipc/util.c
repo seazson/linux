@@ -377,13 +377,13 @@ static int ipcget_public(struct ipc_namespace *ns, struct ipc_ids *ids,
 	 * a new entry + read locks are not "upgradable"
 	 */
 	down_write(&ids->rw_mutex);
-	ipcp = ipc_findkey(ids, params->key);
+	ipcp = ipc_findkey(ids, params->key);   /*根据key在基数树中查找是否已经有了*/
 	if (ipcp == NULL) {
 		/* key not used */
 		if (!(flg & IPC_CREAT))
 			err = -ENOENT;
 		else
-			err = ops->getnew(ns, params);
+			err = ops->getnew(ns, params);     /*创建一个新的信号量集*/
 	} else {
 		/* ipc object has been locked by ipc_findkey() */
 
@@ -702,7 +702,7 @@ struct kern_ipc_perm *ipc_lock_check(struct ipc_ids *ids, int id)
  * @params : the parameters needed by the previous operations.
  *
  * Common routine called by sys_msgget(), sys_semget() and sys_shmget().
- */
+ */ /*分配ipc对象，根据不同的ipc调用不同的回调函数*/
 int ipcget(struct ipc_namespace *ns, struct ipc_ids *ids,
 			struct ipc_ops *ops, struct ipc_params *params)
 {

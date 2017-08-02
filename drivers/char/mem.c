@@ -92,7 +92,7 @@ void __weak unxlate_dev_mem_ptr(unsigned long phys, void *addr)
 /*
  * This funcion reads the *physical* memory. The f_pos points directly to the
  * memory location.
- */
+ */ /*ppos应该是物理地址。将指定物理地址地方的数据拷贝到用户空间，只能拷贝低端内存*/
 static ssize_t read_mem(struct file *file, char __user *buf,
 			size_t count, loff_t *ppos)
 {
@@ -100,7 +100,7 @@ static ssize_t read_mem(struct file *file, char __user *buf,
 	ssize_t read, sz;
 	char *ptr;
 
-	if (!valid_phys_addr_range(p, count))
+	if (!valid_phys_addr_range(p, count))   /*物理地址必须在低端内存范围内*/
 		return -EFAULT;
 	read = 0;
 #ifdef __ARCH_HAS_NO_PAGE_ZERO_MAPPED
@@ -121,7 +121,7 @@ static ssize_t read_mem(struct file *file, char __user *buf,
 	while (count > 0) {
 		unsigned long remaining;
 
-		sz = size_inside_page(p, count);
+		sz = size_inside_page(p, count);  /*如果起始地址不是页对齐的，sz代表起始位置到页尾的长度*/
 
 		if (!range_is_allowed(p >> PAGE_SHIFT, count))
 			return -EPERM;
@@ -131,7 +131,7 @@ static ssize_t read_mem(struct file *file, char __user *buf,
 		 * it must also be accessed uncached by the kernel or data
 		 * corruption may occur.
 		 */
-		ptr = xlate_dev_mem_ptr(p);
+		ptr = xlate_dev_mem_ptr(p);       /*物理地址到虚拟地址转换*/
 		if (!ptr)
 			return -EFAULT;
 
@@ -369,7 +369,7 @@ static ssize_t read_kmem(struct file *file, char __user *buf,
 	int err = 0;
 
 	read = 0;
-	if (p < (unsigned long) high_memory) {
+	if (p < (unsigned long) high_memory) {  /*读取低端内存*/
 		low_count = count;
 		if (count > (unsigned long)high_memory - p)
 			low_count = (unsigned long)high_memory - p;
@@ -407,13 +407,13 @@ static ssize_t read_kmem(struct file *file, char __user *buf,
 		}
 	}
 
-	if (count > 0) {
+	if (count > 0) {   /*读取高端内存*/
 		kbuf = (char *)__get_free_page(GFP_KERNEL);
 		if (!kbuf)
 			return -ENOMEM;
 		while (count > 0) {
 			sz = size_inside_page(p, count);
-			if (!is_vmalloc_or_module_addr((void *)p)) {
+			if (!is_vmalloc_or_module_addr((void *)p)) { /*只能读取vmalloc区或者模块区*/
 				err = -ENXIO;
 				break;
 			}

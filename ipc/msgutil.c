@@ -95,7 +95,7 @@ struct msg_msg *load_msg(const void __user *src, int len)
 	if (copy_from_user(msg + 1, src, alen))
 		goto out_err;
 
-	for (seg = msg->next; seg != NULL; seg = seg->next) {
+	for (seg = msg->next; seg != NULL; seg = seg->next) {  /*拷贝用户态数据到内核*/
 		len -= alen;
 		src = (char __user *)src + alen;
 		alen = min(len, DATALEN_SEG);

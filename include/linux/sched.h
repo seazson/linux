@@ -1193,7 +1193,7 @@ struct task_struct {
 	int link_count, total_link_count;      /*防止查找陷入无限循环*/
 #ifdef CONFIG_SYSVIPC
 /* ipc stuff */
-	struct sysv_sem sysvsem;
+	struct sysv_sem sysvsem;  /*有一个undo_list，用于进程在修改信号量之后崩溃，恢复信号量*/
 #endif
 #ifdef CONFIG_DETECT_HUNG_TASK
 /* hung task detection */

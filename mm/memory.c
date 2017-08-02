@@ -2329,7 +2329,7 @@ static inline int remap_pud_range(struct mm_struct *mm, pgd_t *pgd,
  * @prot: page protection flags for this mapping
  *
  *  Note: this is only safe if the mm semaphore is held when called.
- */
+ *//*将物理地址帧pfn~size处空间映射到addr上*/
 int remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 		    unsigned long pfn, unsigned long size, pgprot_t prot)
 {
@@ -2376,7 +2376,7 @@ int remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 	do {
 		next = pgd_addr_end(addr, end);
 		err = remap_pud_range(mm, pgd, addr, next,
-				pfn + (addr >> PAGE_SHIFT), prot);
+				pfn + (addr >> PAGE_SHIFT), prot);  /*建立新的页表*/
 		if (err)
 			break;
 	} while (pgd++, addr = next, addr != end);

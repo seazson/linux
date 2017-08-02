@@ -268,7 +268,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, int rw)
 	}
 
 again:
-	err = get_user_pages_fast(address, 1, 1, &page);
+	err = get_user_pages_fast(address, 1, 1, &page);   /*根据虚拟地址得到物理页面*/
 	/*
 	 * If write access is not required (eg. FUTEX_WAIT), try
 	 * and get read-only access.
@@ -2696,7 +2696,7 @@ long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
 	return -ENOSYS;
 }
 
-
+/*uaddr是用户态下共享内存的地址，op是操作码，val根据不同的操作数有不同意义*/
 SYSCALL_DEFINE6(futex, u32 __user *, uaddr, int, op, u32, val,
 		struct timespec __user *, utime, u32 __user *, uaddr2,
 		u32, val3)
@@ -2748,7 +2748,7 @@ static int __init futex_init(void)
 	if (cmpxchg_futex_value_locked(&curval, NULL, 0, 0) == -EFAULT)
 		futex_cmpxchg_enabled = 1;
 
-	for (i = 0; i < ARRAY_SIZE(futex_queues); i++) {
+	for (i = 0; i < ARRAY_SIZE(futex_queues); i++) {  /*所有的锁都在一个hash表中*/
 		plist_head_init(&futex_queues[i].chain);
 		spin_lock_init(&futex_queues[i].lock);
 	}

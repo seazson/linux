@@ -666,7 +666,7 @@ long do_msgsnd(int msqid, long mtype, void __user *mtext,
 	if (mtype < 1)
 		return -EINVAL;
 
-	msg = load_msg(mtext, msgsz);
+	msg = load_msg(mtext, msgsz);   /*·ÖÅäÄÚºËmsg¿Õ¼ä*/
 	if (IS_ERR(msg))
 		return PTR_ERR(msg);
 

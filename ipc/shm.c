@@ -474,7 +474,7 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 	if (ns->shm_tot + numpages > ns->shm_ctlall)
 		return -ENOSPC;
 
-	shp = ipc_rcu_alloc(sizeof(*shp));
+	shp = ipc_rcu_alloc(sizeof(*shp));  /*分配shm的描述符*/
 	if (!shp)
 		return -ENOMEM;
 
@@ -515,13 +515,13 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 		if  ((shmflg & SHM_NORESERVE) &&
 				sysctl_overcommit_memory != OVERCOMMIT_NEVER)
 			acctflag = VM_NORESERVE;
-		file = shmem_file_setup(name, size, acctflag);
+		file = shmem_file_setup(name, size, acctflag);  /*创建一个内存文件*/
 	}
 	error = PTR_ERR(file);
 	if (IS_ERR(file))
 		goto no_file;
 
-	id = ipc_addid(&shm_ids(ns), &shp->shm_perm, ns->shm_ctlmni);
+	id = ipc_addid(&shm_ids(ns), &shp->shm_perm, ns->shm_ctlmni); /*加入基数树中*/
 	if (id < 0) {
 		error = id;
 		goto no_id;
@@ -1044,7 +1044,7 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg, ulong *raddr,
 	}
 
 	err = -EACCES;
-	if (ipcperms(ns, &shp->shm_perm, acc_mode))
+	if (ipcperms(ns, &shp->shm_perm, acc_mode))     /*权限检查*/
 		goto out_unlock;
 
 	err = security_shm_shmat(shp, shmaddr, shmflg);

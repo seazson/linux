@@ -445,7 +445,7 @@ static int newary(struct ipc_namespace *ns, struct ipc_params *params)
 	if (ns->used_sems + nsems > ns->sc_semmns)
 		return -ENOSPC;
 
-	size = sizeof (*sma) + nsems * sizeof (struct sem);
+	size = sizeof (*sma) + nsems * sizeof (struct sem);   /*描述符和sem锁都在一起分配*/
 	sma = ipc_rcu_alloc(size);
 	if (!sma) {
 		return -ENOMEM;
@@ -462,7 +462,7 @@ static int newary(struct ipc_namespace *ns, struct ipc_params *params)
 		return retval;
 	}
 
-	id = ipc_addid(&sem_ids(ns), &sma->sem_perm, ns->sc_semmni);
+	id = ipc_addid(&sem_ids(ns), &sma->sem_perm, ns->sc_semmni);   /*将信号集关联到基数树中*/
 	if (id < 0) {
 		security_sem_free(sma);
 		ipc_rcu_putref(sma);
@@ -550,7 +550,7 @@ SYSCALL_DEFINE3(semget, key_t, key, int, nsems, int, semflg)
  * Returns 1 if the operation is impossible, the caller must sleep.
  * Negative values are error codes.
  */
-
+/*先预测能否获取到锁*/
 static int perform_atomic_semop(struct sem_array *sma, struct sembuf *sops,
 			     int nsops, struct sem_undo *un, int pid)
 {
@@ -566,7 +566,7 @@ static int perform_atomic_semop(struct sem_array *sma, struct sembuf *sops,
 		if (!sem_op && result)
 			goto would_block;
 
-		result += sem_op;
+		result += sem_op;    /*对信号量进行操作*/
 		if (result < 0)
 			goto would_block;
 		if (result > SEMVMX)
@@ -1701,7 +1701,7 @@ SYSCALL_DEFINE4(semtimedop, int, semid, struct sembuf __user *, tsops,
 {
 	int error = -EINVAL;
 	struct sem_array *sma;
-	struct sembuf fast_sops[SEMOPM_FAST];
+	struct sembuf fast_sops[SEMOPM_FAST];   /*一次64个操作*/
 	struct sembuf* sops = fast_sops, *sop;
 	struct sem_undo *un;
 	int undos = 0, alter = 0, max, locknum;
@@ -1794,7 +1794,7 @@ SYSCALL_DEFINE4(semtimedop, int, semid, struct sembuf __user *, tsops,
 		goto out_unlock_free;
 
 	error = perform_atomic_semop(sma, sops, nsops, un,
-					task_tgid_vnr(current));
+					task_tgid_vnr(current));  /*预测加锁能否成功*/
 	if (error <= 0) {
 		if (alter && error == 0)
 			do_smart_update(sma, sops, nsops, 1, &tasks);
@@ -1805,7 +1805,7 @@ SYSCALL_DEFINE4(semtimedop, int, semid, struct sembuf __user *, tsops,
 	/* We need to sleep on this operation, so we put the current
 	 * task into the pending queue and go to sleep.
 	 */
-		
+	/*加锁不能成功就需要进入等待队列*/	
 	queue.sops = sops;
 	queue.nsops = nsops;
 	queue.undo = un;

@@ -878,7 +878,7 @@ int create_pipe_files(struct file **res, int flags)
 		return -ENFILE;
 
 	err = -ENOMEM;
-	path.dentry = d_alloc_pseudo(pipe_mnt->mnt_sb, &name);
+	path.dentry = d_alloc_pseudo(pipe_mnt->mnt_sb, &name);   /*在pipe文件系统中创建一个文件*/
 	if (!path.dentry)
 		goto err_inode;
 	path.mnt = mntget(pipe_mnt);
@@ -886,7 +886,7 @@ int create_pipe_files(struct file **res, int flags)
 	d_instantiate(path.dentry, inode);
 
 	err = -ENFILE;
-	f = alloc_file(&path, FMODE_WRITE, &pipefifo_fops);
+	f = alloc_file(&path, FMODE_WRITE, &pipefifo_fops);   /*为写分配一个file结构体*/
 	if (IS_ERR(f))
 		goto err_dentry;
 
@@ -924,11 +924,11 @@ static int __do_pipe_flags(int *fd, struct file **files, int flags)
 	if (flags & ~(O_CLOEXEC | O_NONBLOCK | O_DIRECT))
 		return -EINVAL;
 
-	error = create_pipe_files(files, flags);
+	error = create_pipe_files(files, flags);  /*创建fifo文件*/
 	if (error)
 		return error;
 
-	error = get_unused_fd_flags(flags);
+	error = get_unused_fd_flags(flags);   /*分配fd*/
 	if (error < 0)
 		goto err_read_pipe;
 	fdr = error;

@@ -12,8 +12,8 @@ struct kern_ipc_perm
 {
 	spinlock_t	lock;
 	int		deleted;
-	int		id;
-	key_t		key;
+	int		id;         /*内核的内部id*/
+	key_t		key;    /*用户空间用来标示的魔数*/
 	kuid_t		uid;
 	kgid_t		gid;
 	kuid_t		cuid;
