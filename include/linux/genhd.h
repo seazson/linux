@@ -112,7 +112,7 @@ struct hd_struct {/*表示一个分区*/
 	unsigned int discard_alignment;
 	struct device __dev;
 	struct kobject *holder_dir;
-	int policy, partno;
+	int policy, partno;   /*分区编号*/
 	struct partition_meta_info *info;
 #ifdef CONFIG_FAIL_MAKE_REQUEST
 	int make_it_fail;
@@ -155,7 +155,7 @@ struct blk_scsi_cmd_filter {
 
 struct disk_part_tbl {
 	struct rcu_head rcu_head;
-	int len;
+	int len;    /*表示有多少个分区*/
 	struct hd_struct __rcu *last_lookup;
 	struct hd_struct __rcu *part[];
 };
@@ -167,9 +167,9 @@ struct gendisk {/*表示一个磁盘*/
 	 * don't use directly.  Use disk_devt() and disk_max_parts().
 	 */
 	int major;			/* major number of driver */
-	int first_minor;
+	int first_minor;    /*实际是次设备号*/
 	int minors;                     /* maximum number of minors, =1 for
-                                         * disks that can't be partitioned. */
+                                         * disks that can't be partitioned. 支持多少个子分区，如果是1的话表示不支持*/
 
 	char disk_name[DISK_NAME_LEN];	/* name of major driver */ /*磁盘名称，可以在/proc/partitions中显示*/
 	char *(*devnode)(struct gendisk *gd, umode_t *mode);

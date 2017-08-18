@@ -27,7 +27,7 @@
 /*
  * Check permissions for extended attribute access.  This is a bit complicated
  * because different namespaces have very different rules.
- */
+ */ /*返回0表示允许请求*/
 static int
 xattr_permission(struct inode *inode, const char *name, int mask)
 {
@@ -43,14 +43,14 @@ xattr_permission(struct inode *inode, const char *name, int mask)
 	/*
 	 * No restriction for security.* and system.* from the VFS.  Decision
 	 * on these is left to the underlying filesystem / security module.
-	 */
+	 */ /*vfs层不关注security.* and system.*属性*/
 	if (!strncmp(name, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN) ||
 	    !strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
 		return 0;
 
 	/*
 	 * The trusted.* namespace can only be accessed by privileged users.
-	 */
+	 */ /*trusted.*只能由特权用户访问*/
 	if (!strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN)) {
 		if (!capable(CAP_SYS_ADMIN))
 			return (mask & MAY_WRITE) ? -EPERM : -ENODATA;

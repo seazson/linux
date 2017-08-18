@@ -220,7 +220,7 @@ ext3_xattr_block_get(struct inode *inode, int name_index, const char *name,
 		  name_index, name, buffer, (long)buffer_size);
 
 	error = -ENODATA;
-	if (!EXT3_I(inode)->i_file_acl)
+	if (!EXT3_I(inode)->i_file_acl)  /*inode对应扩展属性所在的块*/
 		goto cleanup;
 	ea_idebug(inode, "reading block %u", EXT3_I(inode)->i_file_acl);
 	bh = sb_bread(inode->i_sb, EXT3_I(inode)->i_file_acl);
@@ -228,7 +228,7 @@ ext3_xattr_block_get(struct inode *inode, int name_index, const char *name,
 		goto cleanup;
 	ea_bdebug(bh, "b_count=%d, refcount=%d",
 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
-	if (ext3_xattr_check_block(bh)) {
+	if (ext3_xattr_check_block(bh)) {    /*检查扩展属性块数据完整性*/
 bad_block:	ext3_error(inode->i_sb, __func__,
 			   "inode %lu: bad block "E3FSBLK, inode->i_ino,
 			   EXT3_I(inode)->i_file_acl);
@@ -237,7 +237,7 @@ bad_block:	ext3_error(inode->i_sb, __func__,
 	}
 	ext3_xattr_cache_insert(bh);
 	entry = BFIRST(bh);
-	error = ext3_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
+	error = ext3_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);  /*查找特定属性*/
 	if (error == -EIO)
 		goto bad_block;
 	if (error)
@@ -247,7 +247,7 @@ bad_block:	ext3_error(inode->i_sb, __func__,
 		error = -ERANGE;
 		if (size > buffer_size)
 			goto cleanup;
-		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),
+		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),     /*找到后拷贝属性内容*/
 		       size);
 	}
 	error = size;
@@ -318,10 +318,10 @@ ext3_xattr_get(struct inode *inode, int name_index, const char *name,
 
 	down_read(&EXT3_I(inode)->xattr_sem);
 	error = ext3_xattr_ibody_get(inode, name_index, name, buffer,
-				     buffer_size);
+				     buffer_size);    /*首先从inode的空闲空间中读取属性*/
 	if (error == -ENODATA)
 		error = ext3_xattr_block_get(inode, name_index, name, buffer,
-					     buffer_size);
+					     buffer_size);   /*从外部属性数据块中读取属性*/
 	up_read(&EXT3_I(inode)->xattr_sem);
 	return error;
 }

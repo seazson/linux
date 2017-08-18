@@ -584,7 +584,7 @@ struct request_queue *blk_alloc_queue(gfp_t gfp_mask)
 	return blk_alloc_queue_node(gfp_mask, NUMA_NO_NODE);
 }
 EXPORT_SYMBOL(blk_alloc_queue);
-
+/*创建一个request_queue和后备存储器*/
 struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 {
 	struct request_queue *q;
@@ -609,7 +609,7 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 	err = bdi_init(&q->backing_dev_info);
 	if (err)
 		goto fail_id;
-
+    /*这里有两个定时器*/
 	setup_timer(&q->backing_dev_info.laptop_mode_wb_timer,
 		    laptop_mode_timer_fn, (unsigned long) q);
 	setup_timer(&q->timeout, blk_rq_timed_out_timer, (unsigned long) q);
@@ -622,7 +622,7 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 	INIT_LIST_HEAD(&q->flush_queue[0]);
 	INIT_LIST_HEAD(&q->flush_queue[1]);
 	INIT_LIST_HEAD(&q->flush_data_in_flight);
-	INIT_DELAYED_WORK(&q->delay_work, blk_delay_work);
+	INIT_DELAYED_WORK(&q->delay_work, blk_delay_work); /*还有一个工作队列*/
 
 	kobject_init(&q->kobj, &blk_queue_ktype);
 
@@ -701,11 +701,11 @@ blk_init_queue_node(request_fn_proc *rfn, spinlock_t *lock, int node_id)
 {
 	struct request_queue *uninit_q, *q;
 
-	uninit_q = blk_alloc_queue_node(GFP_KERNEL, node_id);
+	uninit_q = blk_alloc_queue_node(GFP_KERNEL, node_id);  /*创建一个request_queue和后备存储器*/
 	if (!uninit_q)
 		return NULL;
 
-	q = blk_init_allocated_queue(uninit_q, rfn, lock);
+	q = blk_init_allocated_queue(uninit_q, rfn, lock);  /*分配io调度器*/
 	if (!q)
 		blk_cleanup_queue(uninit_q);
 
@@ -740,7 +740,7 @@ blk_init_allocated_queue(struct request_queue *q, request_fn_proc *rfn,
 	q->sg_reserved_size = INT_MAX;
 
 	/* init elevator */
-	if (elevator_init(q, NULL))      /*选择一种IO调度器,默认为cfs*/
+	if (elevator_init(q, NULL))      /*选择一种IO调度器,默认为iosched_cfq*/
 		return NULL;
 	return q;
 }
@@ -1853,7 +1853,7 @@ void submit_bio(int rw, struct bio *bio)
 	/*
 	 * If it's a regular read/write or a barrier with data attached,
 	 * go through the normal accounting stuff before submission.
-	 */
+	 */ /*更新统计量*/
 	if (bio_has_data(bio)) {
 		unsigned int count;
 
@@ -2219,7 +2219,7 @@ void blk_dequeue_request(struct request *rq)
  */
 void blk_start_request(struct request *req)
 {
-	blk_dequeue_request(req);
+	blk_dequeue_request(req);    /*取出rq上待执行的队列*/
 
 	/*
 	 * We are now handing the request to the hardware, initialize
@@ -2229,7 +2229,7 @@ void blk_start_request(struct request *req)
 	if (unlikely(blk_bidi_rq(req)))
 		req->next_rq->resid_len = blk_rq_bytes(req->next_rq);
 
-	blk_add_timer(req);
+	blk_add_timer(req);    /*超时函数由blk_rq_timed_out_timer处理*/
 }
 EXPORT_SYMBOL(blk_start_request);
 
@@ -2254,7 +2254,7 @@ struct request *blk_fetch_request(struct request_queue *q)
 
 	rq = blk_peek_request(q);    /*取出请求*/
 	if (rq)
-		blk_start_request(rq);   /*执行请求*/
+		blk_start_request(rq);   /*设置请求超时时间*/
 	return rq;
 }
 EXPORT_SYMBOL(blk_fetch_request);
@@ -2280,7 +2280,7 @@ EXPORT_SYMBOL(blk_fetch_request);
  * Return:
  *     %false - this request doesn't have any more data
  *     %true  - this request has more data
- **/
+ **/ /*调用此函数前说明已经操作读写完req中nr_bytes字节的数据。此函数用来移除已经操作完成的bio*/
 bool blk_update_request(struct request *req, int error, unsigned int nr_bytes)
 {
 	int total_bytes;
@@ -2337,10 +2337,10 @@ bool blk_update_request(struct request *req, int error, unsigned int nr_bytes)
 		struct bio *bio = req->bio;
 		unsigned bio_bytes = min(bio->bi_size, nr_bytes);
 
-		if (bio_bytes == bio->bi_size)
+		if (bio_bytes == bio->bi_size)     /*说明已经操作完成的数据大于等于一个bio*/
 			req->bio = bio->bi_next;
 
-		req_bio_endio(req, bio, bio_bytes, error);
+		req_bio_endio(req, bio, bio_bytes, error); /*更新bio中的向量位置*/
 
 		total_bytes += bio_bytes;
 		nr_bytes -= bio_bytes;
@@ -2351,7 +2351,7 @@ bool blk_update_request(struct request *req, int error, unsigned int nr_bytes)
 
 	/*
 	 * completely done
-	 */
+	 */ /*如果整个req中的所有bio都操作完成了*/
 	if (!req->bio) {
 		/*
 		 * Reset counters so that the request stacking driver
@@ -2395,7 +2395,7 @@ static bool blk_update_bidi_request(struct request *rq, int error,
 				    unsigned int nr_bytes,
 				    unsigned int bidi_bytes)
 {
-	if (blk_update_request(rq, error, nr_bytes))
+	if (blk_update_request(rq, error, nr_bytes))   /*删除req中已经完成的bio，如果都完成了删除req*/
 		return true;
 
 	/* Bidi request must be completed as a whole */
@@ -2431,13 +2431,13 @@ EXPORT_SYMBOL_GPL(blk_unprep_request);
 
 /*
  * queue lock must be held
- */
+ */ /*当一个request完成最后调用，以释放request空间*/
 static void blk_finish_request(struct request *req, int error)
 {
 	if (blk_rq_tagged(req))
 		blk_queue_end_tag(req->q, req);
 
-	BUG_ON(blk_queued_rq(req));
+	BUG_ON(blk_queued_rq(req));   /*queuelist必须是空的*/
 
 	if (unlikely(laptop_mode) && req->cmd_type == REQ_TYPE_FS)
 		laptop_io_completion(&req->q->backing_dev_info);
@@ -2448,15 +2448,15 @@ static void blk_finish_request(struct request *req, int error)
 		blk_unprep_request(req);
 
 
-	blk_account_io_done(req);
+	blk_account_io_done(req);     /*更新统计信息*/
 
-	if (req->end_io)
+	if (req->end_io)              /*释放空间*/
 		req->end_io(req, error);
 	else {
 		if (blk_bidi_rq(req))
 			__blk_put_request(req->next_rq->q, req->next_rq);
 
-		__blk_put_request(req->q, req);
+		__blk_put_request(req->q, req);  /*释放request*/
 	}
 }
 
@@ -2514,7 +2514,7 @@ bool __blk_end_bidi_request(struct request *rq, int error,
 	if (blk_update_bidi_request(rq, error, nr_bytes, bidi_bytes))
 		return true;
 
-	blk_finish_request(rq, error);
+	blk_finish_request(rq, error);  /*走到这里说明request中的所有数据都以处理完成*/
 
 	return false;
 }
@@ -2623,7 +2623,7 @@ EXPORT_SYMBOL(__blk_end_request);
  *
  * Description:
  *     Completely finish @rq.  Must be called with queue lock held.
- */
+ */ /*调用此函数之前数据应该已经处理了*/
 void __blk_end_request_all(struct request *rq, int error)
 {
 	bool pending;

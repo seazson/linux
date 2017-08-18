@@ -27,7 +27,7 @@ typedef struct {
 	__le16			e_perm;
 	__le32			e_id;
 } posix_acl_xattr_entry;
-
+/*´æÔÚÓ²ÅÌÖĞ*/
 typedef struct {
 	__le32			a_version;
 	posix_acl_xattr_entry	a_entries[0];

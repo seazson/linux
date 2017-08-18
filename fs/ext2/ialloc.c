@@ -452,11 +452,11 @@ struct inode *ext2_new_inode(struct inode *dir, umode_t mode,
 	es = sbi->s_es;
 	if (S_ISDIR(mode)) {
 		if (test_opt(sb, OLDALLOC))
-			group = find_group_dir(sb, dir);
+			group = find_group_dir(sb, dir);      /*旧的目录分配方法*/
 		else
-			group = find_group_orlov(sb, dir);
+			group = find_group_orlov(sb, dir);    /*orlov分配目录方法*/
 	} else 
-		group = find_group_other(sb, dir);
+		group = find_group_other(sb, dir);        /*其他文件的分配方法:二次散列*/
 
 	if (group == -1) {
 		err = -ENOSPC;

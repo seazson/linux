@@ -406,7 +406,7 @@ int pagecache_write_end(struct file *, struct address_space *mapping,
 
 struct backing_dev_info;
 struct address_space {
-	struct inode		*host;		/* owner: inode, block_device */
+	struct inode		*host;		/* owner: inode, block_device */       /*地址空间所属的inode*/
 	struct radix_tree_root	page_tree;	/* radix tree of all pages */      /*基数树的根节点,包含了该地址空间中所有物理内存页*/
 	spinlock_t		tree_lock;	/* and lock protecting it */
 	unsigned int		i_mmap_writable;/* count VM_SHARED mappings */         /*统计有VM_SHARED属性的页*/
@@ -445,10 +445,10 @@ struct block_device {
 	struct list_head	bd_holder_disks;
 #endif
 	struct block_device *	bd_contains;  /*指向磁盘所属的块设备*/
-	unsigned		bd_block_size;
+	unsigned		bd_block_size;  /*块设备的块大小，块设备的总大小存在inode中*/
 	struct hd_struct *	bd_part;    /*包含在该块设备上的分区*/
  	/* number of times partitions within this device have been opened. */
-	unsigned		bd_part_count;  /*分区的引用次数*/
+	unsigned		bd_part_count;  /*分区的引用次数,而不是分区的数目。防止分区在用的时候重新扫描*/
 	int			bd_invalidated;     /*表示该分区在内核中的信息无效，因为磁盘上的分区信息已经改变*/
 	struct gendisk *	bd_disk;
 	struct request_queue *  bd_queue;
@@ -459,7 +459,7 @@ struct block_device {
 	 * the same device multiple times, the owner must take special
 	 * care to not mess up bd_private for that case.
 	 */
-	unsigned long		bd_private;
+	unsigned long		bd_private;   /*只有块设备的持有者才能使用这个私有数据，持有者通过bd_claim获取，只能有一个*/
 
 	/* The counter of freeze processes */
 	int			bd_fsfreeze_count;
@@ -560,7 +560,7 @@ struct inode {
 	struct timespec		i_ctime;            /*最后修改inode属性时间*/
 	spinlock_t		i_lock;	/* i_blocks, i_bytes, maybe i_size */
 	unsigned short          i_bytes;
-	unsigned int		i_blkbits;          /*文件块的位数*/
+	unsigned int		i_blkbits;          /*文件块的位数,左移就能得到块大小*/
 	blkcnt_t		i_blocks;               /*文件占多少块*/
 
 #ifdef __NEED_I_SIZE_ORDERED

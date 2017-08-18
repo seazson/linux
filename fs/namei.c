@@ -235,7 +235,7 @@ static int check_acl(struct inode *inode, int mask)
 	        return posix_acl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
 	}
 
-	acl = get_cached_acl(inode, ACL_TYPE_ACCESS);
+	acl = get_cached_acl(inode, ACL_TYPE_ACCESS);    /*从缓存中读acl*/
 
 	/*
 	 * A filesystem can force a ACL callback by just never filling the
@@ -247,7 +247,7 @@ static int check_acl(struct inode *inode, int mask)
 	 */
 	if (acl == ACL_NOT_CACHED) {
 	        if (inode->i_op->get_acl) {
-			acl = inode->i_op->get_acl(inode, ACL_TYPE_ACCESS);
+			acl = inode->i_op->get_acl(inode, ACL_TYPE_ACCESS);  /*从硬盘中读取acl*/
 			if (IS_ERR(acl))
 				return PTR_ERR(acl);
 		} else {
@@ -276,7 +276,7 @@ static int acl_permission_check(struct inode *inode, int mask)
 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
 		mode >>= 6;
 	else {
-		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
+		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {  /*需要装载时设置acl标志*/
 			int error = check_acl(inode, mask);
 			if (error != -EAGAIN)
 				return error;

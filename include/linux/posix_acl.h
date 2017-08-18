@@ -44,7 +44,7 @@ struct posix_acl_entry {
 #endif
 	};
 };
-
+/*一个inode的所有acl由posix_acl表示，存在内存中*/
 struct posix_acl {
 	union {
 		atomic_t		a_refcount;

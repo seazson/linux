@@ -137,9 +137,9 @@ struct page {
 	/* Remainder is not double word aligned */
 	union {
 		unsigned long private;		/* Mapping-private opaque data:
-					 	 * usually used for buffer_heads
+					 	 * usually used for buffer_heads 指向页包含的第一个buffer_head
 						 * if PagePrivate set; used for
-						 * swp_entry_t if PageSwapCache;
+						 * swp_entry_t if PageSwapCache; 也可能指向交换结构体
 						 * indicates order in the buddy  如果页在伙伴系统中，则表示页所在的order。只设置头页
 						 * system if PG_buddy is set.
 						 */

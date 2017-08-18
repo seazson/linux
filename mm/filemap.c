@@ -1041,7 +1041,7 @@ EXPORT_SYMBOL(find_get_pages_tag);
  *
  * Clear __GFP_FS when allocating the page to avoid recursion into the fs
  * and deadlock against the caller's locked page.
- */
+ */ /*从基数树中找对应的page，没找到重新分配一个*/
 struct page *
 grab_cache_page_nowait(struct address_space *mapping, pgoff_t index)
 {

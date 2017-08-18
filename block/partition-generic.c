@@ -265,7 +265,7 @@ static ssize_t whole_disk_show(struct device *dev,
 }
 static DEVICE_ATTR(whole_disk, S_IRUSR | S_IRGRP | S_IROTH,
 		   whole_disk_show, NULL);
-/*在disk下添加一个分区*/
+/*在disk下添加一个分区，创建hd_struct添加到disk下。此时还未创建块设备*/
 struct hd_struct *add_partition(struct gendisk *disk, int partno,
 				sector_t start, sector_t len, int flags,
 				struct partition_meta_info *info)
@@ -320,6 +320,8 @@ struct hd_struct *add_partition(struct gendisk *disk, int partno,
 		dev_set_name(pdev, "%sp%d", dname, partno);
 	else
 		dev_set_name(pdev, "%s%d", dname, partno);
+
+	pr_sea_start("%s part%d %lld+%lld\n",pdev->kobj.name,partno,start,len);
 
 	device_initialize(pdev);
 	pdev->class = &block_class;
@@ -405,7 +407,7 @@ static int drop_partitions(struct gendisk *disk, struct block_device *bdev)
 
 	disk_part_iter_init(&piter, disk, DISK_PITER_INCL_EMPTY);
 	while ((part = disk_part_iter_next(&piter)))
-		delete_partition(disk, part->partno);
+		delete_partition(disk, part->partno);  /*删除之前的hd_struct*/
 	disk_part_iter_exit(&piter);
 
 	return 0;
@@ -422,13 +424,13 @@ rescan:
 		state = NULL;
 	}
 
-	res = drop_partitions(disk, bdev);
+	res = drop_partitions(disk, bdev);   /*放弃之前的分区信息*/
 	if (res)
 		return res;
 
 	if (disk->fops->revalidate_disk)
 		disk->fops->revalidate_disk(disk);
-	check_disk_size_change(disk, bdev);
+	check_disk_size_change(disk, bdev);  /*检查硬盘大小是否发生变化*/
 	bdev->bd_invalidated = 0;
 	if (!get_capacity(disk) || !(state = check_partition(disk, bdev)))   /*遍历所有支持的格式，识别分区信息*/
 		return 0;
@@ -466,7 +468,7 @@ rescan:
 	 * disk->part_tbl.  This is an optimization and not strictly
 	 * necessary.
 	 */
-	for (p = 1, highest = 0; p < state->limit; p++)
+	for (p = 1, highest = 0; p < state->limit; p++)   /*找到最大的分区号*/
 		if (state->parts[p].size)
 			highest = p;
 

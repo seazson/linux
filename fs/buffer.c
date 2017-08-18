@@ -227,7 +227,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
 	int all_mapped = 1;
 
 	index = block >> (PAGE_CACHE_SHIFT - bd_inode->i_blkbits);
-	page = find_get_page(bd_mapping, index);
+	page = find_get_page(bd_mapping, index);    /*块设备自己也有一个基数树，在这个里面找*/
 	if (!page)
 		goto out;
 
@@ -876,7 +876,7 @@ int remove_inode_buffers(struct inode *inode)
  *
  * The retry flag is used to differentiate async IO (paging, swapping)
  * which may not fail from ordinary buffer allocations.
- */
+ */ /*分配page对应的buffer*/
 struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
 		int retry)
 {
@@ -898,7 +898,7 @@ try_again:
 		bh->b_size = size;
 
 		/* Link the buffer to its page */
-		set_bh_page(bh, page, offset);
+		set_bh_page(bh, page, offset);     /*关联page以及设置虚拟地址*/
 	}
 	return head;
 /*
@@ -1007,7 +1007,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	int ret = 0;		/* Will call free_more_memory() */
 
 	page = find_or_create_page(inode->i_mapping, index,
-		(mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS)|__GFP_MOVABLE);
+		(mapping_gfp_mask(inode->i_mapping) & ~__GFP_FS)|__GFP_MOVABLE);  /*查找或创建一个新页来保存数据*/
 	if (!page)
 		return ret;
 
@@ -1017,7 +1017,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 		bh = page_buffers(page);
 		if (bh->b_size == size) {
 			end_block = init_page_buffers(page, bdev,
-						index << sizebits, size);
+						index << sizebits, size);     /*页之前有过buffer，重新初始化buffer结构*/
 			goto done;
 		}
 		if (!try_to_free_buffers(page))
@@ -1027,7 +1027,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	/*
 	 * Allocate some buffers for this page
 	 */
-	bh = alloc_page_buffers(page, size, 0);
+	bh = alloc_page_buffers(page, size, 0);           /*页之前没有buffer，重新分配buffer*/
 	if (!bh)
 		goto failed;
 
@@ -1037,7 +1037,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	 * run under the page lock.
 	 */
 	spin_lock(&inode->i_mapping->private_lock);
-	link_dev_buffers(page, bh);
+	link_dev_buffers(page, bh);                       /*关联页和buffer*/
 	end_block = init_page_buffers(page, bdev, index << sizebits, size);
 	spin_unlock(&inode->i_mapping->private_lock);
 done:
@@ -1106,10 +1106,10 @@ __getblk_slow(struct block_device *bdev, sector_t block, int size)
 		if (bh)
 			return bh;
 
-		ret = grow_buffers(bdev, block, size);
-		if (ret < 0)
+		ret = grow_buffers(bdev, block, size);   /*为缓冲头和实际数据分配空间*/
+		if (ret < 0)   /*超出页缓存索引范围*/
 			return NULL;
-		if (ret == 0)
+		if (ret == 0)  /*内存不足*/
 			free_more_memory();
 	}
 }
@@ -1327,7 +1327,7 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, unsigned size)
 		if (bh && bh->b_bdev == bdev &&
 				bh->b_blocknr == block && bh->b_size == size) {
 			if (i) {
-				while (i) {
+				while (i) {  /*最近访问的那个放到最前面去*/
 					__this_cpu_write(bh_lrus.bhs[i],
 						__this_cpu_read(bh_lrus.bhs[i - 1]));
 					i--;
@@ -1347,16 +1347,16 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, unsigned size)
  * Perform a pagecache lookup for the matching buffer.  If it's there, refresh
  * it in the LRU and mark it as accessed.  If it is not present then return
  * NULL
- */
+ */ /*从bh的lru和块缓存的地址空间中找*/
 struct buffer_head *
 __find_get_block(struct block_device *bdev, sector_t block, unsigned size)
 {
-	struct buffer_head *bh = lookup_bh_lru(bdev, block, size);
+	struct buffer_head *bh = lookup_bh_lru(bdev, block, size);  /*首先在lru数组中找*/
 
 	if (bh == NULL) {
-		bh = __find_get_block_slow(bdev, block);
+		bh = __find_get_block_slow(bdev, block);   /*没有找到的话就从页缓存里面找*/
 		if (bh)
-			bh_lru_install(bh);
+			bh_lru_install(bh);           /*将buffer加入到lru中*/
 	}
 	if (bh)
 		touch_buffer(bh);
@@ -1371,15 +1371,15 @@ EXPORT_SYMBOL(__find_get_block);
  *
  * __getblk() will lock up the machine if grow_dev_page's try_to_free_buffers()
  * attempt is failing.  FIXME, perhaps?
- */
+ */ /*返回buffer，数据不一定是最新的。__bread能保证是最新的*/
 struct buffer_head *
 __getblk(struct block_device *bdev, sector_t block, unsigned size)
 {
-	struct buffer_head *bh = __find_get_block(bdev, block, size);
+	struct buffer_head *bh = __find_get_block(bdev, block, size);  /*从lru或者页缓存里找现有的*/
 
 	might_sleep();
 	if (bh == NULL)
-		bh = __getblk_slow(bdev, block, size);
+		bh = __getblk_slow(bdev, block, size);    /*重新分配一个页缓存，关联到bdev上*/
 	return bh;
 }
 EXPORT_SYMBOL(__getblk);
@@ -1560,17 +1560,17 @@ void create_empty_buffers(struct page *page,
 {
 	struct buffer_head *bh, *head, *tail;
 
-	head = alloc_page_buffers(page, blocksize, 1);
+	head = alloc_page_buffers(page, blocksize, 1);   /*分配四个缓冲头(跟块大小有关)，组成单向链表，并关联page*/
 	bh = head;
 	do {
 		bh->b_state |= b_state;
 		tail = bh;
 		bh = bh->b_this_page;
 	} while (bh);
-	tail->b_this_page = head;
+	tail->b_this_page = head;                        /*这里组成了循环链表*/
 
 	spin_lock(&page->mapping->private_lock);
-	if (PageUptodate(page) || PageDirty(page)) {
+	if (PageUptodate(page) || PageDirty(page)) {     /*将页的状态同步到bh中*/
 		bh = head;
 		do {
 			if (PageDirty(page))
@@ -1580,7 +1580,7 @@ void create_empty_buffers(struct page *page,
 			bh = bh->b_this_page;
 		} while (bh != head);
 	}
-	attach_page_buffers(page, head);
+	attach_page_buffers(page, head);                  /*设置页的私有标志*/
 	spin_unlock(&page->mapping->private_lock);
 }
 EXPORT_SYMBOL(create_empty_buffers);
@@ -1667,7 +1667,7 @@ static struct buffer_head *create_page_buffers(struct page *page, struct inode *
  * If block_write_full_page() is called with wbc->sync_mode ==
  * WB_SYNC_ALL, the writes are posted using WRITE_SYNC; this
  * causes the writes to be flagged as synchronous writes.
- */
+ */ /*回写到块设备*/
 static int __block_write_full_page(struct inode *inode, struct page *page,
 			get_block_t *get_block, struct writeback_control *wbc,
 			bh_end_io_t *handler)
@@ -1704,8 +1704,8 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
 	/*
 	 * Get all the dirty buffers mapped to disk addresses and
 	 * handle any aliases from the underlying blockdev's mapping.
-	 */
-	do {
+	 *//*第一次遍历，建立buffer和块设备的关联*/
+	do { 
 		if (block > last_block) {
 			/*
 			 * mapped buffers outside i_size will occur, because
@@ -1735,7 +1735,7 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
 		block++;
 	} while (bh != head);
 
-	do {
+	do {/*第二次遍历，找出所有脏的buffer，并指定bio完成处理函数*/
 		if (!buffer_mapped(bh))
 			continue;
 		/*
@@ -1763,9 +1763,9 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
 	 * drop the bh refcounts early.
 	 */
 	BUG_ON(PageWriteback(page));
-	set_page_writeback(page);
+	set_page_writeback(page);  /*设置页为回写状态*/
 
-	do {
+	do {/*第三次遍历，提交回写请求*/
 		struct buffer_head *next = bh->b_this_page;
 		if (buffer_async_write(bh)) {
 			submit_bh(write_op, bh);
@@ -2052,7 +2052,7 @@ int block_write_end(struct file *file, struct address_space *mapping,
 	flush_dcache_page(page);
 
 	/* This could be a short (even 0-length) commit */
-	__block_commit_write(inode, page, start, start+copied);
+	__block_commit_write(inode, page, start, start+copied);  /*设置页为uptodate，并且是脏页*/
 
 	return copied;
 }
@@ -2156,12 +2156,12 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	int nr, i;
 	int fully_mapped = 1;
 
-	head = create_page_buffers(page, inode, 0);
+	head = create_page_buffers(page, inode, 0);    /*为page分配buffer*/
 	blocksize = head->b_size;
 	bbits = block_size_bits(blocksize);
 
-	iblock = (sector_t)page->index << (PAGE_CACHE_SHIFT - bbits);
-	lblock = (i_size_read(inode)+blocksize-1) >> bbits;
+	iblock = (sector_t)page->index << (PAGE_CACHE_SHIFT - bbits);   /*要读取的块*/
+	lblock = (i_size_read(inode)+blocksize-1) >> bbits;     /*块的最大值*/
 	bh = head;
 	nr = 0;
 	i = 0;
@@ -2176,7 +2176,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 			fully_mapped = 0;
 			if (iblock < lblock) {
 				WARN_ON(bh->b_size != blocksize);
-				err = get_block(inode, iblock, bh, 0);
+				err = get_block(inode, iblock, bh, 0);     /*建立bh和块设备的关联*/
 				if (err)
 					SetPageError(page);
 			}
@@ -2199,7 +2199,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	if (fully_mapped)
 		SetPageMappedToDisk(page);
 
-	if (!nr) {
+	if (!nr) {    /*如果所有的buffer缓存都是最新的就设置整页的状态*/
 		/*
 		 * All buffers are uptodate - we can set the page uptodate
 		 * as well. But not if get_block() returned an error.
@@ -2210,7 +2210,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 		return 0;
 	}
 
-	/* Stage two: lock the buffers */
+	/* Stage two: lock the buffers 锁定buffer，防止被其他内核线程干扰*/
 	for (i = 0; i < nr; i++) {
 		bh = arr[i];
 		lock_buffer(bh);
@@ -2220,7 +2220,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	/*
 	 * Stage 3: start the IO.  Check for uptodateness
 	 * inside the buffer lock in case another process reading
-	 * the underlying blockdev brought it uptodate (the sct fix).
+	 * the underlying blockdev brought it uptodate (the sct fix). 从硬盘读取数据
 	 */
 	for (i = 0; i < nr; i++) {
 		bh = arr[i];
@@ -2995,7 +2995,7 @@ static void guard_bh_eod(int rw, struct bio *bio, struct buffer_head *bh)
 		flush_dcache_page(bh->b_page);
 	}
 }
-
+/*将bh转换成bio*/
 int _submit_bh(int rw, struct buffer_head *bh, unsigned long bio_flags)
 {
 	struct bio *bio;

@@ -60,12 +60,12 @@ typedef void (bh_end_io_t)(struct buffer_head *bh, int uptodate);
  */
 struct buffer_head {
 	unsigned long b_state;		/* buffer state bitmap (see above) */
-	struct buffer_head *b_this_page;/* circular list of page's buffers */
-	struct page *b_page;		/* the page this bh is mapped to */
+	struct buffer_head *b_this_page;/* circular list of page's buffers 组成页的缓冲区的环形链表*/
+	struct page *b_page;		/* the page this bh is mapped to 缓冲头映射到的页。如果块缓存独立于页缓存为NULL*/
 
-	sector_t b_blocknr;		/* start block number */
-	size_t b_size;			/* size of mapping */
-	char *b_data;			/* pointer to data within the page */
+	sector_t b_blocknr;		/* start block number 起始块号*/
+	size_t b_size;			/* size of mapping 映射大小,也就是块大小*/
+	char *b_data;			/* pointer to data within the page 指向页内数据的指针。也就是数据所在的虚拟地址*/
 
 	struct block_device *b_bdev;
 	bh_end_io_t *b_end_io;		/* I/O completion */
@@ -305,7 +305,7 @@ sb_breadahead(struct super_block *sb, sector_t block)
 }
 
 static inline struct buffer_head *
-sb_getblk(struct super_block *sb, sector_t block)
+sb_getblk(struct super_block *sb, sector_t block)  /*获取的缓存是属于块设备地址空间的*/
 {
 	return __getblk(sb->s_bdev, block, sb->s_blocksize);
 }

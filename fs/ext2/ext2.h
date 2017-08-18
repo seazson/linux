@@ -33,9 +33,9 @@ struct ext2_reserve_window {
 
 struct ext2_reserve_window_node {
 	struct rb_node	 	rsv_node;
-	__u32			rsv_goal_size;
-	__u32			rsv_alloc_hit;
-	struct ext2_reserve_window	rsv_window;
+	__u32			rsv_goal_size;  /*预留窗口的预期长度*/
+	__u32			rsv_alloc_hit;  /*预分配的命中数*/
+	struct ext2_reserve_window	rsv_window;  /*预留窗口*/
 };
 
 struct ext2_block_alloc_info {
@@ -47,7 +47,7 @@ struct ext2_block_alloc_info {
 	 * most-recently-allocated block in this file.
 	 * We use this for detecting linearly ascending allocation requests.
 	 */
-	__u32			last_alloc_logical_block;
+	__u32			last_alloc_logical_block;   /*表示上一次分配的块在文件中的相对块号*/
 	/*
 	 * Was i_next_alloc_goal in ext2_inode_info
 	 * is the *physical* companion to i_next_alloc_block.
@@ -55,7 +55,7 @@ struct ext2_block_alloc_info {
 	 * allocated to this file.  This give us the goal (target) for the next
 	 * allocation when we detect linearly ascending requests.
 	 */
-	ext2_fsblk_t		last_alloc_physical_block;
+	ext2_fsblk_t		last_alloc_physical_block;  /*在块设备上的物理块号*/
 };
 
 #define rsv_start rsv_window._rsv_start
@@ -63,7 +63,7 @@ struct ext2_block_alloc_info {
 
 /*
  * second extended-fs super-block data in memory
- */
+ */ /*超级块在内存中的结构*/
 struct ext2_sb_info {
 	unsigned long s_frag_size;	/* Size of a fragment in bytes */
 	unsigned long s_frags_per_block;/* Number of fragments per block */
@@ -75,16 +75,16 @@ struct ext2_sb_info {
 	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
 	unsigned long s_desc_per_block;	/* Number of group descriptors per block */
 	unsigned long s_groups_count;	/* Number of groups in the fs */
-	unsigned long s_overhead_last;  /* Last calculated overhead */
-	unsigned long s_blocks_last;    /* Last seen block count */
+	unsigned long s_overhead_last;  /* Last calculated overhead */  /*用于管理的块数*/
+	unsigned long s_blocks_last;    /* Last seen block count */     /*完全可用的块数*/
 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
-	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
+	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */ /*指向硬件超级块信息*/
 	struct buffer_head ** s_group_desc;
-	unsigned long  s_mount_opt;
-	unsigned long s_sb_block;
+	unsigned long  s_mount_opt;          /*保存了装载选项*/
+	unsigned long s_sb_block;            /*超级块信息是从哪个块里读出来的*/
 	kuid_t s_resuid;
 	kgid_t s_resgid;
-	unsigned short s_mount_state;
+	unsigned short s_mount_state;        /*当前装载状态*/
 	unsigned short s_pad;
 	int s_addr_per_block_bits;
 	int s_desc_per_block_bits;
@@ -92,8 +92,8 @@ struct ext2_sb_info {
 	int s_first_ino;
 	spinlock_t s_next_gen_lock;
 	u32 s_next_generation;
-	unsigned long s_dir_count;
-	u8 *s_debts;
+	unsigned long s_dir_count;           /*目录的总数*/
+	u8 *s_debts;                         /*orlov利用这个数组在一个块组中保存文件和目录的均衡*/
 	struct percpu_counter s_freeblocks_counter;
 	struct percpu_counter s_freeinodes_counter;
 	struct percpu_counter s_dirs_counter;
@@ -173,7 +173,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
 #define	EXT2_MAX_BLOCK_SIZE		4096
 #define EXT2_MIN_BLOCK_LOG_SIZE		  10
 #define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
-#define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
+#define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))   /*一个block能存储多少个地址*/
 #define EXT2_BLOCK_SIZE_BITS(s)		((s)->s_blocksize_bits)
 #define	EXT2_ADDR_PER_BLOCK_BITS(s)	(EXT2_SB(s)->s_addr_per_block_bits)
 #define EXT2_INODE_SIZE(s)		(EXT2_SB(s)->s_inode_size)
@@ -193,8 +193,8 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
  */
 struct ext2_group_desc
 {
-	__le32	bg_block_bitmap;		/* Blocks bitmap block */
-	__le32	bg_inode_bitmap;		/* Inodes bitmap block */
+	__le32	bg_block_bitmap;		/* Blocks bitmap block 块位图所在的块号*/
+	__le32	bg_inode_bitmap;		/* Inodes bitmap block inode位图所在的块号*/
 	__le32	bg_inode_table;		/* Inodes table block */
 	__le16	bg_free_blocks_count;	/* Free blocks count */
 	__le16	bg_free_inodes_count;	/* Free inodes count */
@@ -215,10 +215,10 @@ struct ext2_group_desc
  * Constants relative to the data blocks
  */
 #define	EXT2_NDIR_BLOCKS		12
-#define	EXT2_IND_BLOCK			EXT2_NDIR_BLOCKS
-#define	EXT2_DIND_BLOCK			(EXT2_IND_BLOCK + 1)
-#define	EXT2_TIND_BLOCK			(EXT2_DIND_BLOCK + 1)
-#define	EXT2_N_BLOCKS			(EXT2_TIND_BLOCK + 1)
+#define	EXT2_IND_BLOCK			EXT2_NDIR_BLOCKS         /*直接寻址块*/
+#define	EXT2_DIND_BLOCK			(EXT2_IND_BLOCK + 1)     /*一次间接寻址*/
+#define	EXT2_TIND_BLOCK			(EXT2_DIND_BLOCK + 1)    /*两次间接寻址*/
+#define	EXT2_N_BLOCKS			(EXT2_TIND_BLOCK + 1)    /*三次间接寻址*/
 
 /*
  * Inode flags (GETFLAGS/SETFLAGS)
@@ -303,7 +303,7 @@ struct ext2_inode {
 	__le32	i_mtime;	/* Modification time */
 	__le32	i_dtime;	/* Deletion Time */
 	__le16	i_gid;		/* Low 16 bits of Group Id */
-	__le16	i_links_count;	/* Links count */
+	__le16	i_links_count;	/* Links count 硬链接数目*/
 	__le32	i_blocks;	/* Blocks count */
 	__le32	i_flags;	/* File flags */
 	union {
@@ -410,27 +410,27 @@ struct ext2_inode {
 struct ext2_super_block {
 	__le32	s_inodes_count;		/* Inodes count */
 	__le32	s_blocks_count;		/* Blocks count */
-	__le32	s_r_blocks_count;	/* Reserved blocks count */
+	__le32	s_r_blocks_count;	/* Reserved blocks count 预留给s_def_resuid，s_def_resgid用户的块*/
 	__le32	s_free_blocks_count;	/* Free blocks count */
 	__le32	s_free_inodes_count;	/* Free inodes count */
 	__le32	s_first_data_block;	/* First Data Block */
-	__le32	s_log_block_size;	/* Block size */
+	__le32	s_log_block_size;	/* Block size 块大小=1024*(2^x)*/
 	__le32	s_log_frag_size;	/* Fragment size */
-	__le32	s_blocks_per_group;	/* # Blocks per group */
+	__le32	s_blocks_per_group;	/* # Blocks per group 块组中块的个数*/
 	__le32	s_frags_per_group;	/* # Fragments per group */
-	__le32	s_inodes_per_group;	/* # Inodes per group */
+	__le32	s_inodes_per_group;	/* # Inodes per group 块组中inode的个数*/
 	__le32	s_mtime;		/* Mount time */
 	__le32	s_wtime;		/* Write time */
-	__le16	s_mnt_count;		/* Mount count */
+	__le16	s_mnt_count;		/* Mount count 装载次数，超过s_max_mnt_count会发起检查*/
 	__le16	s_max_mnt_count;	/* Maximal mount count */
 	__le16	s_magic;		/* Magic signature */
 	__le16	s_state;		/* File system state */
 	__le16	s_errors;		/* Behaviour when detecting errors */
-	__le16	s_minor_rev_level; 	/* minor revision level */
-	__le32	s_lastcheck;		/* time of last check */
-	__le32	s_checkinterval;	/* max. time between checks */
+	__le16	s_minor_rev_level; 	/* minor revision level 版本号*/
+	__le32	s_lastcheck;		/* time of last check 上一次一致性检查时间*/
+	__le32	s_checkinterval;	/* max. time between checks 距离上一次检查超过这个时间会重启检查*/
 	__le32	s_creator_os;		/* OS */
-	__le32	s_rev_level;		/* Revision level */
+	__le32	s_rev_level;		/* Revision level 版本号*/
 	__le16	s_def_resuid;		/* Default uid for reserved blocks */
 	__le16	s_def_resgid;		/* Default gid for reserved blocks */
 	/*
@@ -449,7 +449,7 @@ struct ext2_super_block {
 	__le32	s_first_ino; 		/* First non-reserved inode */
 	__le16   s_inode_size; 		/* size of inode structure */
 	__le16	s_block_group_nr; 	/* block group # of this superblock */
-	__le32	s_feature_compat; 	/* compatible feature set */
+	__le32	s_feature_compat; 	/* compatible feature set 描述兼容性*/
 	__le32	s_feature_incompat; 	/* incompatible feature set */
 	__le32	s_feature_ro_compat; 	/* readonly-compatible feature set */
 	__u8	s_uuid[16];		/* 128-bit uuid for volume */
@@ -590,7 +590,7 @@ struct ext2_dir_entry {
  */
 struct ext2_dir_entry_2 {
 	__le32	inode;			/* Inode number */
-	__le16	rec_len;		/* Directory entry length */
+	__le16	rec_len;		/* Directory entry length */  /*到下一dir_entry的偏移量*/
 	__u8	name_len;		/* Name length */
 	__u8	file_type;
 	char	name[];			/* File name, up to EXT2_NAME_LEN */

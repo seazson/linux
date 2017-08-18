@@ -766,7 +766,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	struct ext2_super_block * es;
 	struct inode *root;
 	unsigned long block;
-	unsigned long sb_block = get_sb_block(&data);
+	unsigned long sb_block = get_sb_block(&data);   /*超级块存放在哪个块中*/
 	unsigned long logic_sb_block;
 	unsigned long offset = 0;
 	unsigned long def_mount_opts;
@@ -788,8 +788,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		kfree(sbi);
 		goto failed;
 	}
-	sb->s_fs_info = sbi;
-	sbi->s_sb_block = sb_block;
+	sb->s_fs_info = sbi;             /*关联私有数据*/
+	sbi->s_sb_block = sb_block;      /*超级块在的block号*/
 
 	spin_lock_init(&sbi->s_lock);
 
@@ -800,7 +800,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	 * This is important for devices that have a hardware
 	 * sectorsize that is larger than the default.
 	 */
-	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
+	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);    /*设置块大小，使用最小的块大小*/
 	if (!blocksize) {
 		ext2_msg(sb, KERN_ERR, "error: unable to set blocksize");
 		goto failed_sbi;
@@ -817,7 +817,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		logic_sb_block = sb_block;
 	}
 
-	if (!(bh = sb_bread(sb, logic_sb_block))) {
+	if (!(bh = sb_bread(sb, logic_sb_block))) {   /*读取超级块信息*/
 		ext2_msg(sb, KERN_ERR, "error: unable to read superblock");
 		goto failed_sbi;
 	}
@@ -832,7 +832,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	if (sb->s_magic != EXT2_SUPER_MAGIC)
 		goto cantfind_ext2;
 
-	/* Set defaults before we parse the mount options */
+	/* Set defaults before we parse the mount options */  /*首先设置默认的装载选项*/
 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
 	if (def_mount_opts & EXT2_DEFM_DEBUG)
 		set_opt(sbi->s_mount_opt, DEBUG);
@@ -861,7 +861,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	
 	set_opt(sbi->s_mount_opt, RESERVATION);
 
-	if (!parse_options((char *) data, sb))
+	if (!parse_options((char *) data, sb))     /*根据传入的参数修改默认装载选项*/
 		goto failed_mount;
 
 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
@@ -882,7 +882,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	 * Check feature flags regardless of the revision level, since we
 	 * previously didn't change the revision level when setting the flags,
 	 * so there is a chance incompat flags are set on a rev 0 filesystem.
-	 */
+	 */ /*检查特性是否兼容*/
 	features = EXT2_HAS_INCOMPAT_FEATURE(sb, ~EXT2_FEATURE_INCOMPAT_SUPP);
 	if (features) {
 		ext2_msg(sb, KERN_ERR,	"error: couldn't mount because of "
@@ -906,7 +906,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 				"error: unsupported blocksize for xip");
 		goto failed_mount;
 	}
-
+	/*如果硬件超级块指定的块大小和目前在用的不一样，重新设置块大小为硬件超级块指定的，并重新读取超级块*/
 	/* If the blocksize doesn't match, re-read the thing.. */
 	if (sb->s_blocksize != blocksize) {
 		brelse(bh);
@@ -933,8 +933,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		}
 	}
 
-	sb->s_maxbytes = ext2_max_size(sb->s_blocksize_bits);
-	sb->s_max_links = EXT2_LINK_MAX;
+	sb->s_maxbytes = ext2_max_size(sb->s_blocksize_bits);       /*设置最大的文件大小*/
+	sb->s_max_links = EXT2_LINK_MAX;                            /*设置链接最大数目*/
 
 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV) {
 		sbi->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
@@ -1032,7 +1032,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		ext2_msg(sb, KERN_ERR, "error: not enough memory");
 		goto failed_mount_group_desc;
 	}
-	for (i = 0; i < db_count; i++) {
+	for (i = 0; i < db_count; i++) {      /*逐块读取组描述符*/
 		block = descriptor_loc(sb, logic_sb_block, i);
 		sbi->s_group_desc[i] = sb_bread(sb, block);
 		if (!sbi->s_group_desc[i]) {
@@ -1043,7 +1043,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 			goto failed_mount_group_desc;
 		}
 	}
-	if (!ext2_check_descriptors (sb)) {
+	if (!ext2_check_descriptors (sb)) {   /*进行一致性检查*/
 		ext2_msg(sb, KERN_ERR, "group descriptors corrupted");
 		goto failed_mount2;
 	}
@@ -1065,7 +1065,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	sbi->s_rsv_window_head.rsv_alloc_hit = 0;
 	sbi->s_rsv_window_head.rsv_goal_size = 0;
 	ext2_rsv_window_add(sb, &sbi->s_rsv_window_head);
-
+    /*计算近似数目*/
 	err = percpu_counter_init(&sbi->s_freeblocks_counter,
 				ext2_count_free_blocks(sb));
 	if (!err) {
@@ -1092,7 +1092,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_qcop = &dquot_quotactl_ops;
 #endif
 
-	root = ext2_iget(sb, EXT2_ROOT_INO);
+	root = ext2_iget(sb, EXT2_ROOT_INO);   /*获取根节点。ext2规定跟节点的inode为2*/
 	if (IS_ERR(root)) {
 		ret = PTR_ERR(root);
 		goto failed_mount3;
@@ -1112,9 +1112,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	if (EXT2_HAS_COMPAT_FEATURE(sb, EXT3_FEATURE_COMPAT_HAS_JOURNAL))
 		ext2_msg(sb, KERN_WARNING,
 			"warning: mounting ext3 filesystem as ext2");
-	if (ext2_setup_super (sb, es, sb->s_flags & MS_RDONLY))
+	if (ext2_setup_super (sb, es, sb->s_flags & MS_RDONLY))   /*进行最后几项检查并输出告警信息*/
 		sb->s_flags |= MS_RDONLY;
-	ext2_write_super(sb);
+	ext2_write_super(sb);      /*将超级块写回硬盘，因为超级块访问时间肯定会更新*/
 	return 0;
 
 cantfind_ext2:

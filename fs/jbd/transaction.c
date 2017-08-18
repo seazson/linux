@@ -943,7 +943,7 @@ out:
  *
  * journal_dirty_data() can be called via page_launder->ext3_writepage
  * by kswapd.
- */
+ */ /*将修改的数据写到日志*/
 int journal_dirty_data(handle_t *handle, struct buffer_head *bh)
 {
 	journal_t *journal = handle->h_transaction->t_journal;

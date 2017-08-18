@@ -184,10 +184,10 @@ static void mtd_blktrans_request(struct request_queue *rq)
 	dev = rq->queuedata;
 
 	if (!dev)
-		while ((req = blk_fetch_request(rq)) != NULL)  /*取出请求，并执行这个请求*/
+		while ((req = blk_fetch_request(rq)) != NULL)  /*取出请求，等待请求完成*/
 			__blk_end_request_all(req, -ENODEV);
 	else
-		queue_work(dev->wq, &dev->work);
+		queue_work(dev->wq, &dev->work);    /*由mtd_blktrans_work工作队列来处理*/
 }
 
 static int blktrans_open(struct block_device *bdev, fmode_t mode)
@@ -386,7 +386,7 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 	gd->major = tr->major;
 	gd->first_minor = (new->devnum) << tr->part_bits;
 	gd->fops = &mtd_block_ops;
-
+    /*设置disk的名称*/
 	if (tr->part_bits)
 		if (new->devnum < 26)
 			snprintf(gd->disk_name, sizeof(gd->disk_name),
@@ -399,12 +399,12 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 	else
 		snprintf(gd->disk_name, sizeof(gd->disk_name),
 			 "%s%d", tr->name, new->devnum);
-
+	pr_sea_start("%s %d %d %d\n",gd->disk_name,tr->blksize,new->devnum,tr->part_bits);
 	set_capacity(gd, (new->size * tr->blksize) >> 9);
 
 	/* Create the request queue */
 	spin_lock_init(&new->queue_lock);
-	new->rq = blk_init_queue(mtd_blktrans_request, &new->queue_lock);   /*注册一个块设备*/
+	new->rq = blk_init_queue(mtd_blktrans_request, &new->queue_lock);   /*分配request_queue和io调度器*/
 
 	if (!new->rq)
 		goto error3;
@@ -423,7 +423,7 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 
 	/* Create processing workqueue */
 	new->wq = alloc_workqueue("%s%d", 0, 0,
-				  tr->name, new->mtd->index);
+				  tr->name, new->mtd->index);      /*分配工作队列*/
 	if (!new->wq)
 		goto error4;
 	INIT_WORK(&new->work, mtd_blktrans_work);
@@ -433,7 +433,7 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 	if (new->readonly)
 		set_disk_ro(gd, 1);
 
-	add_disk(gd);
+	add_disk(gd);                                  /*注册磁盘，创建分区*/
 
 	if (new->disk_attributes) {
 		ret = sysfs_create_group(&disk_to_dev(gd)->kobj,
@@ -533,7 +533,7 @@ int register_mtd_blktrans(struct mtd_blktrans_ops *tr)
 
 	mutex_lock(&mtd_table_mutex);
 
-	ret = register_blkdev(tr->major, tr->name);
+	ret = register_blkdev(tr->major, tr->name);     /*注册主设备号*/
 	if (ret < 0) {
 		printk(KERN_WARNING "Unable to register %s block device on major %d: %d\n",
 		       tr->name, tr->major, ret);
@@ -549,7 +549,7 @@ int register_mtd_blktrans(struct mtd_blktrans_ops *tr)
 	INIT_LIST_HEAD(&tr->devs);
 	list_add(&tr->list, &blktrans_majors);
 
-	mtd_for_each_device(mtd)
+	mtd_for_each_device(mtd)              /*遍历所有的mtd设备，执行mtd_add*/
 		if (mtd->type != MTD_ABSENT)
 			tr->add_mtd(tr, mtd);
 

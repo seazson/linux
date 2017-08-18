@@ -109,8 +109,8 @@ void ext2_evict_inode(struct inode * inode)
 }
 
 typedef struct {
-	__le32	*p;
-	__le32	key;
+	__le32	*p;     /*指向key在内存中的地址*/
+	__le32	key;    /*块号*/
 	struct buffer_head *bh;
 } Indirect;
 
@@ -340,7 +340,7 @@ static inline ext2_fsblk_t ext2_find_goal(struct inode *inode, long block,
 		return block_i->last_alloc_physical_block + 1;
 	}
 
-	return ext2_find_near(inode, partial);
+	return ext2_find_near(inode, partial);  /*如果新块的逻辑位置与上一次分配的块不是紧临的，查找最适当的新块*/
 }
 
 /**
@@ -614,7 +614,7 @@ static void ext2_splice_branch(struct inode *inode,
  * return > 0, # of blocks mapped or allocated.
  * return = 0, if plain lookup failed.
  * return < 0, error case.
- */
+ */ /*iblock是文件内部顺序号?*/
 static int ext2_get_blocks(struct inode *inode,
 			   sector_t iblock, unsigned long maxblocks,
 			   struct buffer_head *bh_result,
@@ -632,14 +632,14 @@ static int ext2_get_blocks(struct inode *inode,
 	int count = 0;
 	ext2_fsblk_t first_block = 0;
 
-	depth = ext2_block_to_path(inode,iblock,offsets,&blocks_to_boundary);
+	depth = ext2_block_to_path(inode,iblock,offsets,&blocks_to_boundary);  /*计算需要几次间接才能找到数据*/
 
 	if (depth == 0)
 		return (err);
 
-	partial = ext2_get_branch(inode, depth, offsets, chain, &err);
+	partial = ext2_get_branch(inode, depth, offsets, chain, &err); /*通过几次间接读到块的内容*/
 	/* Simplest case - block found, no allocation needed */
-	if (!partial) {
+	if (!partial) {  /*返回null表示查找成功，否则返回最后一个间接块的地址*/
 		first_block = le32_to_cpu(chain[depth - 1].key);
 		clear_buffer_new(bh_result); /* What's this do? */
 		count++;
@@ -705,10 +705,10 @@ static int ext2_get_blocks(struct inode *inode,
 	 * Okay, we need to do block allocation.  Lazily initialize the block
 	 * allocation info here if necessary
 	*/
-	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
+	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))  /*普通文件并且没有预分配信息*/
 		ext2_init_block_alloc_info(inode);
 
-	goal = ext2_find_goal(inode, iblock, partial);
+	goal = ext2_find_goal(inode, iblock, partial);           /*查找最应该分配那个块*/
 
 	/* the number of blocks need to allocate for [d,t]indirect blocks */
 	indirect_blks = (chain + depth) - partial - 1;
@@ -717,12 +717,12 @@ static int ext2_get_blocks(struct inode *inode,
 	 * direct blocks to allocate for this branch.
 	 */
 	count = ext2_blks_to_allocate(partial, indirect_blks,
-					maxblocks, blocks_to_boundary);
+					maxblocks, blocks_to_boundary);          /*计算新块的总数，包括间接块*/
 	/*
 	 * XXX ???? Block out ext2_truncate while we alter the tree
 	 */
 	err = ext2_alloc_branch(inode, indirect_blks, &count, goal,
-				offsets + (partial - chain), partial);
+				offsets + (partial - chain), partial);      /*分配新块并建立间接路径*/
 
 	if (err) {
 		mutex_unlock(&ei->truncate_mutex);
@@ -741,7 +741,7 @@ static int ext2_get_blocks(struct inode *inode,
 		}
 	}
 
-	ext2_splice_branch(inode, iblock, partial, indirect_blks, count);
+	ext2_splice_branch(inode, iblock, partial, indirect_blks, count);   /*将最终的层次结构添加到现存的数据结构网络中*/
 	mutex_unlock(&ei->truncate_mutex);
 	set_buffer_new(bh_result);
 got_it:

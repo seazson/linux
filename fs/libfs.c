@@ -198,7 +198,7 @@ static const struct super_operations simple_super_operations = {
 /*
  * Common helper for pseudo-filesystems (sockfs, pipefs, bdev - stuff that
  * will never be mountable)
- */
+ */ /*专门用来挂载伪文件系统*/
 struct dentry *mount_pseudo(struct file_system_type *fs_type, char *name,
 	const struct super_operations *ops,
 	const struct dentry_operations *dops, unsigned long magic)
@@ -208,7 +208,7 @@ struct dentry *mount_pseudo(struct file_system_type *fs_type, char *name,
 	struct inode *root;
 	struct qstr d_name = QSTR_INIT(name, strlen(name));
 
-	s = sget(fs_type, NULL, set_anon_super, MS_NOUSER, NULL);
+	s = sget(fs_type, NULL, set_anon_super, MS_NOUSER, NULL);   /*分配超级块*/
 	if (IS_ERR(s))
 		return ERR_CAST(s);
 
@@ -218,7 +218,7 @@ struct dentry *mount_pseudo(struct file_system_type *fs_type, char *name,
 	s->s_magic = magic;
 	s->s_op = ops ? ops : &simple_super_operations;
 	s->s_time_gran = 1;
-	root = new_inode(s);
+	root = new_inode(s);         /*分配根inode*/
 	if (!root)
 		goto Enomem;
 	/*
@@ -229,7 +229,7 @@ struct dentry *mount_pseudo(struct file_system_type *fs_type, char *name,
 	root->i_ino = 1;
 	root->i_mode = S_IFDIR | S_IRUSR | S_IWUSR;
 	root->i_atime = root->i_mtime = root->i_ctime = CURRENT_TIME;
-	dentry = __d_alloc(s, &d_name);
+	dentry = __d_alloc(s, &d_name);    /*分配根dentry*/
 	if (!dentry) {
 		iput(root);
 		goto Enomem;

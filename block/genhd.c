@@ -501,7 +501,7 @@ static int exact_lock(dev_t devt, void *data)
 		return -1;
 	return 0;
 }
-
+/*注册disk，打开disk对应的块设备，如果是主分区，还会扫描并创建分区信息，最后再解除关联*/
 static void register_disk(struct gendisk *disk)
 {
 	struct device *ddev = disk_to_dev(disk);
@@ -546,7 +546,7 @@ static void register_disk(struct gendisk *disk)
 	if (!get_capacity(disk))
 		goto exit;
 
-	bdev = bdget_disk(disk, 0);
+	bdev = bdget_disk(disk, 0);    /*disk对应的块设备*/
 	if (!bdev)
 		goto exit;
 
@@ -592,7 +592,7 @@ void add_disk(struct gendisk *disk)
 
 	disk->flags |= GENHD_FL_UP;
 
-	retval = blk_alloc_devt(&disk->part0, &devt);
+	retval = blk_alloc_devt(&disk->part0, &devt);    /*分配一个设备号devt*/
 	if (retval) {
 		WARN_ON(1);
 		return;
@@ -604,17 +604,17 @@ void add_disk(struct gendisk *disk)
 	 */
 	disk->major = MAJOR(devt);
 	disk->first_minor = MINOR(devt);
-
+	pr_sea_start("%d %d %d\n",disk->major, disk->first_minor, disk->minors);
 	disk_alloc_events(disk);
 
 	/* Register BDI before referencing it from bdev */
-	bdi = &disk->queue->backing_dev_info;
-	bdi_register_dev(bdi, disk_devt(disk));
+	bdi = &disk->queue->backing_dev_info;               /*在创建reqest_queue的时候分配了*/
+	bdi_register_dev(bdi, disk_devt(disk));             /*注册bdi*/
 
-	blk_register_region(disk_devt(disk), disk->minors, NULL,   /*确认要求的设备号范围尚未分配*/
+	blk_register_region(disk_devt(disk), disk->minors, NULL,   /*确认要求的设备号范围尚未分配,并锁定这一范围*/
 			    exact_match, exact_lock, disk);
-	register_disk(disk);                                /*注册磁盘*/
-	blk_register_queue(disk);                           /*注册请求队列*/
+	register_disk(disk);                                /*注册磁盘，建立分区信息*/
+	blk_register_queue(disk);                           /*注册请求队列，主要是为了建立sys的节点*/
 
 	/*
 	 * Take an extra ref on queue which will be put on disk_release()
@@ -715,7 +715,7 @@ EXPORT_SYMBOL(get_gendisk);
  *
  * RETURNS:
  * Resulting block_device on success, NULL on failure.
- */
+ */ /*根据disk和分区号来获取块设备*/
 struct block_device *bdget_disk(struct gendisk *disk, int partno)
 {
 	struct hd_struct *part;
@@ -723,7 +723,7 @@ struct block_device *bdget_disk(struct gendisk *disk, int partno)
 
 	part = disk_get_part(disk, partno);
 	if (part)
-		bdev = bdget(part_devt(part));
+		bdev = bdget(part_devt(part));  /*根据设备号来查找或者创建块设备*/
 	disk_put_part(part);
 
 	return bdev;
@@ -1242,7 +1242,7 @@ dev_t blk_lookup_devt(const char *name, int partno)
 }
 EXPORT_SYMBOL(blk_lookup_devt);
 
-struct gendisk *alloc_disk(int minors)  /*分配一个磁盘*/
+struct gendisk *alloc_disk(int minors)  /*分配一个磁盘,并初始化基本变量*/
 {
 	return alloc_disk_node(minors, NUMA_NO_NODE);
 }
@@ -1255,17 +1255,17 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 	disk = kmalloc_node(sizeof(struct gendisk),
 				GFP_KERNEL | __GFP_ZERO, node_id);
 	if (disk) {
-		if (!init_part_stats(&disk->part0)) {
+		if (!init_part_stats(&disk->part0)) {  /*初始化part0的统计信息*/
 			kfree(disk);
 			return NULL;
 		}
 		disk->node_id = node_id;
-		if (disk_expand_part_tbl(disk, 0)) {
+		if (disk_expand_part_tbl(disk, 0)) {   /*分配分区数组。此时只有一个*/
 			free_part_stats(&disk->part0);
 			kfree(disk);
 			return NULL;
 		}
-		disk->part_tbl->part[0] = &disk->part0;
+		disk->part_tbl->part[0] = &disk->part0;  /*tbl中的0指向自己的part0*/
 
 		/*
 		 * set_capacity() and get_capacity() currently don't use

@@ -235,6 +235,7 @@ extern int printk_sea;
 #define SEA_PRINTK_DBG		0x100
 #define SEA_PRINTK_USB		0x200
 #define SEA_PRINTK_TTY		0x400
+#define SEA_PRINTK_BLOCK	0x800
 
 #define DO_PR_SEA_ELF 	(printk_sea & SEA_PRINTK_ELF)
 #define DO_PR_SEA_INT 	(printk_sea & SEA_PRINTK_INT)
@@ -257,6 +258,8 @@ extern int printk_sea;
 	if(printk_sea & SEA_PRINTK_USB) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #define pr_sea_tty(fmt, ...) \
 	if(printk_sea & SEA_PRINTK_TTY) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define pr_sea_block(fmt, ...) \
+	if(printk_sea & SEA_PRINTK_BLOCK) printk(KERN_ALERT "[%s()-%d] : " pr_fmt(fmt), __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 
 /* pr_devel() should produce zero code unless DEBUG is defined */

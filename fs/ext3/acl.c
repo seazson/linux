@@ -163,7 +163,7 @@ ext3_get_acl(struct inode *inode, int type)
 		BUG();
 	}
 
-	retval = ext3_xattr_get(inode, name_index, "", NULL, 0);
+	retval = ext3_xattr_get(inode, name_index, "", NULL, 0);  /*第一次调用是为了获取扩展属性的大小*/
 	if (retval > 0) {
 		value = kmalloc(retval, GFP_NOFS);
 		if (!value)
@@ -257,7 +257,7 @@ ext3_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
 
 	if (!S_ISLNK(inode->i_mode)) {
 		if (test_opt(dir->i_sb, POSIX_ACL)) {
-			acl = ext3_get_acl(dir, ACL_TYPE_DEFAULT);
+			acl = ext3_get_acl(dir, ACL_TYPE_DEFAULT);  /*获取父目录的acl*/
 			if (IS_ERR(acl))
 				return PTR_ERR(acl);
 		}

@@ -1196,7 +1196,7 @@ static int ext2_has_free_blocks(struct ext2_sb_info *sbi)
 /*
  * ext2_new_blocks() -- core block(s) allocation function
  * @inode:		file inode
- * @goal:		given target block(filesystem wide)
+ * @goal:		given target block(filesystem wide) 只是提供建议，如果该块不可用还是会分配其他块
  * @count:		target number of blocks to allocate
  * @errp:		error code
  *
@@ -1253,7 +1253,7 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
 	 * the desired window size is greater than 0 (One could use ioctl
 	 * command EXT2_IOC_SETRSVSZ to set the window size to 0 to turn off
 	 * reservation on that particular file)
-	 */
+	 */ /*是否使用预分配机制*/
 	block_i = EXT2_I(inode)->i_block_alloc_info;
 	if (block_i) {
 		windowsz = block_i->rsv_window_node.rsv_goal_size;
@@ -1261,14 +1261,14 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
 			my_rsv = &block_i->rsv_window_node;
 	}
 
-	if (!ext2_has_free_blocks(sbi)) {
+	if (!ext2_has_free_blocks(sbi)) { /*检查是否有空闲块可以分配*/
 		*errp = -ENOSPC;
 		goto out;
 	}
 
 	/*
 	 * First, test whether the goal block is free.
-	 */
+	 */ /*检查目标块是否是合理的*/
 	if (goal < le32_to_cpu(es->s_first_data_block) ||
 	    goal >= le32_to_cpu(es->s_blocks_count))
 		goal = le32_to_cpu(es->s_first_data_block);
@@ -1276,7 +1276,7 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
 			EXT2_BLOCKS_PER_GROUP(sb);
 	goal_group = group_no;
 retry_alloc:
-	gdp = ext2_get_group_desc(sb, group_no, &gdp_bh);
+	gdp = ext2_get_group_desc(sb, group_no, &gdp_bh);    /*获取组描述符*/
 	if (!gdp)
 		goto io_error;
 

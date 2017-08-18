@@ -243,7 +243,7 @@ static int ext2_mkdir(struct inode * dir, struct dentry * dentry, umode_t mode)
 
 	inode_inc_link_count(dir);
 
-	inode = ext2_new_inode(dir, S_IFDIR | mode, &dentry->d_name);
+	inode = ext2_new_inode(dir, S_IFDIR | mode, &dentry->d_name);  /*分配inode*/
 	err = PTR_ERR(inode);
 	if (IS_ERR(inode))
 		goto out_dir;
@@ -257,11 +257,11 @@ static int ext2_mkdir(struct inode * dir, struct dentry * dentry, umode_t mode)
 
 	inode_inc_link_count(inode);
 
-	err = ext2_make_empty(inode, dir);
+	err = ext2_make_empty(inode, dir);     /*向inode添加默认的. ..目录。生成对应的目录项结构，并写入数据块中*/
 	if (err)
 		goto out_fail;
 
-	err = ext2_add_link(dentry, inode);
+	err = ext2_add_link(dentry, inode);    /*将新目录添加到父目录的inode数据中*/
 	if (err)
 		goto out_fail;
 
@@ -289,11 +289,11 @@ static int ext2_unlink(struct inode * dir, struct dentry *dentry)
 
 	dquot_initialize(dir);
 
-	de = ext2_find_entry (dir, &dentry->d_name, &page);
+	de = ext2_find_entry (dir, &dentry->d_name, &page);   /*找到目录项结构*/
 	if (!de)
 		goto out;
 
-	err = ext2_delete_entry (de, page);
+	err = ext2_delete_entry (de, page);   /*删除目录项，实际上只是修改了rec_len字段，以跳过此目录*/
 	if (err)
 		goto out;
 
@@ -309,11 +309,11 @@ static int ext2_rmdir (struct inode * dir, struct dentry *dentry)
 	struct inode * inode = dentry->d_inode;
 	int err = -ENOTEMPTY;
 
-	if (ext2_empty_dir(inode)) {
+	if (ext2_empty_dir(inode)) {   /*目录里面不能有文件*/
 		err = ext2_unlink(dir, dentry);
 		if (!err) {
 			inode->i_size = 0;
-			inode_dec_link_count(inode);
+			inode_dec_link_count(inode);   /*减少inodes计数，如果减到零了就会置位位图*/
 			inode_dec_link_count(dir);
 		}
 	}

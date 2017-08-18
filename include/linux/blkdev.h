@@ -100,14 +100,14 @@ struct request {
 	struct request_queue *q;
 
 	unsigned int cmd_flags;
-	enum rq_cmd_type_bits cmd_type;
+	enum rq_cmd_type_bits cmd_type;     /*表示请求的类型*/
 	unsigned long atomic_flags;
 
 	int cpu;
 
 	/* the following two fields are internal, NEVER access directly */
-	unsigned int __data_len;	/* total data len */
-	sector_t __sector;		/* sector cursor */
+	unsigned int __data_len;	/* total data len 还需要操作的数据长度*/
+	sector_t __sector;		/* sector cursor 已经操作的扇区数*/
 
 	struct bio *bio;             /*标示传输尚未完成的当前BIO实例*/
 	struct bio *biotail;         /*最后一个BIO实例，一个请求中可以使用多个BIO*/
@@ -163,7 +163,7 @@ struct request {
 	int ref_count;
 
 	void *special;		/* opaque pointer available for LLD use */
-	char *buffer;		/* kaddr of the current segment if available */
+	char *buffer;		/* kaddr of the current segment if available 只想要操作的内存处*/
 
 	int tag;
 	int errors;
@@ -393,7 +393,7 @@ struct request_queue {
 	unsigned int		request_fn_active;
 
 	unsigned int		rq_timeout;
-	struct timer_list	timeout;
+	struct timer_list	timeout;        /*用来跟踪请求过期的情况*/
 	struct list_head	timeout_list;
 
 	struct list_head	icq_list;

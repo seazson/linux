@@ -126,7 +126,7 @@ void blk_rq_timed_out_timer(unsigned long data)
 			 */
 			if (blk_mark_rq_complete(rq))
 				continue;
-			blk_rq_timed_out(rq);
+			blk_rq_timed_out(rq);   /*超时还未执行的话执行自定义的超时函数*/
 		} else if (!next_set || time_after(next, rq->deadline)) {
 			next = rq->deadline;
 			next_set = 1;

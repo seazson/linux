@@ -543,7 +543,7 @@ struct ext3_inode_info {
 	__u8	i_frag_no;
 	__u8	i_frag_size;
 #endif
-	ext3_fsblk_t	i_file_acl;
+	ext3_fsblk_t	i_file_acl;   /*扩展属性所在的块*/
 	__u32	i_dir_acl;
 	__u32	i_dtime;
 
