@@ -99,7 +99,7 @@ struct mmc_host_ops {
 			    int err);
 	void	(*pre_req)(struct mmc_host *host, struct mmc_request *req,
 			   bool is_first_req);
-	void	(*request)(struct mmc_host *host, struct mmc_request *req);
+	void	(*request)(struct mmc_host *host, struct mmc_request *req);    /*最主要的函数*/
 	/*
 	 * Avoid calling these three functions too often or in a "fast path",
 	 * since underlaying controller might implement them in an expensive
@@ -120,9 +120,9 @@ struct mmc_host_ops {
 	 *   -ENOSYS when not supported (equal to NULL callback)
 	 *   or a negative errno value when something bad happened
 	 */
-	void	(*set_ios)(struct mmc_host *host, struct mmc_ios *ios);
-	int	(*get_ro)(struct mmc_host *host);
-	int	(*get_cd)(struct mmc_host *host);
+	void	(*set_ios)(struct mmc_host *host, struct mmc_ios *ios);   /*设置bus参数*/
+	int	(*get_ro)(struct mmc_host *host);                             /*获取读写状态*/
+	int	(*get_cd)(struct mmc_host *host);                             /*获取在位信息*/
 
 	void	(*enable_sdio_irq)(struct mmc_host *host, int enable);
 
@@ -203,12 +203,12 @@ struct mmc_host {
 	unsigned int		f_min;
 	unsigned int		f_max;
 	unsigned int		f_init;
-	u32			ocr_avail;
+	u32			ocr_avail;      /*控制器所支持的电压范围*/
 	u32			ocr_avail_sdio;	/* SDIO-specific OCR */
 	u32			ocr_avail_sd;	/* SD-specific OCR */
 	u32			ocr_avail_mmc;	/* MMC-specific OCR */
 	struct notifier_block	pm_notify;
-	u32			max_current_330;
+	u32			max_current_330; /*不同电压下所支持的最大电流*/
 	u32			max_current_300;
 	u32			max_current_180;
 
@@ -347,7 +347,7 @@ struct mmc_host {
 #ifdef CONFIG_REGULATOR
 	bool			regulator_enabled; /* regulator state */
 #endif
-	struct mmc_supply	supply;
+	struct mmc_supply	supply;     /*用来描述供电信息*/
 
 	struct dentry		*debugfs_root;
 

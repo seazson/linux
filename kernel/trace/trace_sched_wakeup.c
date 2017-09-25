@@ -188,7 +188,7 @@ static int start_func_tracer(int graph)
 {
 	int ret;
 
-	ret = register_wakeup_function(graph, 0);
+	ret = register_wakeup_function(graph, 0);   /*跟踪常规函数*/
 
 	if (!ret && tracing_is_enabled())
 		tracer_enabled = 1;
@@ -363,7 +363,7 @@ probe_wakeup_migrate_task(void *ignore, struct task_struct *task, int cpu)
 
 	wakeup_current_cpu = cpu;
 }
-
+/*正在切换到进程时调用，用来记录结束时间*/
 static void notrace
 probe_wakeup_sched_switch(void *ignore,
 			  struct task_struct *prev, struct task_struct *next)
@@ -486,7 +486,7 @@ probe_wakeup(void *ignore, struct task_struct *p, int success)
 	arch_spin_lock(&wakeup_lock);
 
 	/* check for races. */
-	if (!tracer_enabled || p->prio >= wakeup_prio)
+	if (!tracer_enabled || p->prio >= wakeup_prio)  /*代表要唤醒优先级比当前的小，不记录*/
 		goto out_locked;
 
 	/* reset the trace */
@@ -591,7 +591,7 @@ static int __wakeup_tracer_init(struct trace_array *tr)
 
 	tracing_max_latency = 0;
 	wakeup_trace = tr;
-	start_wakeup_tracer(tr);
+	start_wakeup_tracer(tr);    /*挂接tracepoint处理函数*/
 	return 0;
 }
 

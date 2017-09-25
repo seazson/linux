@@ -92,7 +92,7 @@ tracing_sched_wakeup_trace(struct trace_array *tr,
 					  sizeof(*entry), flags, pc);
 	if (!event)
 		return;
-	entry	= ring_buffer_event_data(event);
+	entry	= ring_buffer_event_data(event);    /*保存特有信息*/
 	entry->prev_pid			= curr->pid;
 	entry->prev_prio		= curr->prio;
 	entry->prev_state		= curr->state;
@@ -101,8 +101,8 @@ tracing_sched_wakeup_trace(struct trace_array *tr,
 	entry->next_state		= wakee->state;
 	entry->next_cpu			= task_cpu(wakee);
 
-	if (!filter_check_discard(call, entry, buffer, event))
-		trace_buffer_unlock_commit(buffer, event, flags, pc);
+	if (!filter_check_discard(call, entry, buffer, event))  /*检查是否需要过滤掉*/
+		trace_buffer_unlock_commit(buffer, event, flags, pc);  /*不用过滤的话就提交了*/
 }
 
 static void
@@ -127,11 +127,11 @@ probe_sched_wakeup(void *ignore, struct task_struct *wakee, int success)
 
 	if (likely(!atomic_read(&data->disabled)))
 		tracing_sched_wakeup_trace(ctx_trace, wakee, current,
-					   flags, pc);
+					   flags, pc);   /*记录原始数据到ring_buffer中*/
 
 	local_irq_restore(flags);
 }
-
+/*注册tracepoint点应该执行的函数*/
 static int tracing_sched_register(void)
 {
 	int ret;

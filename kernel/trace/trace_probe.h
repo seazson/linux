@@ -119,9 +119,9 @@ struct probe_arg {
 	struct fetch_param	fetch;
 	struct fetch_param	fetch_size;
 	unsigned int		offset;	/* Offset from argument entry */
-	const char		*name;	/* Name of this argument */
-	const char		*comm;	/* Command of this argument */
-	const struct fetch_type	*type;	/* Type of this argument */
+	const char		*name;	/* Name of this argument */ /*要跟踪的变量所设置的别名*/
+	const char		*comm;	/* Command of this argument */ /*要跟踪的命令。寄存器，堆还是参数?*/
+	const struct fetch_type	*type;	/* Type of this argument *//*数据类型*/
 };
 
 static inline __kprobes void call_fetch(struct fetch_param *fprm,

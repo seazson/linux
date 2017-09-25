@@ -221,7 +221,7 @@ void __kprobes kprobe_handler(struct pt_regs *regs)
 	 * bit 0 set, this is the usual situation for pointers to Thumb code.
 	 * If not found, fallback to looking for one with bit 0 clear.
 	 */
-	p = get_kprobe((kprobe_opcode_t *)(regs->ARM_pc | 1));
+	p = get_kprobe((kprobe_opcode_t *)(regs->ARM_pc | 1));  /*根据地址查找到kprobe*/
 	if (!p)
 		p = get_kprobe((kprobe_opcode_t *)regs->ARM_pc);
 

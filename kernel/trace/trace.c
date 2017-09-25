@@ -1202,7 +1202,7 @@ void tracing_reset(struct trace_buffer *buf, int cpu)
 
 	ring_buffer_record_enable(buffer);
 }
-
+/*设置时间戳，重置ringbuffer，使能ring_buffer*/
 void tracing_reset_online_cpus(struct trace_buffer *buf)
 {
 	struct ring_buffer *buffer = buf->buffer;
@@ -1521,11 +1521,11 @@ trace_buffer_lock_reserve(struct ring_buffer *buffer,
 {
 	struct ring_buffer_event *event;
 
-	event = ring_buffer_lock_reserve(buffer, len);
+	event = ring_buffer_lock_reserve(buffer, len);   /*获取一个空闲的条目*/
 	if (event != NULL) {
 		struct trace_entry *ent = ring_buffer_event_data(event);
 
-		tracing_generic_entry_update(ent, flags, pc);
+		tracing_generic_entry_update(ent, flags, pc); /*设置通用信息*/
 		ent->type = type;
 	}
 
@@ -1607,7 +1607,7 @@ void trace_current_buffer_discard_commit(struct ring_buffer *buffer,
 	ring_buffer_discard_commit(buffer, event);
 }
 EXPORT_SYMBOL_GPL(trace_current_buffer_discard_commit);
-
+/*函数跟踪写入ringbuffer*/
 void
 trace_function(struct trace_array *tr,
 	       unsigned long ip, unsigned long parent_ip, unsigned long flags,
@@ -2257,7 +2257,7 @@ static void *s_next(struct seq_file *m, void *v, loff_t *pos)
 
 	return ent;
 }
-
+/*iter跳过过期的，指向要读的位置*/
 void tracing_iter_reset(struct trace_iterator *iter, int cpu)
 {
 	struct ring_buffer_event *event;
@@ -2277,9 +2277,9 @@ void tracing_iter_reset(struct trace_iterator *iter, int cpu)
 	 * We could have the case with the max latency tracers
 	 * that a reset never took place on a cpu. This is evident
 	 * by the timestamp being before the start of the buffer.
-	 */
+	 */ /*跳过过期的条目*/
 	while ((event = ring_buffer_iter_peek(buf_iter, &ts))) {
-		if (ts >= iter->trace_buffer->time_start)
+		if (ts >= iter->trace_buffer->time_start)  
 			break;
 		entries++;
 		ring_buffer_read(buf_iter, NULL);
@@ -2306,7 +2306,7 @@ static void *s_start(struct seq_file *m, loff_t *pos)
 	 * iter->trace is a copy of current_trace, the pointer to the
 	 * name may be used instead of a strcmp(), as iter->trace->name
 	 * will point to the same string as current_trace->name.
-	 */
+	 */ /*复制当前tracer，防止锁的竞争*/
 	mutex_lock(&trace_types_lock);
 	if (unlikely(tr->current_trace && iter->trace->name != tr->current_trace->name))
 		*iter->trace = *tr->current_trace;
@@ -2536,9 +2536,9 @@ static enum print_line_t print_trace_fmt(struct trace_iterator *iter)
 
 	test_cpu_buff_start(iter);
 
-	event = ftrace_find_event(entry->type);
+	event = ftrace_find_event(entry->type);  /*根据类型找到所属的event*/
 
-	if (trace_flags & TRACE_ITER_CONTEXT_INFO) {
+	if (trace_flags & TRACE_ITER_CONTEXT_INFO) {  /*是否要添加上下文信息*/
 		if (iter->iter_flags & TRACE_FILE_LAT_FMT) {
 			if (!trace_print_lat_context(iter))
 				goto partial;
@@ -2549,7 +2549,7 @@ static enum print_line_t print_trace_fmt(struct trace_iterator *iter)
 	}
 
 	if (event)
-		return event->funcs->trace(iter, sym_flags, event);
+		return event->funcs->trace(iter, sym_flags, event);   /*执行格式化打印函数*/
 
 	if (!trace_seq_printf(s, "Unknown type %d\n", entry->type))
 		goto partial;
@@ -2674,7 +2674,7 @@ enum print_line_t print_trace_line(struct trace_iterator *iter)
 				 iter->cpu, iter->lost_events))
 		return TRACE_TYPE_PARTIAL_LINE;
 
-	if (iter->trace && iter->trace->print_line) {
+	if (iter->trace && iter->trace->print_line) { /*不一定有定义*/
 		ret = iter->trace->print_line(iter);
 		if (ret != TRACE_TYPE_UNHANDLED)
 			return ret;
@@ -2803,7 +2803,7 @@ static int s_show(struct seq_file *m, void *v)
 	struct trace_iterator *iter = v;
 	int ret;
 
-	if (iter->ent == NULL) {
+	if (iter->ent == NULL) {  /*打印头*/
 		if (iter->tr) {
 			seq_printf(m, "# tracer: %s\n", iter->trace->name);
 			seq_puts(m, "#\n");
@@ -2827,8 +2827,8 @@ static int s_show(struct seq_file *m, void *v)
 		iter->leftover = ret;
 
 	} else {
-		print_trace_line(iter);
-		ret = trace_print_seq(m, &iter->seq);
+		print_trace_line(iter);   /*调用特定的函数进行格式化打印*/
+		ret = trace_print_seq(m, &iter->seq);   /*将数据拷贝到seq的buffer中，准备传输给用户*/
 		/*
 		 * If we overflow the seq_file buffer, then it will
 		 * ask us for this data again at start up.
@@ -2936,10 +2936,10 @@ __tracing_open(struct inode *inode, struct file *file, bool snapshot)
 	} else {
 		cpu = iter->cpu_file;
 		iter->buffer_iter[cpu] =
-			ring_buffer_read_prepare(iter->trace_buffer->buffer, cpu);
+			ring_buffer_read_prepare(iter->trace_buffer->buffer, cpu);  /*分配iter*/
 		ring_buffer_read_prepare_sync();
-		ring_buffer_read_start(iter->buffer_iter[cpu]);
-		tracing_iter_reset(iter, cpu);
+		ring_buffer_read_start(iter->buffer_iter[cpu]); /*iter指向该读的地方*/
+		tracing_iter_reset(iter, cpu);  /*跳过过期的条目*/
 	}
 
 	mutex_unlock(&trace_types_lock);
@@ -3777,7 +3777,7 @@ create_trace_option_files(struct trace_array *tr, struct tracer *tracer);
 
 static void
 destroy_trace_option_files(struct trace_option_dentry *topts);
-
+/*设置当前使用的tracer*/
 static int tracing_set_tracer(const char *buf)
 {
 	static struct trace_option_dentry *topts;
@@ -3798,7 +3798,7 @@ static int tracing_set_tracer(const char *buf)
 		ret = 0;
 	}
 
-	for (t = trace_types; t; t = t->next) {
+	for (t = trace_types; t; t = t->next) {   /*根据名字找到匹配的tracer*/
 		if (strcmp(t->name, buf) == 0)
 			break;
 	}
@@ -3806,15 +3806,15 @@ static int tracing_set_tracer(const char *buf)
 		ret = -EINVAL;
 		goto out;
 	}
-	if (t == tr->current_trace)
+	if (t == tr->current_trace)              /*当前的tracer和要设置的是相同的不用修改*/
 		goto out;
 
-	trace_branch_disable();
+	trace_branch_disable();                  /*关闭分支功能*/
 
 	tr->current_trace->enabled = false;
 
 	if (tr->current_trace->reset)
-		tr->current_trace->reset(tr);
+		tr->current_trace->reset(tr);        /*停用当前的tracer*/
 
 	/* Current trace needs to be nop_trace before synchronize_sched */
 	tr->current_trace = &nop_trace;
@@ -3834,9 +3834,9 @@ static int tracing_set_tracer(const char *buf)
 		free_snapshot(tr);
 	}
 #endif
-	destroy_trace_option_files(topts);
+	destroy_trace_option_files(topts);      /*删除option目录下的文件*/
 
-	topts = create_trace_option_files(tr, t);
+	topts = create_trace_option_files(tr, t);  /*根据flag创建与新的tracer相关的option文件*/
 
 #ifdef CONFIG_TRACER_MAX_TRACE
 	if (t->use_max_tr && !had_max_tr) {
@@ -3847,7 +3847,7 @@ static int tracing_set_tracer(const char *buf)
 #endif
 
 	if (t->init) {
-		ret = tracer_init(t, tr);
+		ret = tracer_init(t, tr);     /*启用新的tracer*/
 		if (ret)
 			goto out;
 	}
@@ -5872,7 +5872,7 @@ allocate_trace_buffer(struct trace_array *tr, struct trace_buffer *buf, int size
 
 	rb_flags = trace_flags & TRACE_ITER_OVERWRITE ? RB_FL_OVERWRITE : 0;
 
-	buf->buffer = ring_buffer_alloc(size, rb_flags);
+	buf->buffer = ring_buffer_alloc(size, rb_flags);   /*分配ring_buffer空间，每个cpu上都有*/
 	if (!buf->buffer)
 		return -ENOMEM;
 
@@ -6141,7 +6141,7 @@ static __init int tracer_init_debugfs(void)
 
 	trace_access_lock_init();
 
-	d_tracer = tracing_init_dentry();
+	d_tracer = tracing_init_dentry();    /*创建traceing目录*/
 	if (!d_tracer)
 		return 0;
 
@@ -6175,9 +6175,9 @@ static __init int tracer_init_debugfs(void)
 			&ftrace_update_tot_cnt, &tracing_dyn_info_fops);
 #endif
 
-	create_trace_instances(d_tracer);
+	create_trace_instances(d_tracer);          /*创建instance目录*/
 
-	create_trace_options_dir(&global_trace);
+	create_trace_options_dir(&global_trace);   /*创建option目录及其下面的文件*/
 
 	return 0;
 }
@@ -6391,7 +6391,7 @@ __init static int tracer_alloc_buffers(void)
 	raw_spin_lock_init(&global_trace.start_lock);
 
 	/* TODO: make the number of buffers hot pluggable with CPUS */
-	if (allocate_trace_buffers(&global_trace, ring_buf_size) < 0) {
+	if (allocate_trace_buffers(&global_trace, ring_buf_size) < 0) {  /*分配ring_buffer,每个cpu上都有*/
 		printk(KERN_ERR "tracer: failed to allocate ring buffer!\n");
 		WARN_ON(1);
 		goto out_free_cpumask;

@@ -82,14 +82,14 @@ static int ftrace_modify_code(unsigned long pc, unsigned long old,
 	}
 
 	if (validate) {
-		if (probe_kernel_read(&replaced, (void *)pc, MCOUNT_INSN_SIZE))
+		if (probe_kernel_read(&replaced, (void *)pc, MCOUNT_INSN_SIZE)) /*校验旧指令*/
 			return -EFAULT;
 
 		if (replaced != old)
 			return -EINVAL;
 	}
 
-	if (probe_kernel_write((void *)pc, &new, MCOUNT_INSN_SIZE))
+	if (probe_kernel_write((void *)pc, &new, MCOUNT_INSN_SIZE))   /*将新指令写入*/
 		return -EPERM;
 
 	flush_icache_range(pc, pc + MCOUNT_INSN_SIZE);
@@ -122,13 +122,13 @@ int ftrace_update_ftrace_func(ftrace_func_t func)
 
 int ftrace_make_call(struct dyn_ftrace *rec, unsigned long addr)
 {
-	unsigned long new, old;
+	unsigned long new, old;   /*代表新旧指令*/
 	unsigned long ip = rec->ip;
 
-	old = ftrace_nop_replace(rec);
-	new = ftrace_call_replace(ip, adjust_address(rec, addr));
+	old = ftrace_nop_replace(rec);   /*获取旧指令,应该为nop*/
+	new = ftrace_call_replace(ip, adjust_address(rec, addr)); /*获取新指令，addr=ftrace_call*/
 
-	return ftrace_modify_code(rec->ip, old, new, true);
+	return ftrace_modify_code(rec->ip, old, new, true);  /*用新指令替换旧指令*/
 }
 
 int ftrace_make_nop(struct module *mod,
@@ -177,17 +177,17 @@ void prepare_ftrace_return(unsigned long *parent, unsigned long self_addr,
 		return;
 
 	old = *parent;
-	*parent = return_hooker;
+	*parent = return_hooker;  /*修改了返回地址，本函数执行完成之后会跳到这里*/
 
 	trace.func = self_addr;
 	trace.depth = current->curr_ret_stack + 1;
 
 	/* Only trace if the calling function expects to */
-	if (!ftrace_graph_entry(&trace)) {
+	if (!ftrace_graph_entry(&trace)) {  /*用户注册的函数trace_graph_entry，成功返回1*/
 		*parent = old;
 		return;
 	}
-
+/*将调用信息保存到ret栈中*/
 	err = ftrace_push_return_trace(old, self_addr, &trace.depth,
 				       frame_pointer);
 	if (err == -EBUSY) {
@@ -218,8 +218,8 @@ static int ftrace_modify_graph_caller(bool enable)
 {
 	int ret;
 
-	ret = __ftrace_modify_caller(&ftrace_graph_call,
-				     ftrace_graph_caller,
+	ret = __ftrace_modify_caller(&ftrace_graph_call,     /*要修改的代码地址*/
+				     ftrace_graph_caller,                /*要修改成的函数*/
 				     enable);
 
 #ifdef CONFIG_OLD_MCOUNT

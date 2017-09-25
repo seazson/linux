@@ -302,7 +302,7 @@ EXPORT_SYMBOL_GPL(ring_buffer_event_length);
 
 /* inline for ring buffer fast paths */
 static void *
-rb_event_data(struct ring_buffer_event *event)
+rb_event_data(struct ring_buffer_event *event)   /*返回条目中的数据区域*/
 {
 	if (event->type_len == RINGBUF_TYPE_TIME_EXTEND)
 		event = skip_time_extend(event);
@@ -337,8 +337,8 @@ EXPORT_SYMBOL_GPL(ring_buffer_event_data);
 #define RB_MISSED_STORED	(1 << 30)
 
 struct buffer_data_page {
-	u64		 time_stamp;	/* page time stamp */
-	local_t		 commit;	/* write committed index */
+	u64		 time_stamp;	/* page time stamp */ /*此page被第一次写的时候会更新*/
+	local_t		 commit;	/* write committed index */ /*page中已经写入数据的长度*/
 	unsigned char	 data[] RB_ALIGN_DATA;	/* data of buffer page */
 };
 
@@ -352,8 +352,8 @@ struct buffer_data_page {
  */
 struct buffer_page {
 	struct list_head list;		/* list of buffer pages */
-	local_t		 write;		/* index for next write */
-	unsigned	 read;		/* index for next read */
+	local_t		 write;		/* index for next write */ /*指向下一次在page中写的位置*/
+	unsigned	 read;		/* index for next read */  /*指向当前在page中读的位置*/
 	local_t		 entries;	/* entries on this page */
 	unsigned long	 real_end;	/* real end of data */
 	struct buffer_data_page *page;	/* Actual data page */
@@ -457,9 +457,9 @@ struct rb_irq_work {
  * head_page == tail_page && head == tail then buffer is empty.
  */
 struct ring_buffer_per_cpu {
-	int				cpu;
-	atomic_t			record_disabled;
-	struct ring_buffer		*buffer;
+	int				cpu;                /*所属cpu*/
+	atomic_t			record_disabled; /*cpu级别的关闭记录*/
+	struct ring_buffer		*buffer;    /*指向所属rb*/
 	raw_spinlock_t			reader_lock;	/* serialize readers */
 	arch_spinlock_t			lock;
 	struct lock_class_key		lock_key;
@@ -471,7 +471,7 @@ struct ring_buffer_per_cpu {
 	struct buffer_page		*reader_page;
 	unsigned long			lost_events;
 	unsigned long			last_overrun;
-	local_t				entries_bytes;
+	local_t				entries_bytes;   /*所有在使用中的项目的长度*/
 	local_t				entries;
 	local_t				overrun;
 	local_t				commit_overrun;
@@ -480,21 +480,21 @@ struct ring_buffer_per_cpu {
 	local_t				commits;
 	unsigned long			read;
 	unsigned long			read_bytes;
-	u64				write_stamp;
+	u64				write_stamp;        /*上一次写的时间戳*/
 	u64				read_stamp;
 	/* ring buffer pages to update, > 0 to add, < 0 to remove */
 	int				nr_pages_to_update;
 	struct list_head		new_pages; /* new pages to add */
-	struct work_struct		update_pages_work;
+	struct work_struct		update_pages_work;    /*update_pages_handler*/
 	struct completion		update_done;
 
-	struct rb_irq_work		irq_work;
+	struct rb_irq_work		irq_work;   /*rb_wake_up_waiters*/
 };
 
 struct ring_buffer {
-	unsigned			flags;
-	int				cpus;
-	atomic_t			record_disabled;
+	unsigned			flags;      /*表示满的时候是否需要覆盖写*/
+	int				cpus;           /*共有多少个cpu*/
+	atomic_t			record_disabled;   /*关闭记录功能*/
 	atomic_t			resize_disabled;
 	cpumask_var_t			cpumask;
 
@@ -507,15 +507,15 @@ struct ring_buffer {
 #ifdef CONFIG_HOTPLUG_CPU
 	struct notifier_block		cpu_notify;
 #endif
-	u64				(*clock)(void);
+	u64				(*clock)(void);    /*获取时间戳函数trace_clock_local*/
 
-	struct rb_irq_work		irq_work;
+	struct rb_irq_work		irq_work;  /*rb_wake_up_waiters*/
 };
 
 struct ring_buffer_iter {
 	struct ring_buffer_per_cpu	*cpu_buffer;
-	unsigned long			head;
-	struct buffer_page		*head_page;
+	unsigned long			head;     /*当前读的位置*/
+	struct buffer_page		*head_page;  /*当前读的页*/
 	struct buffer_page		*cache_reader_page;
 	unsigned long			cache_read;
 	u64				read_stamp;
@@ -1195,14 +1195,14 @@ rb_allocate_cpu_buffer(struct ring_buffer *buffer, int nr_pages, int cpu)
 	init_waitqueue_head(&cpu_buffer->irq_work.waiters);
 
 	bpage = kzalloc_node(ALIGN(sizeof(*bpage), cache_line_size()),
-			    GFP_KERNEL, cpu_to_node(cpu));
+			    GFP_KERNEL, cpu_to_node(cpu));    /*为reader分配一个结构*/
 	if (!bpage)
 		goto fail_free_buffer;
 
 	rb_check_bpage(cpu_buffer, bpage);
 
 	cpu_buffer->reader_page = bpage;
-	page = alloc_pages_node(cpu_to_node(cpu), GFP_KERNEL, 0);
+	page = alloc_pages_node(cpu_to_node(cpu), GFP_KERNEL, 0);  /*为reader单独分配一个page*/
 	if (!page)
 		goto fail_free_reader;
 	bpage->page = page_address(page);
@@ -1211,7 +1211,7 @@ rb_allocate_cpu_buffer(struct ring_buffer *buffer, int nr_pages, int cpu)
 	INIT_LIST_HEAD(&cpu_buffer->reader_page->list);
 	INIT_LIST_HEAD(&cpu_buffer->new_pages);
 
-	ret = rb_allocate_pages(cpu_buffer, nr_pages);
+	ret = rb_allocate_pages(cpu_buffer, nr_pages);   /*分配ring_buffer空间*/
 	if (ret < 0)
 		goto fail_free_reader;
 
@@ -1219,7 +1219,7 @@ rb_allocate_cpu_buffer(struct ring_buffer *buffer, int nr_pages, int cpu)
 		= list_entry(cpu_buffer->pages, struct buffer_page, list);
 	cpu_buffer->tail_page = cpu_buffer->commit_page = cpu_buffer->head_page;
 
-	rb_head_page_activate(cpu_buffer);
+	rb_head_page_activate(cpu_buffer);   /*设置指向头的那个page为H状态*/
 
 	return cpu_buffer;
 
@@ -1283,7 +1283,7 @@ struct ring_buffer *__ring_buffer_alloc(unsigned long size, unsigned flags,
 	if (!alloc_cpumask_var(&buffer->cpumask, GFP_KERNEL))
 		goto fail_free_buffer;
 
-	nr_pages = DIV_ROUND_UP(size, BUF_PAGE_SIZE);
+	nr_pages = DIV_ROUND_UP(size, BUF_PAGE_SIZE);    /*计算总共需要多少页，每个页都有一个头*/
 	buffer->flags = flags;
 	buffer->clock = trace_clock_local;
 	buffer->reader_lock_key = key;
@@ -1316,7 +1316,7 @@ struct ring_buffer *__ring_buffer_alloc(unsigned long size, unsigned flags,
 
 	for_each_buffer_cpu(buffer, cpu) {
 		buffer->buffers[cpu] =
-			rb_allocate_cpu_buffer(buffer, nr_pages, cpu);
+			rb_allocate_cpu_buffer(buffer, nr_pages, cpu);    /*为每个cpu都分配同样大小的页空间*/
 		if (!buffer->buffers[cpu])
 			goto fail_free_buffers;
 	}
@@ -2376,7 +2376,7 @@ rb_move_tail(struct ring_buffer_per_cpu *cpu_buffer,
 static struct ring_buffer_event *
 __rb_reserve_next(struct ring_buffer_per_cpu *cpu_buffer,
 		  unsigned long length, u64 ts,
-		  u64 delta, int add_timestamp)
+		  u64 delta, int add_timestamp)  /*add_timestamp表示是否要在信息中加入时间戳*/
 {
 	struct buffer_page *tail_page;
 	struct ring_buffer_event *event;
@@ -2398,7 +2398,7 @@ __rb_reserve_next(struct ring_buffer_per_cpu *cpu_buffer,
 	tail = write - length;
 
 	/* See if we shot pass the end of this buffer page */
-	if (unlikely(write > BUF_PAGE_SIZE))
+	if (unlikely(write > BUF_PAGE_SIZE))   /*要写的内容超过了一页*/
 		return rb_move_tail(cpu_buffer, length, tail,
 				    tail_page, ts);
 
@@ -2406,7 +2406,7 @@ __rb_reserve_next(struct ring_buffer_per_cpu *cpu_buffer,
 
 	event = __rb_page_index(tail_page, tail);
 	kmemcheck_annotate_bitfield(event, bitfield);
-	rb_update_event(cpu_buffer, event, length, add_timestamp, delta);
+	rb_update_event(cpu_buffer, event, length, add_timestamp, delta);  /*设置条目的时间戳和长度*/
 
 	local_inc(&tail_page->entries);
 
@@ -2500,7 +2500,7 @@ static inline void rb_end_commit(struct ring_buffer_per_cpu *cpu_buffer)
 		goto again;
 	}
 }
-
+/*获取一个空闲的条目*/
 static struct ring_buffer_event *
 rb_reserve_next_event(struct ring_buffer *buffer,
 		      struct ring_buffer_per_cpu *cpu_buffer,
@@ -2529,7 +2529,7 @@ rb_reserve_next_event(struct ring_buffer *buffer,
 	}
 #endif
 
-	length = rb_calculate_event_length(length);
+	length = rb_calculate_event_length(length);   /*计算实际需要的长度，包括头*/
  again:
 	add_timestamp = 0;
 	delta = 0;
@@ -2555,7 +2555,7 @@ rb_reserve_next_event(struct ring_buffer *buffer,
 	/* Did the write stamp get updated already? */
 	if (likely(ts >= cpu_buffer->write_stamp)) {
 		delta = diff;
-		if (unlikely(test_time_stamp(delta))) {
+		if (unlikely(test_time_stamp(delta))) {  /*表示时间间隔太长*/
 			int local_clock_stable = 1;
 #ifdef CONFIG_HAVE_UNSTABLE_SCHED_CLOCK
 			local_clock_stable = sched_clock_stable;
@@ -2683,7 +2683,7 @@ static __always_inline void trace_recursive_unlock(void)
  *
  * Must be paired with ring_buffer_unlock_commit, unless NULL is returned.
  * If NULL is returned, then nothing has been allocated or locked.
- */
+ */ /*获取一段可用的数据空间。length只是数据的长度，不包括event头*/
 struct ring_buffer_event *
 ring_buffer_lock_reserve(struct ring_buffer *buffer, unsigned long length)
 {
@@ -2700,7 +2700,7 @@ ring_buffer_lock_reserve(struct ring_buffer *buffer, unsigned long length)
 	if (atomic_read(&buffer->record_disabled))
 		goto out_nocheck;
 
-	if (trace_recursive_lock())
+	if (trace_recursive_lock())  /*检查是否存在同级嵌套的情况(中断对中断，普通对普通)*/
 		goto out_nocheck;
 
 	cpu = raw_smp_processor_id();
@@ -3342,13 +3342,13 @@ unsigned long ring_buffer_overruns(struct ring_buffer *buffer)
 	return overruns;
 }
 EXPORT_SYMBOL_GPL(ring_buffer_overruns);
-
+/*设置iter中的读取的变量，指向正确的page和page中的偏移*/
 static void rb_iter_reset(struct ring_buffer_iter *iter)
 {
 	struct ring_buffer_per_cpu *cpu_buffer = iter->cpu_buffer;
 
 	/* Iterator usage is expected to have record disabled */
-	if (list_empty(&cpu_buffer->reader_page->list)) {
+	if (list_empty(&cpu_buffer->reader_page->list)) {  /*第一次读*/
 		iter->head_page = rb_set_head_page(cpu_buffer);
 		if (unlikely(!iter->head_page))
 			return;
@@ -3766,12 +3766,12 @@ rb_iter_peek(struct ring_buffer_iter *iter, u64 *ts)
 	if (rb_per_cpu_empty(cpu_buffer))
 		return NULL;
 
-	if (iter->head >= local_read(&iter->head_page->page->commit)) {
+	if (iter->head >= local_read(&iter->head_page->page->commit)) { /*要读的数据已经超过page实际写入的数据*/
 		rb_inc_iter(iter);
 		goto again;
 	}
 
-	event = rb_iter_head_event(iter);
+	event = rb_iter_head_event(iter);   /*取出一个条目*/
 
 	switch (event->type_len) {
 	case RINGBUF_TYPE_PADDING:
@@ -3870,7 +3870,7 @@ ring_buffer_peek(struct ring_buffer *buffer, int cpu, u64 *ts,
  *
  * This will return the event that will be read next, but does
  * not increment the iterator.
- */
+ */ /*寻找下一个要读的条目*/
 struct ring_buffer_event *
 ring_buffer_iter_peek(struct ring_buffer_iter *iter, u64 *ts)
 {
@@ -3962,7 +3962,7 @@ EXPORT_SYMBOL_GPL(ring_buffer_consume);
  * for real.
  *
  * This overall must be paired with ring_buffer_read_finish.
- */
+ */ /*分配iter，并关联到实际cpu_buffer上*/
 struct ring_buffer_iter *
 ring_buffer_read_prepare(struct ring_buffer *buffer, int cpu)
 {
@@ -4011,7 +4011,7 @@ EXPORT_SYMBOL_GPL(ring_buffer_read_prepare_sync);
  * performed.
  *
  * Must be paired with ring_buffer_read_finish.
- */
+ */ /*设置iter指向读取数据的位置*/
 void
 ring_buffer_read_start(struct ring_buffer_iter *iter)
 {
@@ -4076,14 +4076,14 @@ ring_buffer_read(struct ring_buffer_iter *iter, u64 *ts)
 
 	raw_spin_lock_irqsave(&cpu_buffer->reader_lock, flags);
  again:
-	event = rb_iter_peek(iter, ts);
+	event = rb_iter_peek(iter, ts);   /*读取一个条目，并没有移动head指针*/
 	if (!event)
 		goto out;
 
 	if (event->type_len == RINGBUF_TYPE_PADDING)
 		goto again;
 
-	rb_advance_iter(iter);
+	rb_advance_iter(iter);  /*移向下一个条目*/
  out:
 	raw_spin_unlock_irqrestore(&cpu_buffer->reader_lock, flags);
 
@@ -4178,7 +4178,7 @@ void ring_buffer_reset_cpu(struct ring_buffer *buffer, int cpu)
 
 	arch_spin_lock(&cpu_buffer->lock);
 
-	rb_reset_cpu(cpu_buffer);
+	rb_reset_cpu(cpu_buffer);     /*重置buffer中的数据*/
 
 	arch_spin_unlock(&cpu_buffer->lock);
 

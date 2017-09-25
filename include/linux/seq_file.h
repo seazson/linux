@@ -16,11 +16,11 @@ struct dentry;
 struct user_namespace;
 
 struct seq_file {
-	char *buf;
-	size_t size;
-	size_t from;
-	size_t count;
-	loff_t index;
+	char *buf;      /*用于传输到用户空间的数据*/
+	size_t size;    /*缓冲区的总大小*/
+	size_t from;    /*复制操作的起始位置*/
+	size_t count;   /*需要传输给用户空间剩余的字节数*/
+	loff_t index;   /*内核向缓冲区写入的地址*/
 	loff_t read_pos;
 	u64 version;
 	struct mutex lock;

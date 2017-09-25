@@ -67,12 +67,12 @@ struct trace_entry {
  */
 struct trace_iterator {
 	struct trace_array	*tr;
-	struct tracer		*trace;
+	struct tracer		*trace;            /*会复制当前在使用的tracer，防止锁的竞争*/
 	struct trace_buffer	*trace_buffer;
 	void			*private;
 	int			cpu_file;
 	struct mutex		mutex;
-	struct ring_buffer_iter	**buffer_iter;
+	struct ring_buffer_iter	**buffer_iter;   /*每个cpu上会分配一个*/
 	unsigned long		iter_flags;
 
 	/* trace_seq for __print_flags() and __print_symbolic() etc. */
@@ -84,7 +84,7 @@ struct trace_iterator {
 	bool			snapshot;
 
 	/* The below is zeroed out in pipe_read */
-	struct trace_seq	seq;
+	struct trace_seq	seq;           /*打印信息会缓存到这里*/
 	struct trace_entry	*ent;
 	unsigned long		lost_events;
 	int			leftover;
@@ -114,7 +114,7 @@ struct trace_event_functions {
 	trace_print_func	hex;
 	trace_print_func	binary;
 };
-
+/*用来控制格式化打印的结构*/
 struct trace_event {
 	struct hlist_node		node;
 	struct list_head		list;
@@ -180,7 +180,7 @@ enum trace_reg {
 struct ftrace_event_call;
 
 struct ftrace_event_class {
-	char			*system;
+	char			*system;   /*class的名称*/
 	void			*probe;
 #ifdef CONFIG_PERF_EVENTS
 	void			*perf_probe;
@@ -224,10 +224,10 @@ enum {
 
 struct ftrace_event_call {
 	struct list_head	list;
-	struct ftrace_event_class *class;
-	char			*name;
-	struct trace_event	event;
-	const char		*print_fmt;
+	struct ftrace_event_class *class;  /*事件所属的类别*/
+	char			*name;       /*事件的名称*/
+	struct trace_event	event;   /*控制打印的结构*/
+	const char		*print_fmt;  /*打印格式信息*/
 	struct event_filter	*filter;
 	struct list_head	*files;
 	void			*mod;
@@ -275,9 +275,9 @@ enum {
 struct ftrace_event_file {
 	struct list_head		list;
 	struct ftrace_event_call	*event_call;
-	struct dentry			*dir;
+	struct dentry			*dir;      /*event在哪个目录下*/
 	struct trace_array		*tr;
-	struct ftrace_subsystem_dir	*system;
+	struct ftrace_subsystem_dir	*system;  /*event属于哪个子系统*/
 
 	/*
 	 * 32 bit flags:

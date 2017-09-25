@@ -79,7 +79,7 @@ function_trace_call(unsigned long ip, unsigned long parent_ip,
 	data = per_cpu_ptr(tr->trace_buffer.data, cpu);
 	if (!atomic_read(&data->disabled)) {
 		local_save_flags(flags);
-		trace_function(tr, ip, parent_ip, flags, pc);
+		trace_function(tr, ip, parent_ip, flags, pc);  /*写入函数跟踪信息*/
 	}
 	trace_clear_recursion(bit);
 
@@ -160,7 +160,7 @@ static void tracing_start_function_trace(void)
 	if (func_flags.val & TRACE_FUNC_OPT_STACK)
 		register_ftrace_function(&trace_stack_ops);
 	else
-		register_ftrace_function(&trace_ops);
+		register_ftrace_function(&trace_ops);  /*注册写入函数*/
 
 	ftrace_function_enabled = 1;
 }

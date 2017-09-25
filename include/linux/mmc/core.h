@@ -21,8 +21,8 @@ struct mmc_command {
 #define MMC_CMD23_ARG_REL_WR	(1 << 31)
 #define MMC_CMD23_ARG_PACKED	((0 << 31) | (1 << 30))
 #define MMC_CMD23_ARG_TAG_REQ	(1 << 29)
-	u32			resp[4];
-	unsigned int		flags;		/* expected response type */
+	u32			resp[4];            /*收到的应答*/
+	unsigned int		flags;		/* expected response type 期望收到的应答类型*/
 #define MMC_RSP_PRESENT	(1 << 0)
 #define MMC_RSP_136	(1 << 1)		/* 136 bit response */
 #define MMC_RSP_CRC	(1 << 2)		/* expect valid crc */
@@ -109,7 +109,7 @@ struct mmc_data {
 	unsigned int		blksz;		/* data block size */
 	unsigned int		blocks;		/* number of blocks */
 	unsigned int		error;		/* data error */
-	unsigned int		flags;
+	unsigned int		flags;      /*指明传输的方向*/
 
 #define MMC_DATA_WRITE	(1 << 8)
 #define MMC_DATA_READ	(1 << 9)
@@ -121,7 +121,7 @@ struct mmc_data {
 	struct mmc_request	*mrq;		/* associated request */
 
 	unsigned int		sg_len;		/* size of scatter list */
-	struct scatterlist	*sg;		/* I/O scatter list */
+	struct scatterlist	*sg;		/* I/O scatter list 需要传输的数据*/
 	s32			host_cookie;	/* host private data */
 };
 

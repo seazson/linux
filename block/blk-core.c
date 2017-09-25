@@ -1802,7 +1802,7 @@ void generic_make_request(struct bio *bio)
 	 * task or not.  If it is NULL, then no make_request is active.  If
 	 * it is non-NULL, then a make_request is active, and new requests
 	 * should be added at the tail
-	 */ /*用于检测是否已经有bio在list上了，防止递归调用*/
+	 */ /*用于检测是否已经有bio在当前进程的list上了，防止递归调用*/
 	if (current->bio_list) {  /*先添加到当前进程的bio_list中*/
 		bio_list_add(current->bio_list, bio);
 		return;

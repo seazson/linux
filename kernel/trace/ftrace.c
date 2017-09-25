@@ -250,7 +250,7 @@ static void update_global_ops(void)
 	 * registered callers.
 	 */
 	if (ftrace_global_list == &ftrace_list_end ||
-	    ftrace_global_list->next == &ftrace_list_end) {
+	    ftrace_global_list->next == &ftrace_list_end) {/*直挂接了一个处理函数的情况*/
 		func = ftrace_global_list->func;
 		/*
 		 * As we are calling the function directly.
@@ -262,7 +262,7 @@ static void update_global_ops(void)
 			global_ops.flags |= FTRACE_OPS_FL_RECURSION_SAFE;
 		else
 			global_ops.flags &= ~FTRACE_OPS_FL_RECURSION_SAFE;
-	} else {
+	} else { /*挂接多个处理函数需要处理递归调用*/
 		func = ftrace_global_list_func;
 		/* The list has its own recursion protection. */
 		global_ops.flags |= FTRACE_OPS_FL_RECURSION_SAFE;
@@ -270,12 +270,12 @@ static void update_global_ops(void)
 
 
 	/* If we filter on pids, update to use the pid function */
-	if (!list_empty(&ftrace_pids)) {
+	if (!list_empty(&ftrace_pids)) { /*如果指定了pid需要使用不同的处理函数*/
 		set_ftrace_pid_function(func);
 		func = ftrace_pid_func;
 	}
 
-	global_ops.func = func;
+	global_ops.func = func;    /*替换全局的执行函数*/
 }
 
 static void update_ftrace_function(void)
@@ -303,10 +303,10 @@ static void update_ftrace_function(void)
 	} else {
 		/* Just use the default ftrace_ops */
 		function_trace_op = &ftrace_list_end;
-		func = ftrace_ops_list_func;
+		func = ftrace_ops_list_func;  /*遍历执行ftrace_ops_list上的所有函数*/
 	}
 
-	ftrace_trace_function = func;
+	ftrace_trace_function = func;  /*修改桩函数*/
 }
 
 static void add_ftrace_ops(struct ftrace_ops **list, struct ftrace_ops *ops)
@@ -398,7 +398,7 @@ static int __register_ftrace_function(struct ftrace_ops *ops)
 		ops->flags |= FTRACE_OPS_FL_DYNAMIC;
 
 	if (ops->flags & FTRACE_OPS_FL_GLOBAL) {
-		add_ftrace_list_ops(&ftrace_global_list, &global_ops, ops);
+		add_ftrace_list_ops(&ftrace_global_list, &global_ops, ops);   /*添加到ops链表中*/
 		ops->flags |= FTRACE_OPS_FL_ENABLED;
 	} else if (ops->flags & FTRACE_OPS_FL_CONTROL) {
 		if (control_ops_alloc(ops))
@@ -408,7 +408,7 @@ static int __register_ftrace_function(struct ftrace_ops *ops)
 		add_ftrace_ops(&ftrace_ops_list, ops);
 
 	if (ftrace_enabled)
-		update_ftrace_function();
+		update_ftrace_function();   /*修改桩函数*/
 
 	return 0;
 }
@@ -980,7 +980,7 @@ ftrace_profile_write(struct file *filp, const char __user *ubuf,
 	mutex_lock(&ftrace_profile_lock);
 	if (ftrace_profile_enabled ^ val) {
 		if (val) {
-			ret = ftrace_profile_init();
+			ret = ftrace_profile_init();   /*分配空间*/
 			if (ret < 0) {
 				cnt = ret;
 				goto out;
@@ -1124,9 +1124,9 @@ struct ftrace_func_entry {
 };
 
 struct ftrace_hash {
-	unsigned long		size_bits;
+	unsigned long		size_bits; /*hash表的表宽*/
 	struct hlist_head	*buckets;
-	unsigned long		count;
+	unsigned long		count;   /*hash表中共有多少个entry*/
 	struct rcu_head		rcu;
 };
 
@@ -1152,9 +1152,9 @@ static struct ftrace_ops global_ops = {
 
 struct ftrace_page {
 	struct ftrace_page	*next;
-	struct dyn_ftrace	*records;
-	int			index;
-	int			size;
+	struct dyn_ftrace	*records; /*指向一个页或者多个连续的页*/
+	int			index;    /*遍历时的临时指针*/
+	int			size;  /*表示连续的page总共有多少个记录*/
 };
 
 static struct ftrace_page *ftrace_new_pgs;
@@ -1165,8 +1165,8 @@ static struct ftrace_page *ftrace_new_pgs;
 /* estimate from running different kernels */
 #define NR_TO_INIT		10000
 
-static struct ftrace_page	*ftrace_pages_start;
-static struct ftrace_page	*ftrace_pages;
+static struct ftrace_page	*ftrace_pages_start; /*指向开头*/
+static struct ftrace_page	*ftrace_pages;   /*指向末尾*/
 
 static bool ftrace_hash_empty(struct ftrace_hash *hash)
 {
@@ -1474,7 +1474,7 @@ ftrace_ops_test(struct ftrace_ops *ops, unsigned long ip, void *regs)
 /*
  * This is a double for. Do not use 'break' to break out of the loop,
  * you must use a goto.
- */
+ */ /*遍历全局的pg数据*/
 #define do_for_each_ftrace_rec(pg, rec)					\
 	for (pg = ftrace_pages_start; pg; pg = pg->next) {		\
 		int _____i;						\
@@ -1723,7 +1723,7 @@ static int ftrace_check_record(struct dyn_ftrace *rec, int enable, int update)
 	 *
 	 * If we are disabling calls, then disable all records that
 	 * are enabled.
-	 */
+	 */ /*flag中的引用计数大于0，说明需要使能这个函数*/
 	if (enable && (rec->flags & ~FTRACE_FL_MASK))
 		flag = FTRACE_FL_ENABLED;
 
@@ -1818,7 +1818,7 @@ __ftrace_replace_code(struct dyn_ftrace *rec, int enable)
 	unsigned long ftrace_addr;
 	int ret;
 
-	ret = ftrace_update_record(rec, enable);
+	ret = ftrace_update_record(rec, enable);  /*判断要如何对这个函数进行修改*/
 
 	if (rec->flags & FTRACE_FL_REGS)
 		ftrace_addr = (unsigned long)FTRACE_REGS_ADDR;
@@ -1986,7 +1986,7 @@ void ftrace_modify_all_code(int command)
 	if (command & FTRACE_UPDATE_TRACE_FUNC)
 		ftrace_update_ftrace_func(ftrace_trace_function);
 
-	if (command & FTRACE_START_FUNC_RET)
+	if (command & FTRACE_START_FUNC_RET)   /*图形化跟踪时会调用*/
 		ftrace_enable_ftrace_graph_caller();
 	else if (command & FTRACE_STOP_FUNC_RET)
 		ftrace_disable_ftrace_graph_caller();
@@ -2029,7 +2029,7 @@ static void ftrace_run_update_code(int command)
 {
 	int ret;
 
-	ret = ftrace_arch_code_modify_prepare();
+	ret = ftrace_arch_code_modify_prepare();  /*修改内核代码段可读写*/
 	FTRACE_WARN_ON(ret);
 	if (ret)
 		return;
@@ -2389,7 +2389,7 @@ ftrace_allocate_pages(unsigned long num_to_init)
 	pr_info("ftrace: FAILED to allocate memory for functions\n");
 	return NULL;
 }
-
+/*计算存储所有条目需要多少页*/
 static int __init ftrace_dyn_table_alloc(unsigned long num_to_init)
 {
 	int cnt;
@@ -2409,12 +2409,12 @@ static int __init ftrace_dyn_table_alloc(unsigned long num_to_init)
 #define FTRACE_BUFF_MAX (KSYM_SYMBOL_LEN+4) /* room for wildcards */
 
 struct ftrace_iterator {
-	loff_t				pos;
+	loff_t				pos;   /*遍历时当前所指向的位置*/
 	loff_t				func_pos;
 	struct ftrace_page		*pg;
 	struct dyn_ftrace		*func;
 	struct ftrace_func_probe	*probe;
-	struct trace_parser		parser;
+	struct trace_parser		parser;   /*解析器*/
 	struct ftrace_hash		*hash;
 	struct ftrace_ops		*ops;
 	int				hidx;
@@ -2739,7 +2739,7 @@ ftrace_regex_open(struct ftrace_ops *ops, int flag,
 	if (!iter)
 		return -ENOMEM;
 
-	if (trace_parser_get_init(&iter->parser, FTRACE_BUFF_MAX)) {
+	if (trace_parser_get_init(&iter->parser, FTRACE_BUFF_MAX)) { /*为解析器分配空间*/
 		kfree(iter);
 		return -ENOMEM;
 	}
@@ -2839,7 +2839,7 @@ enter_record(struct ftrace_hash *hash, struct dyn_ftrace *rec, int not)
 	struct ftrace_func_entry *entry;
 	int ret = 0;
 
-	entry = ftrace_lookup_ip(hash, rec->ip);
+	entry = ftrace_lookup_ip(hash, rec->ip);  /*查找是否已经存在了*/
 	if (not) {
 		/* Do nothing if it doesn't exist */
 		if (!entry)
@@ -2851,7 +2851,7 @@ enter_record(struct ftrace_hash *hash, struct dyn_ftrace *rec, int not)
 		if (entry)
 			return 0;
 
-		ret = add_hash_entry(hash, rec->ip);
+		ret = add_hash_entry(hash, rec->ip);  /*添加到hash表中*/
 	}
 	return ret;
 }
@@ -2863,7 +2863,7 @@ ftrace_match_record(struct dyn_ftrace *rec, char *mod,
 	char str[KSYM_SYMBOL_LEN];
 	char *modname;
 
-	kallsyms_lookup(rec->ip, NULL, NULL, &modname, str);
+	kallsyms_lookup(rec->ip, NULL, NULL, &modname, str);  /*根据地址查找对应的函数名存放到str中*/
 
 	if (mod) {
 		/* module lookup requires matching the module */
@@ -2875,7 +2875,7 @@ ftrace_match_record(struct dyn_ftrace *rec, char *mod,
 			return 1;
 	}
 
-	return ftrace_match(str, regex, len, type);
+	return ftrace_match(str, regex, len, type);  /*查找到的函数是否与模式匹配，是的话返回1*/
 }
 
 static int
@@ -2891,7 +2891,7 @@ match_records(struct ftrace_hash *hash, char *buff,
 	int ret;
 
 	if (len) {
-		type = filter_parse_regex(buff, len, &search, &not);
+		type = filter_parse_regex(buff, len, &search, &not);   /*确定通配符的位置，在前还是在后*/
 		search_len = strlen(search);
 	}
 
@@ -2901,8 +2901,8 @@ match_records(struct ftrace_hash *hash, char *buff,
 		goto out_unlock;
 
 	do_for_each_ftrace_rec(pg, rec) {
-		if (ftrace_match_record(rec, mod, search, search_len, type)) {
-			ret = enter_record(hash, rec, not);
+		if (ftrace_match_record(rec, mod, search, search_len, type)) {  /*查找所有函数，找出与写于模式匹配的函数*/
+			ret = enter_record(hash, rec, not);  /*添加到hash表中*/
 			if (ret < 0) {
 				found = ret;
 				goto out_unlock;
@@ -3291,7 +3291,7 @@ void unregister_ftrace_function_probe_all(char *glob)
 
 static LIST_HEAD(ftrace_commands);
 static DEFINE_MUTEX(ftrace_cmd_mutex);
-
+/*注册ftrace的命令。命令指的是用于设置filer的，func:cmd:param，目前有mod，dump，traceon/off等*/
 int register_ftrace_command(struct ftrace_func_command *cmd)
 {
 	struct ftrace_func_command *p;
@@ -3337,10 +3337,10 @@ static int ftrace_process_regex(struct ftrace_hash *hash,
 	struct ftrace_func_command *p;
 	int ret = -EINVAL;
 
-	func = strsep(&next, ":");
+	func = strsep(&next, ":");    /*获取函数名*/
 
-	if (!next) {
-		ret = ftrace_match_records(hash, func, len);
+	if (!next) {  /*如果参数不带命令，只解析函数名*/
+		ret = ftrace_match_records(hash, func, len);  /*遍历所有的函数，将符合func模式的存入hash表中*/
 		if (!ret)
 			ret = -EINVAL;
 		if (ret < 0)
@@ -3350,7 +3350,7 @@ static int ftrace_process_regex(struct ftrace_hash *hash,
 
 	/* command found */
 
-	command = strsep(&next, ":");
+	command = strsep(&next, ":"); /*解析命令，如果有的话*/
 
 	mutex_lock(&ftrace_cmd_mutex);
 	list_for_each_entry(p, &ftrace_commands, list) {
@@ -3393,8 +3393,8 @@ ftrace_regex_write(struct file *file, const char __user *ubuf,
 	if (read >= 0 && trace_parser_loaded(parser) &&
 	    !trace_parser_cont(parser)) {
 		ret = ftrace_process_regex(iter->hash, parser->buffer,
-					   parser->idx, enable);
-		trace_parser_clear(parser);
+					   parser->idx, enable);  /*查找匹配的函数，存放到hash表中*/
+		trace_parser_clear(parser);   /*对一行分析完成之后清除parser*/
 		if (ret < 0)
 			goto out;
 	}
@@ -3712,9 +3712,9 @@ int ftrace_regex_release(struct inode *inode, struct file *file)
 
 		mutex_lock(&ftrace_lock);
 		ret = ftrace_hash_move(iter->ops, filter_hash,
-				       orig_hash, iter->hash);
+				       orig_hash, iter->hash);  /*将iter数据拷贝给opts*/
 		if (!ret)
-			ftrace_ops_update_code(iter->ops);
+			ftrace_ops_update_code(iter->ops);  /*更新的关键代码*/
 
 		mutex_unlock(&ftrace_lock);
 	}
@@ -4029,9 +4029,9 @@ static int ftrace_process_locs(struct module *mod,
 		return 0;
 
 	sort(start, count, sizeof(*start),
-	     ftrace_cmp_ips, ftrace_swap_ips);
+	     ftrace_cmp_ips, ftrace_swap_ips); /*将函数地址按照从小到大排序*/
 
-	start_pg = ftrace_allocate_pages(count);
+	start_pg = ftrace_allocate_pages(count); /*分配ftrace_page，并分配page用来存放dyn_ftrace*/
 	if (!start_pg)
 		return -ENOMEM;
 
@@ -4061,7 +4061,7 @@ static int ftrace_process_locs(struct module *mod,
 
 	p = start;
 	pg = start_pg;
-	while (p < end) {
+	while (p < end) {     /*设置每个dyn_ftrace中的地址*/
 		addr = ftrace_call_adjust(*p++);
 		/*
 		 * Some architecture linkers will pad between
@@ -4102,7 +4102,7 @@ static int ftrace_process_locs(struct module *mod,
 	 */
 	if (!mod)
 		local_irq_save(flags);
-	ftrace_update_code(mod);
+	ftrace_update_code(mod);    /*遍历每个记录，如果使能的话就替换函数*/
 	if (!mod)
 		local_irq_restore(flags);
 	ret = 0;
@@ -4220,7 +4220,7 @@ void __init ftrace_init(void)
 	int ret;
 
 	/* Keep the ftrace pointer to the stub */
-	addr = (unsigned long)ftrace_stub;
+	addr = (unsigned long)ftrace_stub;   /*用汇编实现的简单的return操作*/
 
 	local_irq_save(flags);
 	ftrace_dyn_arch_init(&addr);
@@ -4240,7 +4240,7 @@ void __init ftrace_init(void)
 
 	ret = ftrace_process_locs(NULL,
 				  __start_mcount_loc,
-				  __stop_mcount_loc);
+				  __stop_mcount_loc);   /*扫描mcount_loc段*/
 
 	ret = register_module_notifier(&ftrace_module_enter_nb);
 	if (ret)
@@ -4364,7 +4364,7 @@ __ftrace_ops_list_func(unsigned long ip, unsigned long parent_ip,
 #if ARCH_SUPPORTS_FTRACE_OPS
 static void ftrace_ops_list_func(unsigned long ip, unsigned long parent_ip,
 				 struct ftrace_ops *op, struct pt_regs *regs)
-{
+{/*遍历执行ftrace_ops_list上的所有函数*/
 	__ftrace_ops_list_func(ip, parent_ip, NULL, regs);
 }
 #else
@@ -4471,7 +4471,7 @@ static int ftrace_pid_add(int p)
 	list_add(&fpid->list, &ftrace_pids);
 	fpid->pid = pid;
 
-	set_ftrace_pid_task(pid);
+	set_ftrace_pid_task(pid);   /*设置进程标志*/
 
 	ftrace_update_pid_func();
 	ftrace_startup_enable(0);
@@ -4856,12 +4856,12 @@ static int start_graph_tracing(void)
 		return -ENOMEM;
 
 	/* The cpu_boot init_task->ret_stack will never be freed */
-	for_each_online_cpu(cpu) {
+	for_each_online_cpu(cpu) { /*为idle进程分配返回栈*/
 		if (!idle_task(cpu)->ret_stack)
 			ftrace_graph_init_idle_task(idle_task(cpu), cpu);
 	}
 
-	do {
+	do { /*为32个进程分配返回栈，每个栈深50*/
 		ret = alloc_retstack_tasklist(ret_stack_list);
 	} while (ret == -EAGAIN);
 
@@ -4914,7 +4914,7 @@ int register_ftrace_graph(trace_func_graph_ret_t retfunc,
 	register_pm_notifier(&ftrace_suspend_notifier);
 
 	ftrace_graph_active++;
-	ret = start_graph_tracing();
+	ret = start_graph_tracing();  /*分配回溯栈空间*/
 	if (ret) {
 		ftrace_graph_active--;
 		goto out;
@@ -4923,7 +4923,7 @@ int register_ftrace_graph(trace_func_graph_ret_t retfunc,
 	ftrace_graph_return = retfunc;
 	ftrace_graph_entry = entryfunc;
 
-	ret = ftrace_startup(&global_ops, FTRACE_START_FUNC_RET);
+	ret = ftrace_startup(&global_ops, FTRACE_START_FUNC_RET);  /*修改桩函数指令*/
 
 out:
 	mutex_unlock(&ftrace_lock);

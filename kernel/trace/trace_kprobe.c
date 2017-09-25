@@ -32,12 +32,12 @@ struct trace_probe {
 	struct kretprobe	rp;	/* Use rp.kp for kprobe use */
 	unsigned long 		nhit;
 	unsigned int		flags;	/* For TP_FLAG_* */
-	const char		*symbol;	/* symbol name */
+	const char		*symbol;	/* symbol name 符号名称*/
 	struct ftrace_event_class	class;
 	struct ftrace_event_call	call;
 	struct list_head	files;
 	ssize_t			size;		/* trace entry size */
-	unsigned int		nr_args;
+	unsigned int		nr_args;  /*有多少个变量需要跟踪*/
 	struct probe_arg	args[];
 };
 
@@ -386,7 +386,7 @@ static int register_trace_probe(struct trace_probe *tp)
 	}
 
 	/* Register k*probe */
-	ret = __register_trace_probe(tp);
+	ret = __register_trace_probe(tp);   /*修改要探测的源代码*/
 	if (ret < 0)
 		unregister_probe_event(tp);
 	else
@@ -516,7 +516,7 @@ static int create_trace_probe(int argc, char **argv)
 		pr_info("Probe point is not specified.\n");
 		return -EINVAL;
 	}
-	if (isdigit(argv[1][0])) {
+	if (isdigit(argv[1][0])) {  /*第二个参数是一个地址*/
 		if (is_return) {
 			pr_info("Return probe point must be a symbol.\n");
 			return -EINVAL;
@@ -527,11 +527,11 @@ static int create_trace_probe(int argc, char **argv)
 			pr_info("Failed to parse address.\n");
 			return ret;
 		}
-	} else {
+	} else {  /*第二个参数是符号*/
 		/* a symbol specified */
 		symbol = argv[1];
 		/* TODO: support .init module functions */
-		ret = traceprobe_split_symbol_offset(symbol, &offset);
+		ret = traceprobe_split_symbol_offset(symbol, &offset); /*解析出sym+offset中的偏移到offset里*/
 		if (ret) {
 			pr_info("Failed to parse symbol.\n");
 			return ret;
@@ -555,7 +555,7 @@ static int create_trace_probe(int argc, char **argv)
 		event = buf;
 	}
 	tp = alloc_trace_probe(group, event, addr, symbol, offset, argc,
-			       is_return);
+			       is_return); /*分配一个动态探针*/
 	if (IS_ERR(tp)) {
 		pr_info("Failed to allocate trace_probe.(%d)\n",
 			(int)PTR_ERR(tp));
@@ -564,16 +564,16 @@ static int create_trace_probe(int argc, char **argv)
 
 	/* parse arguments */
 	ret = 0;
-	for (i = 0; i < argc && i < MAX_TRACE_ARGS; i++) {
+	for (i = 0; i < argc && i < MAX_TRACE_ARGS; i++) { /*解析需要跟踪的变量*/
 		/* Increment count for freeing args in error case */
 		tp->nr_args++;
 
 		/* Parse argument name */
 		arg = strchr(argv[i], '=');
-		if (arg) {
+		if (arg) { /*表示有给要跟踪的变量设置名称*/
 			*arg++ = '\0';
 			tp->args[i].name = kstrdup(argv[i], GFP_KERNEL);
-		} else {
+		} else {   /*如果没有设置别名的话默认就是argn*/
 			arg = argv[i];
 			/* If argument name is omitted, set "argN" */
 			snprintf(buf, MAX_EVENT_NAME_LEN, "arg%d", i + 1);
@@ -594,7 +594,7 @@ static int create_trace_probe(int argc, char **argv)
 		}
 
 		if (traceprobe_conflict_field_name(tp->args[i].name,
-							tp->args, i)) {
+							tp->args, i)) {    /*不能跟预留的名称冲突*/
 			pr_info("Argument[%d] name '%s' conflicts with "
 				"another field.\n", i, argv[i]);
 			ret = -EINVAL;
@@ -610,7 +610,7 @@ static int create_trace_probe(int argc, char **argv)
 		}
 	}
 
-	ret = register_trace_probe(tp);
+	ret = register_trace_probe(tp);  /*注册kprobe*/
 	if (ret)
 		goto error;
 	return 0;
@@ -1235,15 +1235,15 @@ static int register_probe_event(struct trace_probe *tp)
 	}
 	if (set_print_fmt(tp) < 0)
 		return -ENOMEM;
-	ret = register_ftrace_event(&call->event);
+	ret = register_ftrace_event(&call->event);   /*注册输出框架*/
 	if (!ret) {
 		kfree(call->print_fmt);
 		return -ENODEV;
 	}
 	call->flags = 0;
-	call->class->reg = kprobe_register;
+	call->class->reg = kprobe_register; /*enable的时候会调用*/
 	call->data = tp;
-	ret = trace_add_event_call(call);
+	ret = trace_add_event_call(call);  /*动态添加event_call，创建目录*/
 	if (ret) {
 		pr_info("Failed to register kprobe event: %s\n", call->name);
 		kfree(call->print_fmt);

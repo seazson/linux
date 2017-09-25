@@ -1004,7 +1004,7 @@ static void __kprobes arm_kprobe(struct kprobe *kp)
 	 * need get_online_cpus().
 	 */
 	mutex_lock(&text_mutex);
-	__arm_kprobe(kp);
+	__arm_kprobe(kp);     /*用特定的指令替代*/
 	mutex_unlock(&text_mutex);
 }
 
@@ -2004,7 +2004,7 @@ int __kprobes enable_kprobe(struct kprobe *kp)
 	mutex_lock(&kprobe_mutex);
 
 	/* Check whether specified probe is valid. */
-	p = __get_valid_kprobe(kp);
+	p = __get_valid_kprobe(kp);   /*kp必须已经在hash表中*/
 	if (unlikely(p == NULL)) {
 		ret = -EINVAL;
 		goto out;

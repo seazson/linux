@@ -98,7 +98,7 @@ enum print_line_t trace_print_printk_msg_only(struct trace_iterator *iter)
  * trace_seq_printf is used to store strings into a special
  * buffer (@s). Then the output may be either used by
  * the sequencer or pulled into another buffer.
- */
+ */ /*打印到trace_seq的缓存中*/
 int
 trace_seq_printf(struct trace_seq *s, const char *fmt, ...)
 {
@@ -793,7 +793,7 @@ struct trace_event *ftrace_find_event(int type)
 	return NULL;
 }
 
-static LIST_HEAD(ftrace_event_list);
+static LIST_HEAD(ftrace_event_list);   /*跟踪已申请的trace_evnet，用来分配type*/
 
 static int trace_search_list(struct list_head **list)
 {
@@ -847,7 +847,7 @@ void trace_event_read_unlock(void)
  * with the dynamic types.
  *
  * Returns the event type number or zero on error.
- */
+ */ /*添加到event_hash中*/
 int register_ftrace_event(struct trace_event *event)
 {
 	unsigned key;
@@ -863,7 +863,7 @@ int register_ftrace_event(struct trace_event *event)
 
 	INIT_LIST_HEAD(&event->list);
 
-	if (!event->type) {
+	if (!event->type) {/*不指定type的话会自动分配一个，tracepoint就是每个一个*/
 		struct list_head *list = NULL;
 
 		if (next_event_type > FTRACE_MAX_EVENT) {
@@ -1434,7 +1434,7 @@ static struct trace_event *events[] __initdata = {
 	&trace_print_event,
 	NULL
 };
-
+/*注册不同类型的事件*/
 __init static int init_events(void)
 {
 	struct trace_event *event;

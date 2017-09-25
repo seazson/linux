@@ -189,7 +189,7 @@ unsigned long ftrace_return_to_handler(unsigned long frame_pointer)
 	struct ftrace_graph_ret trace;
 	unsigned long ret;
 
-	ftrace_pop_return_trace(&trace, &ret, frame_pointer);
+	ftrace_pop_return_trace(&trace, &ret, frame_pointer);  /*出栈*/
 	trace.rettime = trace_clock_local();
 	barrier();
 	current->curr_ret_stack--;
@@ -199,7 +199,7 @@ unsigned long ftrace_return_to_handler(unsigned long frame_pointer)
 	 * in case an interrupt were to come in. We don't want to
 	 * lose the interrupt if max_depth is set.
 	 */
-	ftrace_graph_return(&trace);
+	ftrace_graph_return(&trace);    /*调用注册的函数trace_graph_return或者trace_graph_thresh_return*/
 
 	if (unlikely(!ret)) {
 		ftrace_graph_stop();
@@ -1223,7 +1223,7 @@ print_graph_comment(struct trace_seq *s, struct trace_entry *ent,
 	return TRACE_TYPE_HANDLED;
 }
 
-
+/*打印的关键函数*/
 enum print_line_t
 print_graph_function_flags(struct trace_iterator *iter, u32 flags)
 {
@@ -1522,7 +1522,7 @@ fs_initcall(init_graph_debugfs);
 static __init int init_graph_trace(void)
 {
 	max_bytes_for_cpu = snprintf(NULL, 0, "%d", nr_cpu_ids - 1);
-
+/*注册打印函数*/
 	if (!register_ftrace_event(&graph_trace_entry_event)) {
 		pr_warning("Warning: could not register graph trace events\n");
 		return 1;
@@ -1532,7 +1532,7 @@ static __init int init_graph_trace(void)
 		pr_warning("Warning: could not register graph trace events\n");
 		return 1;
 	}
-
+/*注册tracer*/
 	return register_tracer(&graph_trace);
 }
 

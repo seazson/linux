@@ -66,7 +66,7 @@ typedef void (*ftrace_func_t)(unsigned long ip, unsigned long parent_ip,
  *           is part of the global tracers sharing the same filter
  *           via set_ftrace_* debugfs files.
  * DYNAMIC - set when ftrace_ops is registered to denote dynamically
- *           allocated ftrace_ops which need special care
+ *           allocated ftrace_ops which need special care 不是内核原生的，通过模块方式加入的
  * CONTROL - set manualy by ftrace_ops user to denote the ftrace_ops
  *           could be controled by following calls:
  *             ftrace_function_local_enable
@@ -106,12 +106,12 @@ enum {
 };
 
 struct ftrace_ops {
-	ftrace_func_t			func;
+	ftrace_func_t			func;   /*将数据输出到ring_buffer*/
 	struct ftrace_ops		*next;
 	unsigned long			flags;
 	int __percpu			*disabled;
 #ifdef CONFIG_DYNAMIC_FTRACE
-	struct ftrace_hash		*notrace_hash;
+	struct ftrace_hash		*notrace_hash;   /*用于过滤的hash表*/
 	struct ftrace_hash		*filter_hash;
 	struct mutex			regex_lock;
 #endif
@@ -243,7 +243,7 @@ stack_trace_sysctl(struct ctl_table *table, int write,
 		   void __user *buffer, size_t *lenp,
 		   loff_t *ppos);
 #endif
-
+/*用于解析过滤的命令*/
 struct ftrace_func_command {
 	struct list_head	list;
 	char			*name;
@@ -367,8 +367,8 @@ enum {
 };
 
 enum {
-	FTRACE_ITER_FILTER	= (1 << 0),
-	FTRACE_ITER_NOTRACE	= (1 << 1),
+	FTRACE_ITER_FILTER	= (1 << 0),     /*表明操作的是ops->filter_hash*/
+	FTRACE_ITER_NOTRACE	= (1 << 1),     /*表明操作的是ops->notrace_hash*/
 	FTRACE_ITER_PRINTALL	= (1 << 2),
 	FTRACE_ITER_DO_HASH	= (1 << 3),
 	FTRACE_ITER_HASH	= (1 << 4),
@@ -663,12 +663,12 @@ struct ftrace_graph_ent {
  * Structure that defines a return function trace.
  */
 struct ftrace_graph_ret {
-	unsigned long func; /* Current function */
-	unsigned long long calltime;
-	unsigned long long rettime;
+	unsigned long func; /* Current function */ /*指明是哪个函数*/
+	unsigned long long calltime;  /*调用的时间*/
+	unsigned long long rettime;   /*返回的时间*/
 	/* Number of functions that overran the depth limit for current task */
 	unsigned long overrun;
-	int depth;
+	int depth;   /*调用时嵌套的层次*/
 };
 
 /* Type of the callback handlers for tracing function graph*/
@@ -782,7 +782,7 @@ static inline void unpause_graph_tracing(void) { }
 
 /* flags for current->trace */
 enum {
-	TSK_TRACE_FL_TRACE_BIT	= 0,
+	TSK_TRACE_FL_TRACE_BIT	= 0,      /*表示当前进程是需要被跟踪的，用于pid过滤模式*/
 	TSK_TRACE_FL_GRAPH_BIT	= 1,
 };
 enum {

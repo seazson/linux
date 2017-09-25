@@ -139,10 +139,10 @@ struct trace_array_cpu {
 	atomic_t		disabled;
 	void			*buffer_page;	/* ring buffer spare */
 
-	unsigned long		entries;
-	unsigned long		saved_latency;
-	unsigned long		critical_start;
-	unsigned long		critical_end;
+	unsigned long		entries;    /*每个cpu上的ring_buffer大小，不包括每页的头*/
+	unsigned long		saved_latency; /*最大时延*/
+	unsigned long		critical_start; /*进入临界区的函数地址*/
+	unsigned long		critical_end;   /*出临界区的函数地址*/
 	unsigned long		critical_sequence;
 	unsigned long		nice;
 	unsigned long		policy;
@@ -188,7 +188,7 @@ struct trace_array {
 	struct trace_buffer	max_buffer;
 	bool			allocated_snapshot;
 #endif
-	int			buffer_disabled;
+	int			buffer_disabled;     /*关闭trace*/
 #ifdef CONFIG_FTRACE_SYSCALLS
 	int			sys_refcount_enter;
 	int			sys_refcount_exit;
@@ -197,15 +197,15 @@ struct trace_array {
 #endif
 	int			stop_count;
 	int			clock_id;
-	struct tracer		*current_trace;
+	struct tracer		*current_trace;   /*当前正在使用的tracer*/
 	unsigned int		flags;
 	raw_spinlock_t		start_lock;
-	struct dentry		*dir;
+	struct dentry		*dir;          /*指向tracing目录*/
 	struct dentry		*options;
 	struct dentry		*percpu_dir;
-	struct dentry		*event_dir;
-	struct list_head	systems;
-	struct list_head	events;
+	struct dentry		*event_dir;    /*指向tracing/events目录*/
+	struct list_head	systems;       /*指向所有创建的子系统结构ftrace_subsystem_dir*/
+	struct list_head	events;        /*指向所有注册的ftrace_event_file*/
 	int			ref;
 };
 
@@ -359,7 +359,7 @@ struct tracer {
 	struct tracer		*next;
 	struct tracer_flags	*flags;
 	bool			print_max;
-	bool			enabled;
+	bool			enabled;      /*表明这个tracer是否当前正在使用*/
 #ifdef CONFIG_TRACER_MAX_TRACE
 	bool			use_max_tr;
 #endif
@@ -911,11 +911,11 @@ struct ftrace_event_field {
 };
 
 struct event_filter {
-	int			n_preds;	/* Number assigned */
-	int			a_preds;	/* allocated */
-	struct filter_pred	*preds;
-	struct filter_pred	*root;
-	char			*filter_string;
+	int			n_preds;	/* Number assigned */ /*已经使用的pred个数*/
+	int			a_preds;	/* allocated */ /*总共分配了多少个pred*/
+	struct filter_pred	*preds;   /*preds数组*/
+	struct filter_pred	*root;    /*指向根pred*/
+	char			*filter_string;    /*存放从用户空间传来的过滤参数*/
 };
 
 struct event_subsystem {
@@ -970,14 +970,14 @@ struct regex {
 
 struct filter_pred {
 	filter_pred_fn_t 	fn;
-	u64 			val;
+	u64 			val;         /*变量的值。如果是数字类型的变量*/
 	struct regex		regex;
 	unsigned short		*ops;
 	struct ftrace_event_field *field;
 	int 			offset;
 	int 			not;
-	int 			op;
-	unsigned short		index;
+	int 			op;   /*操作码*/
+	unsigned short		index;   /*pred在filter中的索引*/
 	unsigned short		parent;
 	unsigned short		left;
 	unsigned short		right;
@@ -1017,7 +1017,7 @@ extern int event_trace_add_tracer(struct dentry *parent, struct trace_array *tr)
 extern int event_trace_del_tracer(struct trace_array *tr);
 
 extern struct mutex event_mutex;
-extern struct list_head ftrace_events;
+extern struct list_head ftrace_events;    /*所有静态定义的ftrace_event_call*/
 
 extern const char *__start___trace_bprintk_fmt[];
 extern const char *__stop___trace_bprintk_fmt[];

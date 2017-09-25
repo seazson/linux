@@ -2308,7 +2308,7 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 
 	mmc_send_if_cond(host, host->ocr_avail);
 
-	/* Order's important: probe SDIO, then SD, then MMC */
+	/* Order's important: probe SDIO, then SD, then MMC 尝试三种不同的类型*/
 	if (!mmc_attach_sdio(host))
 		return 0;
 	if (!mmc_attach_sd(host))

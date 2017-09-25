@@ -61,7 +61,7 @@ static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
 struct tracepoint_entry {
 	struct hlist_node hlist;
 	struct tracepoint_func *funcs;
-	int refcount;	/* Number of times armed. 0 if disarmed. */
+	int refcount;	/* Number of times armed. 0 if disarmed. */ /*表示有过个注册的函数在这个tracepoint上*/
 	char name[0];
 };
 
@@ -118,7 +118,7 @@ tracepoint_entry_add_probe(struct tracepoint_entry *entry,
 	debug_print_probes(entry);
 	old = entry->funcs;
 	if (old) {
-		/* (N -> N+1), (N != 0, 1) probes */
+		/* (N -> N+1), (N != 0, 1) probes */ /*查找是否有相同的处理函数在这个tracepoint上*/
 		for (nr_probes = 0; old[nr_probes].func; nr_probes++)
 			if (old[nr_probes].func == probe &&
 			    old[nr_probes].data == data)
@@ -211,7 +211,7 @@ static struct tracepoint_entry *get_tracepoint(const char *name)
 /*
  * Add the tracepoint to the tracepoint hash table. Must be called with
  * tracepoints_mutex held.
- */
+ */ /*查找是否存在相同名称的tracepoint，没有的话创建一个，并加入hash表*/
 static struct tracepoint_entry *add_tracepoint(const char *name)
 {
 	struct hlist_head *head;
@@ -301,7 +301,7 @@ static void disable_tracepoint(struct tracepoint *elem)
  *
  * Updates the probe callback corresponding to a range of tracepoints.
  * Called with tracepoints_mutex held.
- */
+ */ /*关联所有tracepoint和它的func*/
 static void tracepoint_update_probe_range(struct tracepoint * const *begin,
 					  struct tracepoint * const *end)
 {
@@ -312,12 +312,12 @@ static void tracepoint_update_probe_range(struct tracepoint * const *begin,
 		return;
 
 	for (iter = begin; iter < end; iter++) {
-		mark_entry = get_tracepoint((*iter)->name);
+		mark_entry = get_tracepoint((*iter)->name); /*根据名字在段中找*/
 		if (mark_entry) {
 			set_tracepoint(&mark_entry, *iter,
 					!!mark_entry->refcount);
 		} else {
-			disable_tracepoint(*iter);
+			disable_tracepoint(*iter);   /*如果tracepoint上没有tracepoint_entry就删除处理函数*/
 		}
 	}
 }
@@ -357,13 +357,13 @@ tracepoint_add_probe(const char *name, void *probe, void *data)
 	struct tracepoint_entry *entry;
 	struct tracepoint_func *old;
 
-	entry = get_tracepoint(name);
+	entry = get_tracepoint(name); /*从hash表中查找是否已经注册了这个tracepoint*/
 	if (!entry) {
 		entry = add_tracepoint(name);
 		if (IS_ERR(entry))
 			return (struct tracepoint_func *)entry;
 	}
-	old = tracepoint_entry_add_probe(entry, probe, data);
+	old = tracepoint_entry_add_probe(entry, probe, data); /*在这个tracepoint上注册这个处理函数*/
 	if (IS_ERR(old) && !entry->refcount)
 		remove_tracepoint(entry);
 	return old;
@@ -382,12 +382,12 @@ int tracepoint_probe_register(const char *name, void *probe, void *data)
 	struct tracepoint_func *old;
 
 	mutex_lock(&tracepoints_mutex);
-	old = tracepoint_add_probe(name, probe, data);
+	old = tracepoint_add_probe(name, probe, data);  /*添加一个探针*/
 	if (IS_ERR(old)) {
 		mutex_unlock(&tracepoints_mutex);
 		return PTR_ERR(old);
 	}
-	tracepoint_update_probes();		/* may update entry */
+	tracepoint_update_probes();		/* may update entry */ /*关联tracepoint和处理函数*/
 	mutex_unlock(&tracepoints_mutex);
 	release_probes(old);
 	return 0;

@@ -115,20 +115,20 @@ struct postfix_elt {
 };
 
 struct filter_parse_state {
-	struct filter_op *ops;
-	struct list_head opstack;
-	struct list_head postfix;
+	struct filter_op *ops;    /*filter_ops*/
+	struct list_head opstack;  /*opstack_op链，存放操作符*/
+	struct list_head postfix;  /*postfix_elt链，存放变量名*/
 	int lasterr;
 	int lasterr_pos;
 
 	struct {
-		char *string;
-		unsigned int cnt;
-		unsigned int tail;
+		char *string;      /*原始字符串*/
+		unsigned int cnt;  /*字符串长度*/
+		unsigned int tail; /*指向当前正在分析的字符位置*/
 	} infix;
 
 	struct {
-		char string[MAX_FILTER_STR_VAL];
+		char string[MAX_FILTER_STR_VAL];   /*要操作的变量的名字*/
 		int pos;
 		unsigned int tail;
 	} operand;
@@ -947,7 +947,7 @@ static filter_pred_fn_t select_comparison_fn(int op, int field_size,
 
 	return fn;
 }
-
+/*选择比较函数*/
 static int init_pred(struct filter_parse_state *ps,
 		     struct ftrace_event_field *field,
 		     struct filter_pred *pred)
@@ -964,7 +964,7 @@ static int init_pred(struct filter_parse_state *ps,
 		return -EINVAL;
 	}
 
-	if (is_string_field(field)) {
+	if (is_string_field(field)) {/*变量的类型是字符串*/
 		filter_build_regex(pred);
 
 		if (field->filter_type == FILTER_STATIC_STRING) {
@@ -974,12 +974,12 @@ static int init_pred(struct filter_parse_state *ps,
 			fn = filter_pred_strloc;
 		else
 			fn = filter_pred_pchar;
-	} else if (is_function_field(field)) {
+	} else if (is_function_field(field)) {/*变量的类型是函数*/
 		if (strcmp(field->name, "ip")) {
 			parse_error(ps, FILT_ERR_IP_FIELD_ONLY, 0);
 			return -EINVAL;
 		}
-	} else {
+	} else { /*变量的类型是数字*/
 		if (field->is_signed)
 			ret = kstrtoll(pred->regex.pattern, 0, &val);
 		else
@@ -1207,7 +1207,7 @@ static void postfix_clear(struct filter_parse_state *ps)
 		kfree(elt);
 	}
 }
-
+/*对字符串进行词法分析*/
 static int filter_parse(struct filter_parse_state *ps)
 {
 	int in_string = 0;
@@ -1226,7 +1226,7 @@ static int filter_parse(struct filter_parse_state *ps)
 		if (isspace(ch))
 			continue;
 
-		if (is_op_char(ps, ch)) {
+		if (is_op_char(ps, ch)) {   /*匹配操作符*/
 			op = infix_get_op(ps, ch);
 			if (op == OP_NONE) {
 				parse_error(ps, FILT_ERR_INVALID_OP, 0);
@@ -1234,8 +1234,8 @@ static int filter_parse(struct filter_parse_state *ps)
 			}
 
 			if (strlen(curr_operand(ps))) {
-				postfix_append_operand(ps, curr_operand(ps));
-				clear_operand_string(ps);
+				postfix_append_operand(ps, curr_operand(ps));  /*保存变量名到链表上*/
+				clear_operand_string(ps);  /*清除存放的变量名，为下次分析做准备*/
 			}
 
 			while (!filter_opstack_empty(ps)) {
@@ -1248,7 +1248,7 @@ static int filter_parse(struct filter_parse_state *ps)
 				break;
 			}
 
-			filter_opstack_push(ps, op);
+			filter_opstack_push(ps, op);  /*保存操作符*/
 			continue;
 		}
 
@@ -1277,7 +1277,7 @@ static int filter_parse(struct filter_parse_state *ps)
 			continue;
 		}
 parse_operand:
-		if (append_operand_char(ps, ch)) {
+		if (append_operand_char(ps, ch)) {   /*获取变量名*/
 			parse_error(ps, FILT_ERR_OPERAND_TOO_LONG, 0);
 			return -EINVAL;
 		}
@@ -1287,19 +1287,19 @@ parse_operand:
 		postfix_append_operand(ps, curr_operand(ps));
 
 	while (!filter_opstack_empty(ps)) {
-		top_op = filter_opstack_pop(ps);
+		top_op = filter_opstack_pop(ps);   /*取出一个操作符*/
 		if (top_op == OP_NONE)
 			break;
 		if (top_op == OP_OPEN_PAREN) {
 			parse_error(ps, FILT_ERR_UNBALANCED_PAREN, 0);
 			return -EINVAL;
 		}
-		postfix_append_op(ps, top_op);
+		postfix_append_op(ps, top_op);  /*保存操作符*/
 	}
 
 	return 0;
 }
-
+/*创建pred，并赋值比较函数。一个pred就是一个完整的操作。例如一个大小比较*/
 static struct filter_pred *create_pred(struct filter_parse_state *ps,
 				       struct ftrace_event_call *call,
 				       int op, char *operand1, char *operand2)
@@ -1528,7 +1528,7 @@ static int replace_preds(struct ftrace_event_call *call,
 	int err;
 	int n_preds = 0;
 
-	n_preds = count_preds(ps);
+	n_preds = count_preds(ps);  /*计算总共有多少个单元*/
 	if (n_preds >= MAX_FILTER_PRED) {
 		parse_error(ps, FILT_ERR_TOO_MANY_PREDS, 0);
 		return -ENOSPC;
@@ -1542,7 +1542,7 @@ static int replace_preds(struct ftrace_event_call *call,
 		err = __alloc_pred_stack(&stack, n_preds);
 		if (err)
 			return err;
-		err = __alloc_preds(filter, n_preds);
+		err = __alloc_preds(filter, n_preds);  /*为filter的preds分配空间*/
 		if (err)
 			goto fail;
 	}
@@ -1567,15 +1567,15 @@ static int replace_preds(struct ftrace_event_call *call,
 			err = -ENOSPC;
 			goto fail;
 		}
-
-		pred = create_pred(ps, call, elt->op, operand1, operand2);
+        /*到这里提取到一组变量和操作符*/
+		pred = create_pred(ps, call, elt->op, operand1, operand2); /*赋值一个pred，这个pred是静态定义的*/
 		if (!pred) {
 			err = -EINVAL;
 			goto fail;
 		}
 
 		if (!dry_run) {
-			err = filter_add_pred(ps, filter, pred, &stack);
+			err = filter_add_pred(ps, filter, pred, &stack);  /*将pred赋给filter*/
 			if (err)
 				goto fail;
 		}
@@ -1738,11 +1738,11 @@ static int create_filter_start(char *filter_str, bool set_str,
 	WARN_ON_ONCE(*psp || *filterp);
 
 	/* allocate everything, and if any fails, free all and fail */
-	filter = __alloc_filter();
+	filter = __alloc_filter();   /*分配filter结构*/
 	if (filter && set_str)
 		err = replace_filter_string(filter, filter_str);
 
-	ps = kzalloc(sizeof(*ps), GFP_KERNEL);
+	ps = kzalloc(sizeof(*ps), GFP_KERNEL);  /*分配filter_parse_state结构*/
 
 	if (!filter || !ps || err) {
 		kfree(ps);
@@ -1755,7 +1755,7 @@ static int create_filter_start(char *filter_str, bool set_str,
 	*psp = ps;
 
 	parse_init(ps, filter_ops, filter_str);
-	err = filter_parse(ps);
+	err = filter_parse(ps);  /*词法分析形成ps*/
 	if (err && set_str)
 		append_filter_err(ps, filter);
 	return err;
@@ -1794,7 +1794,7 @@ static int create_filter(struct ftrace_event_call *call,
 	struct filter_parse_state *ps = NULL;
 	int err;
 
-	err = create_filter_start(filter_str, set_str, &ps, &filter);
+	err = create_filter_start(filter_str, set_str, &ps, &filter);  /*创建一个filter，并对参数进行词法分析*/
 	if (!err) {
 		err = replace_preds(call, filter, ps, filter_str, false);
 		if (err && set_str)
@@ -1857,7 +1857,7 @@ int apply_event_filter(struct ftrace_event_call *call, char *filter_string)
 		return 0;
 	}
 
-	err = create_filter(call, filter_string, true, &filter);
+	err = create_filter(call, filter_string, true, &filter); /*创建新的filter*/
 
 	/*
 	 * Always swap the call filter with the new filter
@@ -1873,7 +1873,7 @@ int apply_event_filter(struct ftrace_event_call *call, char *filter_string)
 		else
 			filter_disable(call);
 
-		rcu_assign_pointer(call->filter, filter);
+		rcu_assign_pointer(call->filter, filter);   /*把新创建的filter给call*/
 
 		if (tmp) {
 			/* Make sure the call is done with the filter */

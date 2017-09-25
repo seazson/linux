@@ -181,19 +181,19 @@ static void trace_destroy_fields(struct ftrace_event_call *call)
 		kmem_cache_free(field_cachep, field);
 	}
 }
-
+/*主要是为了输出而注册一个trace_event*/
 int trace_event_raw_init(struct ftrace_event_call *call)
 {
 	int id;
 
-	id = register_ftrace_event(&call->event);
+	id = register_ftrace_event(&call->event); /*这里没有指定type，会为每个tracepoint自动分配一个*/
 	if (!id)
 		return -ENODEV;
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(trace_event_raw_init);
-
+/*注册event探针*/
 int ftrace_event_reg(struct ftrace_event_call *call,
 		     enum trace_reg type, void *data)
 {
@@ -324,7 +324,7 @@ static int __ftrace_event_enable_disable(struct ftrace_event_file *file,
 				tracing_start_cmdline_record();
 				set_bit(FTRACE_EVENT_FL_RECORDED_CMD_BIT, &file->flags);
 			}
-			ret = call->class->reg(call, TRACE_REG_REGISTER, file);
+			ret = call->class->reg(call, TRACE_REG_REGISTER, file);     /*默认会调用ftrace_event_reg*/
 			if (ret) {
 				tracing_stop_cmdline_record();
 				pr_info("event trace: Could not enable event "
@@ -1487,7 +1487,7 @@ event_subsystem_dir(struct trace_array *tr, const char *name,
 			   name);
 	return NULL;
 }
-
+/*创建目录，文件及其对应的处理函数*/
 static int
 event_create_dir(struct dentry *parent,
 		 struct ftrace_event_file *file,
@@ -1506,7 +1506,7 @@ event_create_dir(struct dentry *parent,
 	 * If the trace point header did not define TRACE_SYSTEM
 	 * then the system would be called "TRACE_SYSTEM".
 	 */
-	if (strcmp(call->class->system, TRACE_SYSTEM) != 0) {
+	if (strcmp(call->class->system, TRACE_SYSTEM) != 0) {/*创建模块目录*/
 		d_events = event_subsystem_dir(tr, call->class->system, file, parent);
 		if (!d_events)
 			return -ENOMEM;
@@ -1627,7 +1627,7 @@ __register_event(struct ftrace_event_call *call, struct module *mod)
 
 	return 0;
 }
-
+/*创建ftrace_event_file，并添加到trace_array的链表下*/
 static struct ftrace_event_file *
 trace_create_new_event(struct ftrace_event_call *call,
 		       struct trace_array *tr)
@@ -1693,9 +1693,9 @@ int trace_add_event_call(struct ftrace_event_call *call)
 	mutex_lock(&trace_types_lock);
 	mutex_lock(&event_mutex);
 
-	ret = __register_event(call, NULL);
+	ret = __register_event(call, NULL);     /*注册到event链中*/
 	if (ret >= 0)
-		__add_event_to_tracers(call, NULL);
+		__add_event_to_tracers(call, NULL); /*创建目录*/
 
 	mutex_unlock(&event_mutex);
 	mutex_unlock(&trace_types_lock);
@@ -2286,7 +2286,7 @@ __trace_early_add_event_dirs(struct trace_array *tr)
 	int ret;
 
 
-	list_for_each_entry(file, &tr->events, list) {
+	list_for_each_entry(file, &tr->events, list) { /*tr->events的链表在event_trace_enable时已经建立了*/
 		ret = event_create_dir(tr->event_dir, file,
 				       &ftrace_event_id_fops,
 				       &ftrace_enable_fops,
@@ -2445,11 +2445,11 @@ int event_trace_add_tracer(struct dentry *parent, struct trace_array *tr)
 static __init int
 early_event_add_tracer(struct dentry *parent, struct trace_array *tr)
 {
-	int ret;
+	int ret; 
 
 	mutex_lock(&event_mutex);
 
-	ret = create_event_toplevel_files(parent, tr);
+	ret = create_event_toplevel_files(parent, tr);  /*创建event框架相关的文件*/
 	if (ret)
 		goto out_unlock;
 
@@ -2496,13 +2496,13 @@ static __init int event_trace_enable(void)
 	char *buf = bootup_event_buf;
 	char *token;
 	int ret;
-
+    /*遍历所有静态定义的ftrace_event_call*/
 	for_each_event(iter, __start_ftrace_events, __stop_ftrace_events) {
 
 		call = *iter;
-		ret = event_init(call);
+		ret = event_init(call); /*调用class->raw_init*/
 		if (!ret)
-			list_add(&call->list, &ftrace_events);
+			list_add(&call->list, &ftrace_events);  /*添加到全局链表*/
 	}
 
 	/*
@@ -2511,7 +2511,7 @@ static __init int event_trace_enable(void)
 	 * are created. Create the file entries now, and attach them
 	 * to the actual file dentries later.
 	 */
-	__trace_early_add_events(tr);
+	__trace_early_add_events(tr);  /*遍历所有的ftrace_event_call，创建对应的file，并链接到top tr上*/
 
 	while (true) {
 		token = strsep(&buf, ",");
@@ -2523,7 +2523,7 @@ static __init int event_trace_enable(void)
 
 		ret = ftrace_set_clr_event(tr, token, 1);
 		if (ret)
-			pr_warn("Failed to enable trace event: %s\n", token);
+			pr_warn("Failed to enable trace event: %s\n", token); /*跟踪boot传来的需要跟踪的event*/
 	}
 
 	trace_printk_start_comm();
@@ -2542,7 +2542,7 @@ static __init int event_trace_init(void)
 
 	tr = top_trace_array();
 
-	d_tracer = tracing_init_dentry();
+	d_tracer = tracing_init_dentry();   /*创建顶层tracing目录*/
 	if (!d_tracer)
 		return 0;
 
@@ -2555,7 +2555,7 @@ static __init int event_trace_init(void)
 	if (trace_define_common_fields())
 		pr_warning("tracing: Failed to allocate common fields");
 
-	ret = early_event_add_tracer(d_tracer, tr);
+	ret = early_event_add_tracer(d_tracer, tr);  /*创建与event相关的文件，包括event/目录和其下的事件*/
 	if (ret)
 		return ret;
 
@@ -2565,9 +2565,9 @@ static __init int event_trace_init(void)
 
 	return 0;
 }
-early_initcall(event_trace_memsetup);
-core_initcall(event_trace_enable);
-fs_initcall(event_trace_init);
+early_initcall(event_trace_memsetup);   /*创建ftrace_event_field和ftrace_event_file的缓存*/
+core_initcall(event_trace_enable);      /*遍历所有ftrace_event_call，建立ftrace_event_file*/
+fs_initcall(event_trace_init);          /*建立debugfs下对应的目录文件*/
 
 #ifdef CONFIG_FTRACE_STARTUP_TEST
 

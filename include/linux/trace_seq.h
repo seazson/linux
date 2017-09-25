@@ -11,7 +11,7 @@
  */
 
 struct trace_seq {
-	unsigned char		buffer[PAGE_SIZE];
+	unsigned char		buffer[PAGE_SIZE];  /*用来存放格式化输出的缓存*/
 	unsigned int		len;
 	unsigned int		readpos;
 	int			full;
