@@ -199,8 +199,8 @@ static u64 new_context(struct mm_struct *mm, unsigned int cpu)
 		 * as we reserve ASID #0 to switch via TTBR0 and indicate
 		 * rollover events.
 		 */
-		asid = find_next_zero_bit(asid_map, NUM_USER_ASIDS, 1);
-		if (asid == NUM_USER_ASIDS) {
+		asid = find_next_zero_bit(asid_map, NUM_USER_ASIDS, 1);  /*第一次分配需要从位图中找*/
+		if (asid == NUM_USER_ASIDS) {           /*如果没有找到的话就要刷出这一批次，重新分配了*/
 			generation = atomic64_add_return(ASID_FIRST_VERSION,
 							 &asid_generation);
 			flush_context(cpu);
@@ -230,7 +230,7 @@ void check_and_switch_context(struct mm_struct *mm, struct task_struct *tsk)
 	cpu_set_reserved_ttbr0();
 
 	asid = atomic64_read(&mm->context.id);
-	if (!((asid ^ atomic64_read(&asid_generation)) >> ASID_BITS)
+	if (!((asid ^ atomic64_read(&asid_generation)) >> ASID_BITS)  /*asid属于同一个批次，不需要软件来冲刷了*/
 	    && atomic64_xchg(&per_cpu(active_asids, cpu), asid))
 		goto switch_mm_fastpath;
 
@@ -238,7 +238,7 @@ void check_and_switch_context(struct mm_struct *mm, struct task_struct *tsk)
 	/* Check that our ASID belongs to the current generation. */
 	asid = atomic64_read(&mm->context.id);
 	if ((asid ^ atomic64_read(&asid_generation)) >> ASID_BITS) {
-		asid = new_context(mm, cpu);
+		asid = new_context(mm, cpu);    /*在新的批次中获取一个asid*/
 		atomic64_set(&mm->context.id, asid);
 	}
 
@@ -254,5 +254,5 @@ void check_and_switch_context(struct mm_struct *mm, struct task_struct *tsk)
 	raw_spin_unlock_irqrestore(&cpu_asid_lock, flags);
 
 switch_mm_fastpath:
-	cpu_switch_mm(mm->pgd, mm);
+	cpu_switch_mm(mm->pgd, mm);   /*切换页表基址*/
 }

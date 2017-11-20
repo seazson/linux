@@ -859,7 +859,7 @@ struct sched_domain {
 		struct rcu_head rcu;	/* used during destruction */
 	};
 
-	unsigned int span_weight;
+	unsigned int span_weight;  /*本层兄弟个数*/
 	/*
 	 * Span of all CPUs in this domain.
 	 *
@@ -867,7 +867,7 @@ struct sched_domain {
 	 * by attaching extra space to the end of the structure,
 	 * depending on how many CPUs the kernel has booted up with)
 	 */
-	unsigned long span[0];
+	unsigned long span[0]; /*保存本层级兄弟cpu位图*/
 };
 
 static inline struct cpumask *sched_domain_span(struct sched_domain *sd)
@@ -919,17 +919,17 @@ struct uts_namespace;
 struct load_weight {
 	unsigned long weight, inv_weight;
 };
-
+/*表示一个进程的负载情况，用于负载均衡*/
 struct sched_avg {
 	/*
 	 * These sums represent an infinite geometric series and so are bound
 	 * above by 1024/(1-y).  Thus we only need a u32 to store them for all
 	 * choices of y < 1-2^(-32)*1024.
-	 */
-	u32 runnable_avg_sum, runnable_avg_period;
-	u64 last_runnable_update;
+	 */ /*runnable表示正在运行或者等待运行*/
+	u32 runnable_avg_sum, runnable_avg_period;/*前者表示在就绪队列里的时间，后者表示在系统中的时间*/
+	u64 last_runnable_update; /*用于计算时间间隔*/
 	s64 decay_count;
-	unsigned long load_avg_contrib;
+	unsigned long load_avg_contrib; /*平均负载贡献度，相当于处于就绪队列和总时间的比值再乘以权重*/
 };
 
 #ifdef CONFIG_SCHEDSTATS
@@ -997,15 +997,15 @@ struct sched_entity {
 
 #ifdef CONFIG_SMP
 	/* Per-entity load-tracking */
-	struct sched_avg	avg;
+	struct sched_avg	avg;        /*负载信息*/
 #endif
 };
 
 struct sched_rt_entity {
-	struct list_head run_list;
+	struct list_head run_list;    /*同一优先级的进程通过这个组成一个链表*/
 	unsigned long timeout;
 	unsigned long watchdog_stamp;
-	unsigned int time_slice;
+	unsigned int time_slice;      /*实时进程的时间片，初始值为sched_rr_timeslice，每次tick都会自减*/
 
 	struct sched_rt_entity *back;
 #ifdef CONFIG_RT_GROUP_SCHED
@@ -1043,8 +1043,8 @@ struct task_struct {
 	int prio, static_prio, normal_prio;  /*static_prio由nice值决定取值100~139.*/
 	unsigned int rt_priority;      /*实时优先级与用户态保持一致1~99,越高越大*/
 	const struct sched_class *sched_class;
-	struct sched_entity se;
-	struct sched_rt_entity rt;
+	struct sched_entity se;        /*普通进程节点*/
+	struct sched_rt_entity rt;     /*实时进程节点*/
 #ifdef CONFIG_CGROUP_SCHED
 	struct task_group *sched_task_group;
 #endif
@@ -1092,7 +1092,7 @@ struct task_struct {
 	struct plist_node pushable_tasks;
 #endif
 
-	struct mm_struct *mm, *active_mm;
+	struct mm_struct *mm, *active_mm;  /*mm是进程地址空间描述符（内核线程为空），active_mm是借用的进程地址空间*/
 #ifdef CONFIG_COMPAT_BRK
 	unsigned brk_randomized:1;
 #endif

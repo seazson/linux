@@ -239,7 +239,7 @@ static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
 
 	if (addr < TASK_SIZE && pte_present_user(pteval)) {
 		__sync_icache_dcache(pteval);
-		ext |= PTE_EXT_NG;
+		ext |= PTE_EXT_NG;    /*用于硬件标示是用户空间的映射，方便冲刷*/
 	}
 
 	set_pte_ext(ptep, pteval, ext);

@@ -1076,8 +1076,8 @@ static void copy_flags(unsigned long clone_flags, struct task_struct *p)
 {
 	unsigned long new_flags = p->flags;
 
-	new_flags &= ~(PF_SUPERPRIV | PF_WQ_WORKER);
-	new_flags |= PF_FORKNOEXEC;
+	new_flags &= ~(PF_SUPERPRIV | PF_WQ_WORKER);  /*清除超级用户权限和工作队列标志*/
+	new_flags |= PF_FORKNOEXEC;    /*设置进程还无法运行标志*/
 	p->flags = new_flags;
 }
 
@@ -1224,7 +1224,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 		goto bad_fork_cleanup_count;
 
 	p->did_exec = 0;
-	delayacct_tsk_init(p);	/* Must remain after dup_task_struct() */
+	delayacct_tsk_init(p);	/* Must remain after dup_task_struct() */ /*表示是否要统计进程的延时信息给用户空间*/
 	copy_flags(clone_flags, p);
 	INIT_LIST_HEAD(&p->children);
 	INIT_LIST_HEAD(&p->sibling);

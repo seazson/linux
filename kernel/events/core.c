@@ -6524,7 +6524,7 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 	event->overflow_handler	= overflow_handler;
 	event->overflow_handler_context = context;
 
-	perf_event__state_init(event);
+	perf_event__state_init(event);   /*设置默认状态为关闭*/
 
 	pmu = NULL;
 
@@ -6807,11 +6807,11 @@ SYSCALL_DEFINE5(perf_event_open,
 	if (flags & ~PERF_FLAG_ALL)
 		return -EINVAL;
 
-	err = perf_copy_attr(attr_uptr, &attr);
+	err = perf_copy_attr(attr_uptr, &attr); /*拷贝属性到内核空间*/
 	if (err)
 		return err;
 
-	if (!attr.exclude_kernel) {
+	if (!attr.exclude_kernel) {  /*对独占的处理*/
 		if (perf_paranoid_kernel() && !capable(CAP_SYS_ADMIN))
 			return -EACCES;
 	}
@@ -6830,7 +6830,7 @@ SYSCALL_DEFINE5(perf_event_open,
 	if ((flags & PERF_FLAG_PID_CGROUP) && (pid == -1 || cpu == -1))
 		return -EINVAL;
 
-	event_fd = get_unused_fd();
+	event_fd = get_unused_fd();  /*分配一个未用的fd*/
 	if (event_fd < 0)
 		return event_fd;
 
@@ -6845,7 +6845,7 @@ SYSCALL_DEFINE5(perf_event_open,
 			group_leader = NULL;
 	}
 
-	if (pid != -1 && !(flags & PERF_FLAG_PID_CGROUP)) {
+	if (pid != -1 && !(flags & PERF_FLAG_PID_CGROUP)) {  /*找到要监控的进程*/
 		task = find_lively_task_by_vpid(pid);
 		if (IS_ERR(task)) {
 			err = PTR_ERR(task);

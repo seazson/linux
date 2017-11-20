@@ -2414,7 +2414,7 @@ need_resched:
 	raw_spin_lock_irq(&rq->lock);
 
 	switch_count = &prev->nivcsw;
-	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) { /*被替换的进程处于运行状态，并且不是处于抢占状态*/
+	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) { /*被替换的进程不处于运行状态，并且不是处于抢占状态，才能考虑将其移除运行队列*/
 		if (unlikely(signal_pending_state(prev->state, prev))) { /*如果进程此时还有信号未处理，继续运行*/
 			prev->state = TASK_RUNNING;    /*这里表示进程还是running状态，暂时不运行，需要给下个进程运行*/
 		} else {
@@ -5235,8 +5235,8 @@ typedef const struct cpumask *(*sched_domain_mask_f)(int cpu);
 #define SDTL_OVERLAP	0x01
 
 struct sched_domain_topology_level {
-	sched_domain_init_f init;
-	sched_domain_mask_f mask;
+	sched_domain_init_f init;   /*初始化本层级cpu的domain*/
+	sched_domain_mask_f mask;   /*返回该层级兄弟cpu的位图*/
 	int		    flags;
 	int		    numa_level;
 	struct sd_data      data;
@@ -5355,14 +5355,14 @@ fail:
 
 	return -ENOMEM;
 }
-
+/*返回cpu在指定调度域里的调度组*/
 static int get_group(int cpu, struct sd_data *sdd, struct sched_group **sg)
 {
 	struct sched_domain *sd = *per_cpu_ptr(sdd->sd, cpu);
 	struct sched_domain *child = sd->child;
 
 	if (child)
-		cpu = cpumask_first(sched_domain_span(child));
+		cpu = cpumask_first(sched_domain_span(child));  /*调度组只会获取第一个cpu的*/
 
 	if (sg) {
 		*sg = *per_cpu_ptr(sdd->sg, cpu);
@@ -5392,7 +5392,7 @@ build_sched_groups(struct sched_domain *sd, int cpu)
 	get_group(cpu, sdd, &sd->groups);
 	atomic_inc(&sd->groups->ref);
 
-	if (cpu != cpumask_first(span))
+	if (cpu != cpumask_first(span))  /*只为兄弟cpu中的第一个建立调度组*/
 		return 0;
 
 	lockdep_assert_held(&sched_domains_mutex);
@@ -5554,7 +5554,7 @@ static enum s_alloc __visit_domain_allocation_hell(struct s_data *d,
 {
 	memset(d, 0, sizeof(*d));
 
-	if (__sdt_alloc(cpu_map))
+	if (__sdt_alloc(cpu_map))  /*为全局sched_domain_topology分配空间*/
 		return sa_sd_storage;
 	d->sd = alloc_percpu(struct sched_domain *);
 	if (!d->sd)
@@ -5595,16 +5595,16 @@ static const struct cpumask *cpu_smt_mask(int cpu)
  * Topology list, bottom-up.
  */
 static struct sched_domain_topology_level default_topology[] = {
-#ifdef CONFIG_SCHED_SMT
+#ifdef CONFIG_SCHED_SMT    /*超线程级别*/
 	{ sd_init_SIBLING, cpu_smt_mask, },
 #endif
-#ifdef CONFIG_SCHED_MC
+#ifdef CONFIG_SCHED_MC     /*多核级别*/
 	{ sd_init_MC, cpu_coregroup_mask, },
 #endif
 #ifdef CONFIG_SCHED_BOOK
 	{ sd_init_BOOK, cpu_book_mask, },
 #endif
-	{ sd_init_CPU, cpu_cpu_mask, },
+	{ sd_init_CPU, cpu_cpu_mask, }, /*物理芯片级别*/
 	{ NULL, },
 };
 
@@ -5994,11 +5994,11 @@ struct sched_domain *build_sched_domain(struct sched_domain_topology_level *tl,
 		const struct cpumask *cpu_map, struct sched_domain_attr *attr,
 		struct sched_domain *child, int cpu)
 {
-	struct sched_domain *sd = tl->init(tl, cpu);
+	struct sched_domain *sd = tl->init(tl, cpu); /*由sd_init来实现，获取cpu对应的调度域，并初始化它*/
 	if (!sd)
 		return child;
 
-	cpumask_and(sched_domain_span(sd), cpu_map, tl->mask(cpu));
+	cpumask_and(sched_domain_span(sd), cpu_map, tl->mask(cpu)); /*保存本层级兄弟cpu位图*/
 	if (child) {
 		sd->level = child->level + 1;
 		sched_domain_level_max = max(sched_domain_level_max, sd->level);
@@ -6022,7 +6022,7 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 	struct s_data d;
 	int i, ret = -ENOMEM;
 
-	alloc_state = __visit_domain_allocation_hell(&d, cpu_map);
+	alloc_state = __visit_domain_allocation_hell(&d, cpu_map);  /*根据拓扑分配调度域结构体空间*/
 	if (alloc_state != sa_rootdomain)
 		goto error;
 
@@ -6032,9 +6032,9 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 
 		sd = NULL;
 		for_each_sd_topology(tl) {
-			sd = build_sched_domain(tl, cpu_map, attr, sd, i);
+			sd = build_sched_domain(tl, cpu_map, attr, sd, i);   /*初始化调度域中的数据，建立父子关系*/
 			if (tl == sched_domain_topology)
-				*per_cpu_ptr(d.sd, i) = sd;
+				*per_cpu_ptr(d.sd, i) = sd;     /*存放最低一层的调度域们*/
 			if (tl->flags & SDTL_OVERLAP || sched_feat(FORCE_SD_OVERLAP))
 				sd->flags |= SD_OVERLAP;
 			if (cpumask_equal(cpu_map, sched_domain_span(sd)))
@@ -6050,7 +6050,7 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 				if (build_overlap_sched_groups(sd, i))
 					goto error;
 			} else {
-				if (build_sched_groups(sd, i))
+				if (build_sched_groups(sd, i))              /*初始化调度组*/
 					goto error;
 			}
 		}
@@ -6139,11 +6139,11 @@ static int init_sched_domains(const struct cpumask *cpu_map)
 
 	arch_update_cpu_topology();
 	ndoms_cur = 1;
-	doms_cur = alloc_sched_domains(ndoms_cur);
+	doms_cur = alloc_sched_domains(ndoms_cur);   /*分配cpumask空间*/
 	if (!doms_cur)
 		doms_cur = &fallback_doms;
-	cpumask_andnot(doms_cur[0], cpu_map, cpu_isolated_map);
-	err = build_sched_domains(doms_cur[0], NULL);
+	cpumask_andnot(doms_cur[0], cpu_map, cpu_isolated_map); /*去掉需要剔除的cpu，剔除的cpu由cpu_isolated_map来定义*/
+	err = build_sched_domains(doms_cur[0], NULL);  
 	register_sched_domain_sysctl();
 
 	return err;
@@ -6805,14 +6805,14 @@ void sched_move_task(struct task_struct *tsk)
 	unsigned long flags;
 	struct rq *rq;
 
-	rq = task_rq_lock(tsk, &flags);
+	rq = task_rq_lock(tsk, &flags);   /*获取cpu级的runqueue*/
 
-	running = task_current(rq, tsk);
+	running = task_current(rq, tsk);  /*要移动的task是否是当前正在运行的*/
 	on_rq = tsk->on_rq;
 
-	if (on_rq)
+	if (on_rq)   /*已经就绪了需要移除就绪队列*/
 		dequeue_task(rq, tsk, 0);
-	if (unlikely(running))
+	if (unlikely(running))  /*正在运行的话需要调用put方法*/
 		tsk->sched_class->put_prev_task(rq, tsk);
 
 	tg = container_of(task_subsys_state_check(tsk, cpu_cgroup_subsys_id,

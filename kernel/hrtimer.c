@@ -845,7 +845,7 @@ u64 hrtimer_forward(struct hrtimer *timer, ktime_t now, ktime_t interval)
 
 	delta = ktime_sub(now, hrtimer_get_expires(timer));
 
-	if (delta.tv64 < 0)
+	if (delta.tv64 < 0) /*当前时间比期望到期时间小*/
 		return 0;
 
 	if (interval.tv64 < timer->base->resolution.tv64)

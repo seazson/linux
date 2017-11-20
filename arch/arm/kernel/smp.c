@@ -434,7 +434,7 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 		 * re-initialize the map in the platforms smp_prepare_cpus()
 		 * if present != possible (e.g. physical hotplug).
 		 */
-		init_cpu_present(cpu_possible_mask);
+		init_cpu_present(cpu_possible_mask);  /*present通常等于possible*/
 
 		/*
 		 * Initialise the SCU if there are more than one CPU

@@ -666,19 +666,19 @@ static DECLARE_BITMAP(cpu_possible_bits, CONFIG_NR_CPUS) __read_mostly
 static DECLARE_BITMAP(cpu_possible_bits, CONFIG_NR_CPUS) __read_mostly;
 #endif
 const struct cpumask *const cpu_possible_mask = to_cpumask(cpu_possible_bits);
-EXPORT_SYMBOL(cpu_possible_mask);
+EXPORT_SYMBOL(cpu_possible_mask);  /*表示最多支持多少个cpu，由dtb中分析得来*/
 
 static DECLARE_BITMAP(cpu_online_bits, CONFIG_NR_CPUS) __read_mostly;
 const struct cpumask *const cpu_online_mask = to_cpumask(cpu_online_bits);
-EXPORT_SYMBOL(cpu_online_mask);
+EXPORT_SYMBOL(cpu_online_mask);/*已经启动的cpu，在smp中第二段初始化，开启从cpu后，就会设置这个标志*/
 
 static DECLARE_BITMAP(cpu_present_bits, CONFIG_NR_CPUS) __read_mostly;
 const struct cpumask *const cpu_present_mask = to_cpumask(cpu_present_bits);
-EXPORT_SYMBOL(cpu_present_mask);
+EXPORT_SYMBOL(cpu_present_mask);/*具备online条件的cpu，不一定正在online，可能被热插拔了，默认等于cpu_possible_mask*/
 
 static DECLARE_BITMAP(cpu_active_bits, CONFIG_NR_CPUS) __read_mostly;
 const struct cpumask *const cpu_active_mask = to_cpumask(cpu_active_bits);
-EXPORT_SYMBOL(cpu_active_mask);
+EXPORT_SYMBOL(cpu_active_mask);/*活跃的cpu，首先必须是online的，然后没有处于休眠状态*/
 
 void set_cpu_possible(unsigned int cpu, bool possible)
 {

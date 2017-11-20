@@ -1157,7 +1157,7 @@ static inline void update_cfs_shares(struct cfs_rq *cfs_rq)
 #define LOAD_AVG_MAX 47742 /* maximum possible load avg */
 #define LOAD_AVG_MAX_N 345 /* number of full periods to produce LOAD_MAX_AVG */
 
-/* Precomputed fixed inverse multiplies for multiplication by y^n */
+/* Precomputed fixed inverse multiplies for multiplication by y^n 衰减因子y^32=0.5,计算后需要右移32位*/
 static const u32 runnable_avg_yN_inv[] = {
 	0xffffffff, 0xfa83b2da, 0xf5257d14, 0xefe4b99a, 0xeac0c6e6, 0xe5b906e6,
 	0xe0ccdeeb, 0xdbfbb796, 0xd744fcc9, 0xd2a81d91, 0xce248c14, 0xc9b9bd85,
@@ -1170,7 +1170,7 @@ static const u32 runnable_avg_yN_inv[] = {
 /*
  * Precomputed \Sum y^k { 1<=k<=n }.  These are floor(true_value) to prevent
  * over-estimates when re-combining.
- */
+ */ /*固定周期负载值*/
 static const u32 runnable_avg_yN_sum[] = {
 	    0, 1002, 1982, 2941, 3880, 4798, 5697, 6576, 7437, 8279, 9103,
 	 9909,10698,11470,12226,12966,13690,14398,15091,15769,16433,17082,
@@ -1180,14 +1180,14 @@ static const u32 runnable_avg_yN_sum[] = {
 /*
  * Approximate:
  *   val * y^n,    where y^32 ~= 0.5 (~1 scheduling period)
- */
+ */ /*计算给定的值val在第n个周期时的衰减为的值=val * y^n */
 static __always_inline u64 decay_load(u64 val, u64 n)
 {
 	unsigned int local_n;
 
 	if (!n)
 		return val;
-	else if (unlikely(n > LOAD_AVG_PERIOD * 63))
+	else if (unlikely(n > LOAD_AVG_PERIOD * 63)) /*周期超过32*63后已经衰减的很小了，可以忽略*/
 		return 0;
 
 	/* after bounds checking we can collapse to 32-bit */
@@ -1200,7 +1200,7 @@ static __always_inline u64 decay_load(u64 val, u64 n)
 	 *
 	 * To achieve constant time decay_load.
 	 */
-	if (unlikely(local_n >= LOAD_AVG_PERIOD)) {
+	if (unlikely(local_n >= LOAD_AVG_PERIOD)) { /*每超过32个周期，都会衰减一半*/
 		val >>= local_n / LOAD_AVG_PERIOD;
 		local_n %= LOAD_AVG_PERIOD;
 	}
@@ -1216,7 +1216,7 @@ static __always_inline u64 decay_load(u64 val, u64 n)
  *
  * We can compute this reasonably efficiently by combining:
  *   y^PERIOD = 1/2 with precomputed \Sum 1024*y^n {for  n <PERIOD}
- */
+ */ /*用来计算连续多个周期累加的衰减值，每个周期跑满1024微秒*/
 static u32 __compute_runnable_contrib(u64 n)
 {
 	u32 contrib = 0;
@@ -1265,7 +1265,7 @@ static u32 __compute_runnable_contrib(u64 n)
  * sum again by y is sufficient to update:
  *   load_avg = u_0` + y*(u_0 + u_1*y + u_2*y^2 + ... )
  *            = u_0 + u_1*y + u_2*y^2 + ... [re-labeling u_i --> u_{i+1}]
- */
+ */ /*更新负载累计贡献值*/
 static __always_inline int __update_entity_runnable_avg(u64 now,
 							struct sched_avg *sa,
 							int runnable)
@@ -1288,16 +1288,16 @@ static __always_inline int __update_entity_runnable_avg(u64 now,
 	 * Use 1024ns as the unit of measurement since it's a reasonable
 	 * approximation of 1us and fast to compute.
 	 */
-	delta >>= 10;
+	delta >>= 10;  /*纳秒转换成微秒*/
 	if (!delta)
-		return 0;
+		return 0;  /*小于1微秒不计算*/
 	sa->last_runnable_update = now;
 
 	/* delta_w is the amount already accumulated against our next period */
 	delta_w = sa->runnable_avg_period % 1024;
 	if (delta + delta_w >= 1024) {
 		/* period roll-over */
-		decayed = 1;
+		decayed = 1;  /*上次剩余时间加上本次时间大于1024需要进行衰减计算*/
 
 		/*
 		 * Now that we know we're crossing a period boundary, figure
@@ -1314,14 +1314,14 @@ static __always_inline int __update_entity_runnable_avg(u64 now,
 		/* Figure out how many additional periods this update spans */
 		periods = delta / 1024;
 		delta %= 1024;
-
+		/*计算属于上次周期的衰减值*/
 		sa->runnable_avg_sum = decay_load(sa->runnable_avg_sum,
 						  periods + 1);
 		sa->runnable_avg_period = decay_load(sa->runnable_avg_period,
 						     periods + 1);
 
 		/* Efficiently calculate \sum (1..n_period) 1024*y^i */
-		runnable_contrib = __compute_runnable_contrib(periods);
+		runnable_contrib = __compute_runnable_contrib(periods); /*计算本次n个周期的衰减值*/
 		if (runnable)
 			sa->runnable_avg_sum += runnable_contrib;
 		sa->runnable_avg_period += runnable_contrib;
@@ -1490,16 +1490,16 @@ static inline void update_entity_load_avg(struct sched_entity *se,
 	else
 		now = cfs_rq_clock_task(group_cfs_rq(se));
 
-	if (!__update_entity_runnable_avg(now, &se->avg, se->on_rq))
+	if (!__update_entity_runnable_avg(now, &se->avg, se->on_rq)) /*通过衰减算法计算总的累计时间*/
 		return;
 
-	contrib_delta = __update_entity_load_avg_contrib(se);
+	contrib_delta = __update_entity_load_avg_contrib(se);  /*计算负载贡献度*/
 
-	if (!update_cfs_rq)
+	if (!update_cfs_rq)  /*加入的时候传入的是0，移除队列的时候传入的是1*/
 		return;
 
 	if (se->on_rq)
-		cfs_rq->runnable_load_avg += contrib_delta;
+		cfs_rq->runnable_load_avg += contrib_delta;   /*所有进程的负载贡献度组成cfs_rq的负载率*/
 	else
 		subtract_blocked_load_contrib(cfs_rq, -contrib_delta);
 }
@@ -1774,7 +1774,7 @@ enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 	update_cfs_shares(cfs_rq);
 
 	if (flags & ENQUEUE_WAKEUP) {
-		place_entity(cfs_rq, se, 0);  /*向前亏欠一个周期*/
+		place_entity(cfs_rq, se, 0);  /*如果是唤醒的话向前亏欠一个周期，以便能尽早得到运行*/
 		enqueue_sleeper(cfs_rq, se);
 	}
 
@@ -2865,10 +2865,10 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
 
-	for_each_sched_entity(se) {
+	for_each_sched_entity(se) {  /*遍历se及其所有父se*/
 		if (se->on_rq)  /*如果已经在队列上了什么也不做*/  
 			break;
-		cfs_rq = cfs_rq_of(se);
+		cfs_rq = cfs_rq_of(se);  /*此处获取的是task_group的cfs_rq*/
 		enqueue_entity(cfs_rq, se, flags);
 
 		/*
@@ -2892,7 +2892,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 			break;
 
 		update_cfs_shares(cfs_rq);
-		update_entity_load_avg(se, 1);
+		update_entity_load_avg(se, 1); /*更新调度实体和队列的负载率*/
 	}
 
 	if (!se) {
@@ -3327,13 +3327,13 @@ static int select_idle_sibling(struct task_struct *p, int target)
 	struct sched_group *sg;
 	int i = task_cpu(p);
 
-	if (idle_cpu(target))
+	if (idle_cpu(target))  /*目标cpu是空闲的，直接就可以用*/
 		return target;
 
 	/*
 	 * If the prevous cpu is cache affine and idle, don't be stupid.
 	 */
-	if (i != target && cpus_share_cache(i, target) && idle_cpu(i))
+	if (i != target && cpus_share_cache(i, target) && idle_cpu(i)) /*选择之前那个*/
 		return i;
 
 	/*
@@ -3384,12 +3384,12 @@ select_task_rq_fair(struct task_struct *p, int sd_flag, int wake_flags)
 	int want_affine = 0;
 	int sync = wake_flags & WF_SYNC;
 
-	if (p->nr_cpus_allowed == 1)
+	if (p->nr_cpus_allowed == 1)  /*只能在之前的cpu上运行*/
 		return prev_cpu;
 
 	if (sd_flag & SD_BALANCE_WAKE) {
 		if (cpumask_test_cpu(cpu, tsk_cpus_allowed(p)))
-			want_affine = 1;
+			want_affine = 1;   /*表示唤醒的cpu可以用来运行这个进程*/
 		new_cpu = prev_cpu;
 	}
 
@@ -3413,10 +3413,10 @@ select_task_rq_fair(struct task_struct *p, int sd_flag, int wake_flags)
 	}
 
 	if (affine_sd) {
-		if (cpu != prev_cpu && wake_affine(affine_sd, p, sync))
+		if (cpu != prev_cpu && wake_affine(affine_sd, p, sync))   /*计算唤醒cpu的负载是否比之前的cpu负载小*/
 			prev_cpu = cpu;
 
-		new_cpu = select_idle_sibling(p, prev_cpu);
+		new_cpu = select_idle_sibling(p, prev_cpu); /*选择合适的cpu运行*/
 		goto unlock;
 	}
 
@@ -3659,7 +3659,7 @@ static struct task_struct *pick_next_task_fair(struct rq *rq)
 	if (!cfs_rq->nr_running)
 		return NULL;
 
-	do {
+	do {/*在这里会从cpu级的cfs_rq往下遍历，一直遍历到最后一级task_group*/
 		se = pick_next_entity(cfs_rq); /*选择一个合适的进程*/
 		set_next_entity(cfs_rq, se);   /*记录进程这次开始运行的时间*/
 		cfs_rq = group_cfs_rq(se);
@@ -3875,7 +3875,7 @@ struct lb_env {
 	struct cpumask		*dst_grpmask;
 	int			new_dst_cpu;
 	enum cpu_idle_type	idle;
-	long			imbalance;
+	long			imbalance;   /*表示一次可以迁移多少*/
 	/* The set of CPUs under consideration for load-balancing */
 	struct cpumask		*cpus;
 
@@ -3989,7 +3989,7 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 	 * 2) too many balance attempts have failed.
 	 */
 
-	tsk_cache_hot = task_hot(p, rq_clock_task(env->src_rq), env->sd);
+	tsk_cache_hot = task_hot(p, rq_clock_task(env->src_rq), env->sd);/*通过判断程序运行的时间与当前时间的差值*/
 	if (!tsk_cache_hot ||
 		env->sd->nr_balance_failed > env->sd->cache_nice_tries) {
 
@@ -4068,7 +4068,7 @@ static int move_tasks(struct lb_env *env)
 			break;
 		}
 
-		if (!can_migrate_task(p, env))
+		if (!can_migrate_task(p, env))  /*判断进程能否迁移*/
 			goto next;
 
 		load = task_h_load(p);
@@ -4490,7 +4490,7 @@ static inline void update_sg_lb_stats(struct lb_env *env,
 	max_nr_running = 0;
 	min_nr_running = ~0UL;
 
-	for_each_cpu_and(i, sched_group_cpus(group), env->cpus) {
+	for_each_cpu_and(i, sched_group_cpus(group), env->cpus) {/*遍历一个调度组里的所有cpu*/
 		struct rq *rq = cpu_rq(i);
 
 		nr_running = rq->nr_running;
@@ -4503,9 +4503,9 @@ static inline void update_sg_lb_stats(struct lb_env *env,
 				balance_cpu = i;
 			}
 
-			load = target_load(i, load_idx);
+			load = target_load(i, load_idx);    /*获取本地cpu负载*/
 		} else {
-			load = source_load(i, load_idx);
+			load = source_load(i, load_idx);    /*非本地cpu负载*/
 			if (load > max_cpu_load)
 				max_cpu_load = load;
 			if (min_cpu_load > load)
@@ -4542,7 +4542,7 @@ static inline void update_sg_lb_stats(struct lb_env *env,
 	}
 
 	/* Adjust by relative CPU power of the group */
-	sgs->avg_load = (sgs->group_load*SCHED_POWER_SCALE) / group->sgp->power;
+	sgs->avg_load = (sgs->group_load*SCHED_POWER_SCALE) / group->sgp->power;   /*计算平均负载*/
 
 	/*
 	 * Consider the group unbalanced when the imbalance is larger
@@ -4567,7 +4567,7 @@ static inline void update_sg_lb_stats(struct lb_env *env,
 	sgs->group_weight = group->group_weight;
 
 	if (sgs->group_capacity > sgs->sum_nr_running)
-		sgs->group_has_capacity = 1;
+		sgs->group_has_capacity = 1;   /*表示组还有多余的能力*/
 }
 
 /**
@@ -4582,7 +4582,7 @@ static inline void update_sg_lb_stats(struct lb_env *env,
  *
  * Return: %true if @sg is a busier group than the previously selected
  * busiest group. %false otherwise.
- */
+ */ /*平均负载最大，并且能力还不够用*/
 static bool update_sd_pick_busiest(struct lb_env *env,
 				   struct sd_lb_stats *sds,
 				   struct sched_group *sg,
@@ -4636,9 +4636,9 @@ static inline void update_sd_lb_stats(struct lb_env *env,
 	do {
 		int local_group;
 
-		local_group = cpumask_test_cpu(env->dst_cpu, sched_group_cpus(sg));
+		local_group = cpumask_test_cpu(env->dst_cpu, sched_group_cpus(sg));/*是否为本地调度组，也就是调度组中是否有目标cpu*/
 		memset(&sgs, 0, sizeof(sgs));
-		update_sg_lb_stats(env, sg, load_idx, local_group, balance, &sgs);
+		update_sg_lb_stats(env, sg, load_idx, local_group, balance, &sgs); /*更新调度组信息*/
 
 		if (local_group && !(*balance))
 			return;
@@ -4816,7 +4816,7 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 	 * max load less than avg load(as we skip the groups at or below
 	 * its cpu_power, while calculating max_load..)
 	 */
-	if (sds->max_load < sds->avg_load) {
+	if (sds->max_load < sds->avg_load) { /*最繁忙组的平均负载小于该调度域的平均负载，则不需要均衡*/
 		env->imbalance = 0;
 		return fix_small_imbalance(env, sds);
 	}
@@ -4847,7 +4847,7 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 
 	/* How much load to actually move to equalise the imbalance */
 	env->imbalance = min(max_pull * sds->busiest->sgp->power,
-		(sds->avg_load - sds->this_load) * sds->this->sgp->power)
+		(sds->avg_load - sds->this_load) * sds->this->sgp->power) /*计算需要迁移多少量*/
 			/ SCHED_POWER_SCALE;
 
 	/*
@@ -4885,7 +4885,7 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 static struct sched_group *
 find_busiest_group(struct lb_env *env, int *balance)
 {
-	struct sd_lb_stats sds;
+	struct sd_lb_stats sds;  /*保存调度域的负载信息*/
 
 	memset(&sds, 0, sizeof(sds));
 
@@ -4893,7 +4893,7 @@ find_busiest_group(struct lb_env *env, int *balance)
 	 * Compute the various statistics relavent for load balancing at
 	 * this level.
 	 */
-	update_sd_lb_stats(env, balance, &sds);
+	update_sd_lb_stats(env, balance, &sds);  /*找到最繁忙的组*/
 
 	/*
 	 * this_cpu is not the appropriate cpu to perform load balancing at
@@ -4907,7 +4907,7 @@ find_busiest_group(struct lb_env *env, int *balance)
 		return sds.busiest;
 
 	/* There is no busy sibling group to pull tasks from */
-	if (!sds.busiest || sds.busiest_nr_running == 0)
+	if (!sds.busiest || sds.busiest_nr_running == 0) /*没有找到最繁忙的组，或者最繁忙的组里没有程序运行*/
 		goto out_balanced;
 
 	sds.avg_load = (SCHED_POWER_SCALE * sds.total_load) / sds.total_pwr;
@@ -4946,7 +4946,7 @@ find_busiest_group(struct lb_env *env, int *balance)
 		 * there is no imbalance between this and busiest group
 		 * wrt to idle cpu's, it is balanced.
 		 */
-		if ((sds.this_idle_cpus <= sds.busiest_idle_cpus + 1) &&
+		if ((sds.this_idle_cpus <= sds.busiest_idle_cpus + 1) &&  /*最繁忙的组里的idle cpu个数多余本地的，不需要迁移过来*/
 		    sds.busiest_nr_running <= sds.busiest_group_weight)
 			goto out_balanced;
 	} else {
@@ -4954,13 +4954,13 @@ find_busiest_group(struct lb_env *env, int *balance)
 		 * In the CPU_NEWLY_IDLE, CPU_NOT_IDLE cases, use
 		 * imbalance_pct to be conservative.
 		 */
-		if (100 * sds.max_load <= env->sd->imbalance_pct * sds.this_load)
+		if (100 * sds.max_load <= env->sd->imbalance_pct * sds.this_load) /*如果本地负载大于最繁忙的组，不需要平衡*/
 			goto out_balanced;
 	}
 
 force_balance:
 	/* Looks like there is an imbalance. Compute it */
-	calculate_imbalance(env, &sds);
+	calculate_imbalance(env, &sds);  /*计算需要迁移多少负载量*/
 	return sds.busiest;
 
 out_balanced:
@@ -5062,12 +5062,12 @@ static int load_balance(int this_cpu, struct rq *this_rq,
 	struct cpumask *cpus = __get_cpu_var(load_balance_mask);
 
 	struct lb_env env = {
-		.sd		= sd,
-		.dst_cpu	= this_cpu,
+		.sd		= sd,              /*当前的调度域*/
+		.dst_cpu	= this_cpu,    /*需要迁移到这个cpu上*/
 		.dst_rq		= this_rq,
-		.dst_grpmask    = sched_group_cpus(sd->groups),
+		.dst_grpmask    = sched_group_cpus(sd->groups), /*调用域里第一个调用组的cpu位图*/
 		.idle		= idle,
-		.loop_break	= sched_nr_migrate_break,
+		.loop_break	= sched_nr_migrate_break,  /*一次最多迁移32个进程*/
 		.cpus		= cpus,
 	};
 
@@ -5083,7 +5083,7 @@ static int load_balance(int this_cpu, struct rq *this_rq,
 	schedstat_inc(sd, lb_count[idle]);
 
 redo:
-	group = find_busiest_group(&env, balance);
+	group = find_busiest_group(&env, balance);   /*查找该调度域中最忙的调度组*/
 
 	if (*balance == 0)
 		goto out_balanced;
@@ -5093,7 +5093,7 @@ redo:
 		goto out_balanced;
 	}
 
-	busiest = find_busiest_queue(&env, group);
+	busiest = find_busiest_queue(&env, group);  /*找出最繁忙组里的最繁忙的队列*/
 	if (!busiest) {
 		schedstat_inc(sd, lb_nobusyq[idle]);
 		goto out_balanced;
@@ -5112,7 +5112,7 @@ redo:
 		 * correctly treated as an imbalance.
 		 */
 		env.flags |= LBF_ALL_PINNED;
-		env.src_cpu   = busiest->cpu;
+		env.src_cpu   = busiest->cpu;    /*最忙的cpu*/
 		env.src_rq    = busiest;
 		env.loop_max  = min(sysctl_sched_nr_migrate, busiest->nr_running);
 
@@ -5558,8 +5558,8 @@ static void rebalance_domains(int cpu, enum cpu_idle_type idle)
 	update_blocked_averages(cpu);
 
 	rcu_read_lock();
-	for_each_domain(cpu, sd) {
-		if (!(sd->flags & SD_LOAD_BALANCE))
+	for_each_domain(cpu, sd) {/*从低往高遍历cpu的各个domain*/
+		if (!(sd->flags & SD_LOAD_BALANCE))   /*如果没有设置这个标志说明不需要负载平衡*/
 			continue;
 
 		interval = sd->balance_interval;
@@ -5797,7 +5797,7 @@ static void task_tick_fair(struct rq *rq, struct task_struct *curr, int queued)
 	if (numabalancing_enabled)
 		task_tick_numa(rq, curr);
 
-	update_rq_runnable_avg(rq, 1);  /*smp会走这里*/
+	update_rq_runnable_avg(rq, 1);  /*smp会走这里，更新rq的负载累计贡献值，上面的只是更新cfs_rq的*/
 }
 
 /*
@@ -6029,7 +6029,7 @@ int alloc_fair_sched_group(struct task_group *tg, struct task_group *parent)
 	struct sched_entity *se;
 	int i;
 
-	tg->cfs_rq = kzalloc(sizeof(cfs_rq) * nr_cpu_ids, GFP_KERNEL);
+	tg->cfs_rq = kzalloc(sizeof(cfs_rq) * nr_cpu_ids, GFP_KERNEL);  /*只是分配指针*/
 	if (!tg->cfs_rq)
 		goto err;
 	tg->se = kzalloc(sizeof(se) * nr_cpu_ids, GFP_KERNEL);
@@ -6041,7 +6041,7 @@ int alloc_fair_sched_group(struct task_group *tg, struct task_group *parent)
 	init_cfs_bandwidth(tg_cfs_bandwidth(tg));
 
 	for_each_possible_cpu(i) {
-		cfs_rq = kzalloc_node(sizeof(struct cfs_rq),
+		cfs_rq = kzalloc_node(sizeof(struct cfs_rq),     /*分配实体*/
 				      GFP_KERNEL, cpu_to_node(i));
 		if (!cfs_rq)
 			goto err;

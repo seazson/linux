@@ -411,7 +411,7 @@ struct perf_event {
 	int				pending_wakeup;
 	int				pending_kill;
 	int				pending_disable;
-	struct irq_work			pending;
+	struct irq_work			pending;   /*对应的处理函数为perf_pending_event*/
 
 	atomic_t			event_limit;
 

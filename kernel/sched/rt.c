@@ -24,7 +24,8 @@ static enum hrtimer_restart sched_rt_period_timer(struct hrtimer *timer)
 	for (;;) {
 		now = hrtimer_cb_get_time(timer);
 		overrun = hrtimer_forward(timer, now, rt_b->rt_period);
-
+		
+//		printk("77777>%d now%lld period%lld want%lld\n",overrun,now,rt_b->rt_period,hrtimer_get_expires(timer));
 		if (!overrun)
 			break;
 
@@ -719,7 +720,7 @@ static inline int balance_runtime(struct rt_rq *rt_rq)
 	return 0;
 }
 #endif /* CONFIG_SMP */
-
+/*这个里面会解除扼制*/
 static int do_sched_rt_period_timer(struct rt_bandwidth *rt_b, int overrun)
 {
 	int i, idle = 1, throttled = 0;
@@ -745,6 +746,7 @@ static int do_sched_rt_period_timer(struct rt_bandwidth *rt_b, int overrun)
 		struct rq *rq = rq_of_rt_rq(rt_rq);
 
 		raw_spin_lock(&rq->lock);
+//		printk("process %d: can:%lld act:%lld orr%d\n",current->pid,rt_rq->rt_runtime,rt_rq->rt_time,overrun);
 		if (rt_rq->rt_time) {
 			u64 runtime;
 
@@ -776,12 +778,12 @@ static int do_sched_rt_period_timer(struct rt_bandwidth *rt_b, int overrun)
 			throttled = 1;
 
 		if (enqueue)
-			sched_rt_rq_enqueue(rt_rq);
+			sched_rt_rq_enqueue(rt_rq);     /*设置当前进程需要调度标志，不论当前进程是实时还是普通，以便可以运行实时进程*/
 		raw_spin_unlock(&rq->lock);
 	}
 
 	if (!throttled && (!rt_bandwidth_enabled() || rt_b->rt_runtime == RUNTIME_INF))
-		return 1;
+		return 1;   /*返回1表示不需要再使能这个定时器进程扼制消除操作*/
 
 	return idle;
 }
@@ -813,7 +815,7 @@ static int sched_rt_runtime_exceeded(struct rt_rq *rt_rq)
 	if (runtime == RUNTIME_INF)
 		return 0;
 
-	if (rt_rq->rt_time > runtime) {
+	if (rt_rq->rt_time > runtime) { /*队列里的所有实时进程运行时间超过0.95s*/
 		struct rt_bandwidth *rt_b = sched_rt_bandwidth(rt_rq);
 
 		/*
@@ -861,14 +863,14 @@ static void update_curr_rt(struct rq *rq)
 	if (curr->sched_class != &rt_sched_class)
 		return;
 
-	delta_exec = rq_clock_task(rq) - curr->se.exec_start;
+	delta_exec = rq_clock_task(rq) - curr->se.exec_start;   /*表示当前进程运行了多少物理时间*/
 	if (unlikely((s64)delta_exec <= 0))
 		return;
 
 	schedstat_set(curr->se.statistics.exec_max,
 		      max(curr->se.statistics.exec_max, delta_exec));
 
-	curr->se.sum_exec_runtime += delta_exec;
+	curr->se.sum_exec_runtime += delta_exec;           /*更新当前进程总运行时间*/
 	account_group_exec_runtime(curr, delta_exec);
 
 	curr->se.exec_start = rq_clock_task(rq);
@@ -885,7 +887,7 @@ static void update_curr_rt(struct rq *rq)
 		if (sched_rt_runtime(rt_rq) != RUNTIME_INF) {
 			raw_spin_lock(&rt_rq->rt_runtime_lock);
 			rt_rq->rt_time += delta_exec;
-			if (sched_rt_runtime_exceeded(rt_rq))
+			if (sched_rt_runtime_exceeded(rt_rq))  /*rq中所有实时进程运行时间过长，需要扼制返回1*/
 				resched_task(curr);
 			raw_spin_unlock(&rt_rq->rt_runtime_lock);
 		}
@@ -1010,7 +1012,7 @@ void inc_rt_tasks(struct sched_rt_entity *rt_se, struct rt_rq *rt_rq)
 
 	inc_rt_prio(rt_rq, prio);
 	inc_rt_migration(rt_se, rt_rq);
-	inc_rt_group(rt_se, rt_rq);
+	inc_rt_group(rt_se, rt_rq);    /*启动1s的定时器，检测扼制*/
 }
 
 static inline
@@ -1030,7 +1032,7 @@ static void __enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head)
 	struct rt_rq *rt_rq = rt_rq_of_se(rt_se);
 	struct rt_prio_array *array = &rt_rq->active;
 	struct rt_rq *group_rq = group_rt_rq(rt_se);
-	struct list_head *queue = array->queue + rt_se_prio(rt_se);
+	struct list_head *queue = array->queue + rt_se_prio(rt_se);  /*获取优先级对应的队列*/
 
 	/*
 	 * Don't enqueue the group if its throttled, or when empty.
@@ -1041,7 +1043,7 @@ static void __enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head)
 	if (group_rq && (rt_rq_throttled(group_rq) || !group_rq->rt_nr_running))
 		return;
 
-	if (head)
+	if (head)                              /*将进程添加到链表头或者尾部*/
 		list_add(&rt_se->run_list, queue);
 	else
 		list_add_tail(&rt_se->run_list, queue);
@@ -1116,7 +1118,7 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
 		enqueue_pushable_task(rq, p);
 
-	inc_nr_running(rq);
+	inc_nr_running(rq);  /*增加当前队列活动进程计数*/
 }
 
 static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
@@ -1302,14 +1304,14 @@ static struct task_struct *_pick_next_task_rt(struct rq *rq)
 
 	rt_rq = &rq->rt;
 
-	if (!rt_rq->rt_nr_running)
+	if (!rt_rq->rt_nr_running)   /*实时进程队列上必须有活动进程*/
 		return NULL;
 
-	if (rt_rq_throttled(rt_rq))
+	if (rt_rq_throttled(rt_rq))  /*实时进程队列如果被扼制了就不会选择下一个实时进程*/
 		return NULL;
 
 	do {
-		rt_se = pick_next_rt_entity(rq, rt_rq);
+		rt_se = pick_next_rt_entity(rq, rt_rq);  /*找出优先级最高的队列中的第一个进程*/
 		BUG_ON(!rt_se);
 		rt_rq = group_rt_rq(rt_se);
 	} while (rt_rq);
@@ -1921,7 +1923,7 @@ static void task_tick_rt(struct rq *rq, struct task_struct *p, int queued)
 	/*
 	 * RR tasks need a special form of timeslice management.
 	 * FIFO tasks have no timeslices.
-	 */
+	 */ /*RR进程需要处理时间片，而FIFO进程不用*/
 	if (p->policy != SCHED_RR)
 		return;
 
@@ -1933,7 +1935,7 @@ static void task_tick_rt(struct rq *rq, struct task_struct *p, int queued)
 	/*
 	 * Requeue to the end of queue if we (and all of our ancestors) are the
 	 * only element on the queue
-	 */
+	 */ /*表示RR进程的时间片用完，需要移动到队列的末尾*/
 	for_each_sched_rt_entity(rt_se) {
 		if (rt_se->run_list.prev != rt_se->run_list.next) {
 			requeue_task_rt(rq, p, 0);
@@ -1990,7 +1992,7 @@ const struct sched_class rt_sched_class = {
 	.set_curr_task          = set_curr_task_rt,
 	.task_tick		= task_tick_rt,
 
-	.get_rr_interval	= get_rr_interval_rt,
+	.get_rr_interval	= get_rr_interval_rt,   /*获取RR进程的时间片长度*/
 
 	.prio_changed		= prio_changed_rt,
 	.switched_to		= switched_to_rt,

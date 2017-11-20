@@ -129,8 +129,8 @@ switch_mm(struct mm_struct *prev, struct mm_struct *next,
 	    !cpumask_test_cpu(cpu, mm_cpumask(next)))
 		__flush_icache_all();
 
-	if (!cpumask_test_and_set_cpu(cpu, mm_cpumask(next)) || prev != next) {
-		check_and_switch_context(next, tsk);
+	if (!cpumask_test_and_set_cpu(cpu, mm_cpumask(next)) || prev != next) {/*关联运行的cpu*/
+		check_and_switch_context(next, tsk); /*清空tlb和缓存*/
 		if (cache_is_vivt())
 			cpumask_clear_cpu(cpu, mm_cpumask(prev));
 	}

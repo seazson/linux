@@ -103,9 +103,9 @@ struct rt_prio_array {
 struct rt_bandwidth {
 	/* nests inside the rq lock: */
 	raw_spinlock_t		rt_runtime_lock;
-	ktime_t			rt_period;
-	u64			rt_runtime;
-	struct hrtimer		rt_period_timer;
+	ktime_t			rt_period;     /*周期默认是1s*/
+	u64			rt_runtime;        /*实时进程运行时间默认是0.95s*/
+	struct hrtimer		rt_period_timer; /*默认处理函数是sched_rt_period_timer*/
 };
 
 extern struct mutex sched_domains_mutex;
@@ -145,8 +145,8 @@ struct task_group {
 	/* schedulable entities of this group on each cpu */
 	struct sched_entity **se;
 	/* runqueue "owned" by this group on each cpu */
-	struct cfs_rq **cfs_rq;
-	unsigned long shares;
+	struct cfs_rq **cfs_rq;   /*指针数组，nr_cpu_ids个*/
+	unsigned long shares;     /*用于表示该组的权重*/
 
 #ifdef	CONFIG_SMP
 	atomic_long_t load_avg;
@@ -276,7 +276,7 @@ struct cfs_rq {
 	 * This allows for the description of both thread and group usage (in
 	 * the FAIR_GROUP_SCHED case).
 	 */
-	unsigned long runnable_load_avg, blocked_load_avg;
+	unsigned long runnable_load_avg, blocked_load_avg;  /*进程负载率load_avg_contrib的总和*/
 	atomic64_t decay_counter;
 	u64 last_decay;
 	atomic_long_t removed_load;
@@ -347,9 +347,9 @@ struct rt_rq {
 	int overloaded;
 	struct plist_head pushable_tasks;
 #endif
-	int rt_throttled;
-	u64 rt_time;
-	u64 rt_runtime;
+	int rt_throttled;      /*表示整个实时进程队列调度是否被扼制，也就是不让选择下一个实时进程*/
+	u64 rt_time;           /*本队列里所有进程运行的物理时间总数*/
+	u64 rt_runtime;        /*表示一个周期内实时进程们总共应该运行多久，默认等于0.95s*/
 	/* Nests inside the rq lock: */
 	raw_spinlock_t rt_runtime_lock;
 
