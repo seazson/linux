@@ -602,7 +602,7 @@ int arch_validate_hwbkpt_settings(struct perf_event *bp)
 		return -ENODEV;
 
 	/* Build the arch_hw_breakpoint. */
-	ret = arch_build_bp_info(bp);
+	ret = arch_build_bp_info(bp);    /*构造arch_hw_breakpoint结构*/
 	if (ret)
 		goto out;
 
