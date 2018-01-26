@@ -4925,7 +4925,7 @@ static inline bool sched_debug(void)
 
 static int sd_degenerate(struct sched_domain *sd)
 {
-	if (cpumask_weight(sched_domain_span(sd)) == 1)
+	if (cpumask_weight(sched_domain_span(sd)) == 1) /*汉明码为1，说明没有cpu?*/
 		return 1;
 
 	/* Following flags need at least 2 groups */
@@ -4954,7 +4954,7 @@ sd_parent_degenerate(struct sched_domain *sd, struct sched_domain *parent)
 	if (sd_degenerate(parent))
 		return 1;
 
-	if (!cpumask_equal(sched_domain_span(sd), sched_domain_span(parent)))
+	if (!cpumask_equal(sched_domain_span(sd), sched_domain_span(parent)))  /*父域和子域的兄弟位图不一样是不能删除父域的*/
 		return 0;
 
 	/* Flags needing groups don't count if only 1 group in parent */
@@ -5159,7 +5159,7 @@ cpu_attach_domain(struct sched_domain *sd, struct root_domain *rd, int cpu)
 	struct sched_domain *tmp;
 
 	/* Remove the sched domains which do not contribute to scheduling. */
-	for (tmp = sd; tmp; ) {
+	for (tmp = sd; tmp; ) {/*从底层向上遍历*/
 		struct sched_domain *parent = tmp->parent;
 		if (!parent)
 			break;
@@ -5168,12 +5168,12 @@ cpu_attach_domain(struct sched_domain *sd, struct root_domain *rd, int cpu)
 			tmp->parent = parent->parent;
 			if (parent->parent)
 				parent->parent->child = tmp;
-			destroy_sched_domain(parent, cpu);
+			destroy_sched_domain(parent, cpu);  /*释放父域*/
 		} else
 			tmp = tmp->parent;
 	}
 
-	if (sd && sd_degenerate(sd)) {
+	if (sd && sd_degenerate(sd)) {  /*释放子域*/
 		tmp = sd;
 		sd = sd->parent;
 		destroy_sched_domain(tmp, cpu);
@@ -5183,10 +5183,10 @@ cpu_attach_domain(struct sched_domain *sd, struct root_domain *rd, int cpu)
 
 	sched_domain_debug(sd, cpu);
 
-	rq_attach_root(rq, rd);
+	rq_attach_root(rq, rd);   /*关联root_domain*/
 	tmp = rq->sd;
-	rcu_assign_pointer(rq->sd, sd);
-	destroy_sched_domains(tmp, cpu);
+	rcu_assign_pointer(rq->sd, sd);  /*关联cpu及其对应的底层调度域*/
+	destroy_sched_domains(tmp, cpu); /*释放之前的调度域*/
 
 	update_top_cache_domain(cpu);
 }
@@ -5362,8 +5362,8 @@ static int get_group(int cpu, struct sd_data *sdd, struct sched_group **sg)
 	struct sched_domain *child = sd->child;
 
 	if (child)
-		cpu = cpumask_first(sched_domain_span(child));  /*调度组只会获取第一个cpu的*/
-
+		cpu = cpumask_first(sched_domain_span(child));  /*上层调度域的调度组只会获取第一个cpu的*/
+                                                        /*最底层调度域返回的是自己的cpu的*/
 	if (sg) {
 		*sg = *per_cpu_ptr(sdd->sg, cpu);
 		(*sg)->sgp = *per_cpu_ptr(sdd->sgp, cpu);
@@ -5389,10 +5389,10 @@ build_sched_groups(struct sched_domain *sd, int cpu)
 	struct cpumask *covered;
 	int i;
 
-	get_group(cpu, sdd, &sd->groups);
+	get_group(cpu, sdd, &sd->groups); /*建立了sd->groups和实际调度组的关系*/
 	atomic_inc(&sd->groups->ref);
 
-	if (cpu != cpumask_first(span))  /*只为兄弟cpu中的第一个建立调度组*/
+	if (cpu != cpumask_first(span))  /*只为兄弟cpu中的第一个才会遍历其所有兄弟，防止重复建立*/
 		return 0;
 
 	lockdep_assert_held(&sched_domains_mutex);
@@ -5400,20 +5400,20 @@ build_sched_groups(struct sched_domain *sd, int cpu)
 
 	cpumask_clear(covered);
 
-	for_each_cpu(i, span) {
+	for_each_cpu(i, span) {/*遍历所有兄弟cpu*/
 		struct sched_group *sg;
 		int group, j;
 
 		if (cpumask_test_cpu(i, covered))
 			continue;
 
-		group = get_group(i, sdd, &sg);
-		cpumask_clear(sched_group_cpus(sg));
+		group = get_group(i, sdd, &sg); /*返回使用的是那个cpu的组。最底层域是自己的cpu，高层的是第一个cpu*/
+		cpumask_clear(sched_group_cpus(sg)); /*清除组内标示的cpu*/
 		sg->sgp->power = 0;
 		cpumask_setall(sched_group_mask(sg));
 
 		for_each_cpu(j, span) {
-			if (get_group(j, sdd, NULL) != group)
+			if (get_group(j, sdd, NULL) != group) /*遍历所有兄弟cpu，将属于同一组的在组结构体里标记起来*/ 
 				continue;
 
 			cpumask_set_cpu(j, covered);
@@ -5598,13 +5598,13 @@ static struct sched_domain_topology_level default_topology[] = {
 #ifdef CONFIG_SCHED_SMT    /*超线程级别*/
 	{ sd_init_SIBLING, cpu_smt_mask, },
 #endif
-#ifdef CONFIG_SCHED_MC     /*多核级别*/
+#ifdef CONFIG_SCHED_MC     /*多核级别，mask返回物理上的兄弟cpu，从cpu寄存器获取相关信息*/
 	{ sd_init_MC, cpu_coregroup_mask, },
 #endif
 #ifdef CONFIG_SCHED_BOOK
 	{ sd_init_BOOK, cpu_book_mask, },
 #endif
-	{ sd_init_CPU, cpu_cpu_mask, }, /*物理芯片级别*/
+	{ sd_init_CPU, cpu_cpu_mask, }, /*物理芯片级别,mask返回online cpu*/
 	{ NULL, },
 };
 
@@ -6022,7 +6022,7 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 	struct s_data d;
 	int i, ret = -ENOMEM;
 
-	alloc_state = __visit_domain_allocation_hell(&d, cpu_map);  /*根据拓扑分配调度域结构体空间*/
+	alloc_state = __visit_domain_allocation_hell(&d, cpu_map);  /*根据总拓扑分配调度域结构体空间*/
 	if (alloc_state != sa_rootdomain)
 		goto error;
 
@@ -6032,12 +6032,12 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 
 		sd = NULL;
 		for_each_sd_topology(tl) {
-			sd = build_sched_domain(tl, cpu_map, attr, sd, i);   /*初始化调度域中的数据，建立父子关系*/
+			sd = build_sched_domain(tl, cpu_map, attr, sd, i);   /*初始化调度域中的数据，建立父子关系，设置兄弟位图*/
 			if (tl == sched_domain_topology)
 				*per_cpu_ptr(d.sd, i) = sd;     /*存放最低一层的调度域们*/
 			if (tl->flags & SDTL_OVERLAP || sched_feat(FORCE_SD_OVERLAP))
 				sd->flags |= SD_OVERLAP;
-			if (cpumask_equal(cpu_map, sched_domain_span(sd)))
+			if (cpumask_equal(cpu_map, sched_domain_span(sd))) /*这里为什么要退出？父子节点的调度域相同就不需要建立*/
 				break;
 		}
 	}
@@ -6050,7 +6050,7 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 				if (build_overlap_sched_groups(sd, i))
 					goto error;
 			} else {
-				if (build_sched_groups(sd, i))              /*初始化调度组*/
+				if (build_sched_groups(sd, i))              /*初始化调度组，建立调度组的位图和相互链表*/
 					goto error;
 			}
 		}
@@ -6063,7 +6063,7 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 
 		for (sd = *per_cpu_ptr(d.sd, i); sd; sd = sd->parent) {
 			claim_allocations(i, sd);
-			init_sched_groups_power(i, sd);
+			init_sched_groups_power(i, sd);   /*设置能力系数*/
 		}
 	}
 
@@ -6071,7 +6071,7 @@ static int build_sched_domains(const struct cpumask *cpu_map,
 	rcu_read_lock();
 	for_each_cpu(i, cpu_map) {
 		sd = *per_cpu_ptr(d.sd, i);
-		cpu_attach_domain(sd, d.rd, i);
+		cpu_attach_domain(sd, d.rd, i);  /*释放重复的调度域，关联调度域到rq中*/
 	}
 	rcu_read_unlock();
 

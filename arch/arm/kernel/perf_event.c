@@ -433,7 +433,7 @@ static int armpmu_event_init(struct perf_event *event)
 	if (!atomic_inc_not_zero(active_events)) {
 		mutex_lock(&armpmu->reserve_mutex);
 		if (atomic_read(active_events) == 0)
-			err = armpmu_reserve_hardware(armpmu);
+			err = armpmu_reserve_hardware(armpmu);     /*注册中断处理函数*/
 
 		if (!err)
 			atomic_inc(active_events);

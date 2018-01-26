@@ -159,7 +159,7 @@ int perf_output_begin(struct perf_output_handle *handle,
 		smp_rmb();
 		offset = head = local_read(&rb->head);
 		head += size;
-		if (unlikely(!perf_output_space(rb, tail, offset, head)))
+		if (unlikely(!perf_output_space(rb, tail, offset, head)))  /*¼ì²é¿Õ¼äÊÇ·ñ×ã¹»*/
 			goto fail;
 	} while (local_cmpxchg(&rb->head, offset, head) != offset);
 

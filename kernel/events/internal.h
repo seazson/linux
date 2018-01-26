@@ -13,14 +13,14 @@ struct ring_buffer {
 	struct rcu_head			rcu_head;
 #ifdef CONFIG_PERF_USE_VMALLOC
 	struct work_struct		work;
-	int				page_order;	/* allocation order  */
+	int				page_order;	/* allocation order  使用vmalloc等于总页数，使用伙伴系统等于0*/
 #endif
-	int				nr_pages;	/* nr of data pages  */
-	int				overwrite;	/* can overwrite itself */
+	int				nr_pages;	/* nr of data pages  使用vmalloc方式等于1， 使用伙伴系统等于总页数（不包括第一页）*/
+	int				overwrite;	/* can overwrite itself 空间不够的时候是否可以覆盖写*/
 
 	atomic_t			poll;		/* POLL_ for wakeups */
 
-	local_t				head;		/* write position    */
+	local_t				head;		/* write position    当前写到哪里了，相对偏移*/
 	local_t				nest;		/* nested writers    */
 	local_t				events;		/* event limit       */
 	local_t				wakeup;		/* wakeup stamp      */
@@ -35,8 +35,8 @@ struct ring_buffer {
 	unsigned long			mmap_locked;
 	struct user_struct		*mmap_user;
 
-	struct perf_event_mmap_page	*user_page;
-	void				*data_pages[0];
+	struct perf_event_mmap_page	*user_page;  /*单独一页，不算在大小内。数据不写在里面*/
+	void				*data_pages[0];   /*页指针，每一个指向一个页.如果使用vmalloc就只有一个*/
 };
 
 extern void rb_free(struct ring_buffer *rb);
@@ -75,7 +75,7 @@ static inline int page_order(struct ring_buffer *rb)
 	return 0;
 }
 #endif
-
+/*rb的总大小*/
 static inline unsigned long perf_data_size(struct ring_buffer *rb)
 {
 	return rb->nr_pages << (PAGE_SHIFT + page_order(rb));

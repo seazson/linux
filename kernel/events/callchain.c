@@ -4,7 +4,7 @@
  *  Copyright (C) 2008 Thomas Gleixner <tglx@linutronix.de>
  *  Copyright (C) 2008-2011 Red Hat, Inc., Ingo Molnar
  *  Copyright (C) 2008-2011 Red Hat, Inc., Peter Zijlstra <pzijlstr@redhat.com>
- *  Copyright  ©  2009 Paul Mackerras, IBM Corp. <paulus@au1.ibm.com>
+ *  Copyright  ? 2009 Paul Mackerras, IBM Corp. <paulus@au1.ibm.com>
  *
  * For licensing details see kernel-base/COPYING
  */
@@ -175,14 +175,14 @@ perf_callchain(struct perf_event *event, struct pt_regs *regs)
 	entry->nr = 0;
 
 	if (kernel && !user_mode(regs)) {
-		perf_callchain_store(entry, PERF_CONTEXT_KERNEL);
-		perf_callchain_kernel(entry, regs);
+		perf_callchain_store(entry, PERF_CONTEXT_KERNEL);    /*µÚÒ»¸öÊı¾İ¹Ì¶¨±£´æÖµPERF_CONTEXT_KERNEL*/
+		perf_callchain_kernel(entry, regs);    /*Í¨¹ıunwindÒ»¼¶Ò»¼¶·´Ë·²¢±£´æpcÖ¸Õë*/
 	}
 
 	if (user) {
 		if (!user_mode(regs)) {
 			if  (current->mm)
-				regs = task_pt_regs(current);
+				regs = task_pt_regs(current);  /*Èç¹ûÏÖÔÚ´¦ÓÚÄÚºËÌ¬£¬µ«ÊÇÏë»ñÈ¡ÓÃ»§Ì¬Õ»*/ 
 			else
 				regs = NULL;
 		}

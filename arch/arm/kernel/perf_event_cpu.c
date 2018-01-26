@@ -273,7 +273,7 @@ static int cpu_pmu_device_probe(struct platform_device *pdev)
 		init_fn = of_id->data;
 		ret = init_fn(pmu);
 	} else {
-		ret = probe_current_pmu(pmu);
+		ret = probe_current_pmu(pmu);   /*设置arm_pmu*/
 	}
 
 	if (ret) {
@@ -283,7 +283,7 @@ static int cpu_pmu_device_probe(struct platform_device *pdev)
 
 	cpu_pmu = pmu;
 	cpu_pmu->plat_device = pdev;
-	cpu_pmu_init(cpu_pmu);
+	cpu_pmu_init(cpu_pmu);              /*设置中断挂接和移除函数*/
 	ret = armpmu_register(cpu_pmu, PERF_TYPE_RAW);
 
 	if (!ret)

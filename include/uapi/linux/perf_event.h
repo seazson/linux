@@ -221,7 +221,7 @@ struct perf_event_attr {
 	/*
 	 * Major type: hardware/software/tracepoint/etc.
 	 */
-	__u32			type;
+	__u32			type;        /*pmu类型*/
 
 	/*
 	 * Size of the attr structure, for fwd/bwd compat.
@@ -231,27 +231,27 @@ struct perf_event_attr {
 	/*
 	 * Type specific configuration information.
 	 */
-	__u64			config;
+	__u64			config;      /*pmu id*/
 
 	union {
 		__u64		sample_period;
 		__u64		sample_freq;
 	};
 
-	__u64			sample_type;
-	__u64			read_format;
+	__u64			sample_type;    /*位图，要采样的类型*/
+	__u64			read_format;    /*通过read操作返回的值类型*/
 
 	__u64			disabled       :  1, /* off by default        */
 				inherit	       :  1, /* children inherit it   */
 				pinned	       :  1, /* must always be on PMU */
 				exclusive      :  1, /* only group on PMU     */
-				exclude_user   :  1, /* don't count user      */
-				exclude_kernel :  1, /* ditto kernel          */
+				exclude_user   :  1, /* don't count user   不跟踪用户空间   */
+				exclude_kernel :  1, /* ditto kernel   不跟踪内核       */
 				exclude_hv     :  1, /* ditto hypervisor      */
 				exclude_idle   :  1, /* don't count when idle */
 				mmap           :  1, /* include mmap data     */
 				comm	       :  1, /* include comm data     */
-				freq           :  1, /* use freq, not period  */
+				freq           :  1, /* use freq, not period  参数采用频率还是周期来解读*/
 				inherit_stat   :  1, /* per task counts       */
 				enable_on_exec :  1, /* next exec enables     */
 				task           :  1, /* trace fork/exit       */
@@ -369,8 +369,8 @@ struct perf_event_mmap_page {
 	 *       processes.
 	 */
 	__u32	lock;			/* seqlock for synchronization */
-	__u32	index;			/* hardware event identifier */
-	__s64	offset;			/* add to hardware event value */
+	__u32	index;			/* hardware event identifier 由pmu->event_idx(event)算出*/
+	__s64	offset;			/* add to hardware event value 由event->count + event->child_count算出*/
 	__u64	time_enabled;		/* time event active */
 	__u64	time_running;		/* time event on cpu */
 	union {
@@ -436,8 +436,8 @@ struct perf_event_mmap_page {
 	 * written by userspace to reflect the last read data. In this case
 	 * the kernel will not over-write unread data.
 	 */
-	__u64   data_head;		/* head in the data section */
-	__u64	data_tail;		/* user-space written tail */
+	__u64   data_head;		/* head in the data section 内核写到哪里了。这两个都是相对偏移*/
+	__u64	data_tail;		/* user-space written tail 用户空间读到哪里了*/
 };
 
 #define PERF_RECORD_MISC_CPUMODE_MASK		(7 << 0)
@@ -461,9 +461,9 @@ struct perf_event_mmap_page {
 #define PERF_RECORD_MISC_EXT_RESERVED		(1 << 15)
 
 struct perf_event_header {
-	__u32	type;
-	__u16	misc;
-	__u16	size;
+	__u32	type;       /*指定记录的数据类型*/
+	__u16	misc;       /*当前的记录是内核态还是用户态，还是虚拟机*/
+	__u16	size;       /*整个记录的大小，包括头和数据*/
 };
 
 enum perf_event_type {

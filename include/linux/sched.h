@@ -859,7 +859,7 @@ struct sched_domain {
 		struct rcu_head rcu;	/* used during destruction */
 	};
 
-	unsigned int span_weight;  /*本层兄弟个数*/
+	unsigned int span_weight;  /*本层兄弟位图权重，用于标示一种位图值*/
 	/*
 	 * Span of all CPUs in this domain.
 	 *

@@ -122,7 +122,7 @@ struct event_constraint;
 
 /**
  * struct hw_perf_event - performance event hardware details:
- */
+ */ /*用来维护计数器的属性信息*/
 struct hw_perf_event {
 #ifdef CONFIG_PERF_EVENTS
 	union {
@@ -163,10 +163,10 @@ struct hw_perf_event {
 #endif
 	};
 	int				state;
-	local64_t			prev_count;
-	u64				sample_period;
+	local64_t			prev_count;    /*timer在启动的时候会保存启动的当前时间*/
+	u64				sample_period;     /*ktimer的采样周期，最少10000ns，由attr->sample_period复制*/
 	u64				last_period;
-	local64_t			period_left;
+	local64_t			period_left;   /*周期剩余时间*/
 	u64                             interrupts_seq;
 	u64				interrupts;
 
@@ -193,16 +193,16 @@ struct perf_event;
  * struct pmu - generic performance monitoring unit
  */
 struct pmu {
-	struct list_head		entry;
+	struct list_head		entry;    /*添加到pmus链表上*/
 
 	struct device			*dev;
 	const struct attribute_group	**attr_groups;
 	const char			*name;
-	int				type;
+	int				type;          /*由idr分配，用于查找*/
 
 	int * __percpu			pmu_disable_count;
 	struct perf_cpu_context * __percpu pmu_cpu_context;
-	int				task_ctx_nr;
+	int				task_ctx_nr;          /*属于硬件上下文，软件上下文，还是任务上下文*/
 	int				hrtimer_interval_ms;
 
 	/*
@@ -294,7 +294,7 @@ typedef void (*perf_overflow_handler_t)(struct perf_event *,
 					struct pt_regs *regs);
 
 enum perf_group_flag {
-	PERF_GROUP_SOFTWARE		= 0x1,
+	PERF_GROUP_SOFTWARE		= 0x1,     /*组里面的所有event都是软件类型*/
 };
 
 #define SWEVENT_HLIST_BITS		8
@@ -305,9 +305,9 @@ struct swevent_hlist {
 	struct rcu_head			rcu_head;
 };
 
-#define PERF_ATTACH_CONTEXT	0x01
-#define PERF_ATTACH_GROUP	0x02
-#define PERF_ATTACH_TASK	0x04
+#define PERF_ATTACH_CONTEXT	0x01    /*表示event添加到了ctx上下文中*/
+#define PERF_ATTACH_GROUP	0x02    /*表示event已经加入group中*/
+#define PERF_ATTACH_TASK	0x04    /*表示event是task跟踪类型的*/
 
 struct perf_cgroup;
 struct ring_buffer;
@@ -317,10 +317,10 @@ struct ring_buffer;
  */
 struct perf_event {
 #ifdef CONFIG_PERF_EVENTS
-	struct list_head		group_entry;
-	struct list_head		event_entry;
-	struct list_head		sibling_list;
-	struct hlist_node		hlist_entry;
+	struct list_head		group_entry;     /*会加入到ctx->pinned_groups或者ctx->flexible_groups（如果是leader），或者group_leader->sibling_list中的一个*/
+	struct list_head		event_entry;     /*会加入到ctx->event_list链表中*/
+	struct list_head		sibling_list;    /*event是group_leader，旗下event会链接在这*/
+	struct hlist_node		hlist_entry;     /*添加到percpu级的swevent_htable，用于其他软件模式*/
 	int				nr_siblings;
 	int				group_flags;
 	struct perf_event		*group_leader;
@@ -328,7 +328,7 @@ struct perf_event {
 
 	enum perf_event_active_state	state;
 	unsigned int			attach_state;
-	local64_t			count;
+	local64_t			count;         /*event事件产生的次数*/
 	atomic64_t			child_count;
 
 	/*
@@ -353,9 +353,9 @@ struct perf_event {
 	 * tstamp_stopped: in INACTIVE state, the notional time when the
 	 *	event was scheduled off.
 	 */
-	u64				tstamp_enabled;
-	u64				tstamp_running;
-	u64				tstamp_stopped;
+	u64				tstamp_enabled;     /*add的时候会更新*/
+	u64				tstamp_running;     /*总共运行的时间*/
+	u64				tstamp_stopped;     /*上一次被换出的时间点*/
 
 	/*
 	 * timestamp shadows the actual context timing but it can
@@ -368,12 +368,12 @@ struct perf_event {
 	u64				shadow_ctx_time;
 
 	struct perf_event_attr		attr;
-	u16				header_size;
-	u16				id_header_size;
-	u16				read_size;
+	u16				header_size;       /*由attr.sample_type部分字段解析出*/
+	u16				id_header_size;    /*由attr.sample_type中跟id相关的字段解析出*/
+	u16				read_size;         /*由attr.read_format解析出*/
 	struct hw_perf_event		hw;
 
-	struct perf_event_context	*ctx;
+	struct perf_event_context	*ctx;   /*可能是task的，也可能是pmu的*/
 	atomic_long_t			refcount;
 
 	/*
@@ -391,17 +391,17 @@ struct perf_event {
 	struct perf_event		*parent;
 
 	int				oncpu;
-	int				cpu;
+	int				cpu;      /*此计数器用于哪个cpu*/
 
-	struct list_head		owner_entry;
-	struct task_struct		*owner;
+	struct list_head		owner_entry;    /*会添加到task->perf_event_list下*/
+	struct task_struct		*owner;         /*创建event的进程*/
 
 	/* mmap bits */
 	struct mutex			mmap_mutex;
 	atomic_t			mmap_count;
 
 	struct ring_buffer		*rb;
-	struct list_head		rb_entry;
+	struct list_head		rb_entry;  /*添加到rb->event_list*/
 
 	/* poll related */
 	wait_queue_head_t		waitq;
@@ -411,7 +411,7 @@ struct perf_event {
 	int				pending_wakeup;
 	int				pending_kill;
 	int				pending_disable;
-	struct irq_work			pending;   /*对应的处理函数为perf_pending_event*/
+	struct irq_work			pending;   /*对应的处理函数为 perf_pending_event*/
 
 	atomic_t			event_limit;
 
@@ -421,7 +421,7 @@ struct perf_event {
 	struct pid_namespace		*ns;
 	u64				id;
 
-	perf_overflow_handler_t		overflow_handler;
+	perf_overflow_handler_t		overflow_handler;    /*产生事件时的触发函数*/
 	void				*overflow_handler_context;
 
 #ifdef CONFIG_EVENT_TRACING
@@ -465,22 +465,22 @@ struct perf_event_context {
 	 */
 	struct mutex			mutex;
 
-	struct list_head		pinned_groups;
+	struct list_head		pinned_groups;      /*固定在某个cpu上*/
 	struct list_head		flexible_groups;
 	struct list_head		event_list;
 	int				nr_events;
-	int				nr_active;
-	int				is_active;
-	int				nr_stat;
-	int				nr_freq;
+	int				nr_active;       /*当前上下文中有多少个活动的perf_event*/
+	int				is_active;       /*会有两个flag：EVENT_PINNED，EVENT_FLEXIBLE，表示哪个队列目前是活动的*/
+	int				nr_stat;         /*当attr.inherit_stat时会增加*/
+	int				nr_freq;         /*perf_event中包含attr.freq && attr.sample_freq的个数*/
 	int				rotate_disable;
 	atomic_t			refcount;
-	struct task_struct		*task;
+	struct task_struct		*task;   /*event是cpu级别还是task级别就看设置了这个没有*/
 
 	/*
 	 * Context clock, runs when context enabled.
 	 */
-	u64				time;
+	u64				time;      /*运行总时间*/
 	u64				timestamp;
 
 	/*
@@ -490,7 +490,7 @@ struct perf_event_context {
 	struct perf_event_context	*parent_ctx;
 	u64				parent_gen;
 	u64				generation;
-	int				pin_count;
+	int				pin_count;   /*引用计数*/
 	int				nr_cgroups;	 /* cgroup evts */
 	int				nr_branch_stack; /* branch_stack evt */
 	struct rcu_head			rcu_head;
@@ -510,7 +510,7 @@ struct perf_cpu_context {
 	struct perf_event_context	*task_ctx;
 	int				active_oncpu;
 	int				exclusive;
-	struct hrtimer			hrtimer;
+	struct hrtimer			hrtimer;      /*会绑定处理函数perf_cpu_hrtimer_handler*/
 	ktime_t				hrtimer_interval;
 	struct list_head		rotation_list;
 	struct pmu			*unique_pmu;
@@ -521,9 +521,9 @@ struct perf_output_handle {
 	struct perf_event		*event;
 	struct ring_buffer		*rb;
 	unsigned long			wakeup;
-	unsigned long			size;
-	void				*addr;
-	int				page;
+	unsigned long			size;    /*当前页的剩余空间*/
+	void				*addr;       /*虚拟地址。当前写的位置*/
+	int				page;    /*当前在写的页的内部序号*/
 };
 
 #ifdef CONFIG_PERF_EVENTS

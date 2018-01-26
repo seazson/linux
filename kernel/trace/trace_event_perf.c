@@ -67,7 +67,7 @@ static int perf_trace_event_reg(struct ftrace_event_call *tp_event,
 	for_each_possible_cpu(cpu)
 		INIT_HLIST_HEAD(per_cpu_ptr(list, cpu));
 
-	tp_event->perf_events = list;
+	tp_event->perf_events = list;    /*Îªtp·ÖÅäÁ´±í*/
 
 	if (!total_ref_count) {
 		char __percpu *buf;

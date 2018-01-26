@@ -53,7 +53,7 @@ struct bp_cpuinfo {
 	/* Number of pinned cpu breakpoints in a cpu */
 	unsigned int	cpu_pinned;
 	/* tsk_pinned[n] is the number of tasks having n+1 breakpoints */
-	unsigned int	*tsk_pinned;
+	unsigned int	*tsk_pinned;    /*跟task绑定的*/
 	/* Number of non-pinned cpu/task breakpoints in a cpu */
 	unsigned int	flexible; /* XXX: placeholder, see fetch_this_slot() */
 };
@@ -292,7 +292,7 @@ static int __reserve_bp_slot(struct perf_event *bp)
 	    bp->attr.bp_type == HW_BREAKPOINT_INVALID)
 		return -EINVAL;
 
-	type = find_slot_idx(bp);
+	type = find_slot_idx(bp);  /*要监控的是指令类型还是数据类型*/
 	weight = hw_breakpoint_weight(bp);
 
 	fetch_bp_busy_slots(&slots, bp, type);

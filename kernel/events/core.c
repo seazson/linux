@@ -130,7 +130,7 @@ static int cpu_function_call(int cpu, int (*func) (void *info), void *info)
 
 enum event_type_t {
 	EVENT_FLEXIBLE = 0x1,
-	EVENT_PINNED = 0x2,
+	EVENT_PINNED = 0x2,            /*固定在某个cpu上*/
 	EVENT_ALL = EVENT_FLEXIBLE | EVENT_PINNED,
 };
 
@@ -1019,7 +1019,7 @@ static void perf_unpin_context(struct perf_event_context *ctx)
 
 /*
  * Update the record of the current time in a context.
- */
+ */ /*更新ctx的运行时间*/
 static void update_context_time(struct perf_event_context *ctx)
 {
 	u64 now = perf_clock();
@@ -1102,7 +1102,7 @@ ctx_group_list(struct perf_event *event, struct perf_event_context *ctx)
 /*
  * Add a event from the lists for its context.
  * Must be called with ctx->mutex and ctx->lock held.
- */
+ */ /*将event添加到ctx的几个链表中*/
 static void
 list_add_event(struct perf_event *event, struct perf_event_context *ctx)
 {
@@ -1114,7 +1114,7 @@ list_add_event(struct perf_event *event, struct perf_event_context *ctx)
 	 * list, group events are kept attached to the group so that
 	 * perf_group_detach can, at all times, locate all siblings.
 	 */
-	if (event->group_leader == event) {
+	if (event->group_leader == event) { /*如果是组长直接添加到ctx的两个链表上*/
 		struct list_head *list;
 
 		if (is_software_event(event))
@@ -1227,7 +1227,7 @@ static void perf_event__id_header_size(struct perf_event *event)
 
 	event->id_header_size = size;
 }
-
+/*加入到组链表中，并更新header大小*/
 static void perf_group_attach(struct perf_event *event)
 {
 	struct perf_event *group_leader = event->group_leader, *pos;
@@ -1361,7 +1361,7 @@ event_filter_match(struct perf_event *event)
 	return (event->cpu == -1 || event->cpu == smp_processor_id())
 	    && perf_cgroup_match(event);
 }
-
+/*更改event状态，执行del，并更新计数*/
 static void
 event_sched_out(struct perf_event *event,
 		  struct perf_cpu_context *cpuctx,
@@ -1634,7 +1634,7 @@ static void perf_set_shadow_time(struct perf_event *event,
 #define MAX_INTERRUPTS (~0ULL)
 
 static void perf_log_throttle(struct perf_event *event, int enable);
-
+/*更新event的状态为active，同时执行pmu->add将event加入*/
 static int
 event_sched_in(struct perf_event *event,
 		 struct perf_cpu_context *cpuctx,
@@ -1684,7 +1684,7 @@ event_sched_in(struct perf_event *event,
 
 	return 0;
 }
-
+/*将group_event及其下的event置为active状态，并执行add操作*/
 static int
 group_sched_in(struct perf_event *group_event,
 	       struct perf_cpu_context *cpuctx,
@@ -1790,8 +1790,8 @@ static void add_event_to_ctx(struct perf_event *event,
 {
 	u64 tstamp = perf_event_time(event);
 
-	list_add_event(event, ctx);
-	perf_group_attach(event);
+	list_add_event(event, ctx);   /*添加到ctx的链表中*/
+	perf_group_attach(event);     /*如果不是leader还要添加到group_leader->sibling_list*/
 	event->tstamp_enabled = tstamp;
 	event->tstamp_running = tstamp;
 	event->tstamp_stopped = tstamp;
@@ -1808,25 +1808,25 @@ static void perf_event_sched_in(struct perf_cpu_context *cpuctx,
 				struct perf_event_context *ctx,
 				struct task_struct *task)
 {
-	cpu_ctx_sched_in(cpuctx, EVENT_PINNED, task);
+	cpu_ctx_sched_in(cpuctx, EVENT_PINNED, task);   /*激活cpu EVENT_PINNED链上的所有事件*/
 	if (ctx)
-		ctx_sched_in(ctx, cpuctx, EVENT_PINNED, task);
-	cpu_ctx_sched_in(cpuctx, EVENT_FLEXIBLE, task);
+		ctx_sched_in(ctx, cpuctx, EVENT_PINNED, task);  /*激活task级别 EVENT_PINNED链上的所有事件*/
+	cpu_ctx_sched_in(cpuctx, EVENT_FLEXIBLE, task);  /*激活cpu EVENT_FLEXIBLE链上的所有事件*/
 	if (ctx)
-		ctx_sched_in(ctx, cpuctx, EVENT_FLEXIBLE, task);
+		ctx_sched_in(ctx, cpuctx, EVENT_FLEXIBLE, task); /*激活task级别 EVENT_FLEXIBLE链上的所有事件*/
 }
 
 /*
  * Cross CPU call to install and enable a performance event
  *
  * Must be called with ctx->mutex held
- */
+ */ /*将当前cpu上任务级的event换成新加的event（如果新加的event是task级别）。移除cpu级别所有事件，加入event后，再使能cpu级别所有事件*/
 static int  __perf_install_in_context(void *info)
 {
 	struct perf_event *event = info;
-	struct perf_event_context *ctx = event->ctx;
-	struct perf_cpu_context *cpuctx = __get_cpu_context(ctx);
-	struct perf_event_context *task_ctx = cpuctx->task_ctx;
+	struct perf_event_context *ctx = event->ctx;      /*这个ctx可能是任务的，也可能是cpu的*/
+	struct perf_cpu_context *cpuctx = __get_cpu_context(ctx);   /*pmu级别，当前正在运行的cpu上下文*/
+	struct perf_event_context *task_ctx = cpuctx->task_ctx;     /*当前cpu上正在运行的任务级上下文*/
 	struct task_struct *task = current;
 
 	perf_ctx_lock(cpuctx, task_ctx);
@@ -1836,7 +1836,7 @@ static int  __perf_install_in_context(void *info)
 	 * If there was an active task_ctx schedule it out.
 	 */
 	if (task_ctx)
-		task_ctx_sched_out(task_ctx);
+		task_ctx_sched_out(task_ctx);               /*如果当前cpu上有任务级的上下文，将它移除*/
 
 	/*
 	 * If the context we're installing events in is not the
@@ -1854,7 +1854,7 @@ static int  __perf_install_in_context(void *info)
 		task = task_ctx->task;
 	}
 
-	cpu_ctx_sched_out(cpuctx, EVENT_ALL);
+	cpu_ctx_sched_out(cpuctx, EVENT_ALL);  /*移除cpu级的所有事件，执行del操作*/
 
 	update_context_time(ctx);
 	/*
@@ -1864,12 +1864,12 @@ static int  __perf_install_in_context(void *info)
 	 */
 	update_cgrp_time_from_event(event);
 
-	add_event_to_ctx(event, ctx);
+	add_event_to_ctx(event, ctx);   /*将event添加到一个上下文的链表中*/
 
 	/*
 	 * Schedule everything back in
 	 */
-	perf_event_sched_in(cpuctx, task_ctx, task);
+	perf_event_sched_in(cpuctx, task_ctx, task);  /*激活cpu级，task级的所有event，执行add操作*/
 
 	perf_pmu_enable(cpuctx->ctx.pmu);
 	perf_ctx_unlock(cpuctx, task_ctx);
@@ -1910,7 +1910,7 @@ perf_install_in_context(struct perf_event_context *ctx,
 	}
 
 retry:
-	if (!task_function_call(task, __perf_install_in_context, event))
+	if (!task_function_call(task, __perf_install_in_context, event))  /*如果是任务级别必须是当前任务，才能直接操作*/
 		return;
 
 	raw_spin_lock_irq(&ctx->lock);
@@ -1918,7 +1918,7 @@ retry:
 	 * If we failed to find a running task, but find the context active now
 	 * that we've acquired the ctx->lock, retry.
 	 */
-	if (ctx->is_active) {
+	if (ctx->is_active) { /*不是当前任务，并且处于激活，再继续尝试*/
 		raw_spin_unlock_irq(&ctx->lock);
 		goto retry;
 	}
@@ -1926,7 +1926,7 @@ retry:
 	/*
 	 * Since the task isn't running, its safe to add the event, us holding
 	 * the ctx->lock ensures the task won't get scheduled in.
-	 */
+	 */ /*不是当前任务，并且也没有激活，可以直接进行添加操作。因为激活的时候会进行add操作*/
 	add_event_to_ctx(event, ctx);
 	raw_spin_unlock_irq(&ctx->lock);
 }
@@ -2044,7 +2044,7 @@ void perf_event_enable(struct perf_event *event)
 {
 	struct perf_event_context *ctx = event->ctx;
 	struct task_struct *task = ctx->task;
-
+	printk("perf_event_enable task:%d\n",task);
 	if (!task) {
 		/*
 		 * Enable the event on the cpu that it's on
@@ -2112,7 +2112,7 @@ int perf_event_refresh(struct perf_event *event, int refresh)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(perf_event_refresh);
-
+/*移除ctx下对应类型为event_type的所有事件，并更新ctx和cpuctx的计数*/
 static void ctx_sched_out(struct perf_event_context *ctx,
 			  struct perf_cpu_context *cpuctx,
 			  enum event_type_t event_type)
@@ -2130,7 +2130,7 @@ static void ctx_sched_out(struct perf_event_context *ctx,
 		return;
 
 	perf_pmu_disable(ctx->pmu);
-	if ((is_active & EVENT_PINNED) && (event_type & EVENT_PINNED)) {
+	if ((is_active & EVENT_PINNED) && (event_type & EVENT_PINNED)) {/*移除对应链表中的event事件*/
 		list_for_each_entry(event, &ctx->pinned_groups, group_entry)
 			group_sched_out(event, cpuctx, ctx);
 	}
@@ -2341,7 +2341,7 @@ static void task_ctx_sched_out(struct perf_event_context *ctx)
 
 /*
  * Called with IRQs disabled
- */
+ */ /*移除cpu级的ctx中的evnet事件*/
 static void cpu_ctx_sched_out(struct perf_cpu_context *cpuctx,
 			      enum event_type_t event_type)
 {
@@ -2406,7 +2406,7 @@ ctx_flexible_sched_in(struct perf_event_context *ctx,
 		}
 	}
 }
-
+/*将ctx对应链表上的event及其子激活，并执行add操作*/
 static void
 ctx_sched_in(struct perf_event_context *ctx,
 	     struct perf_cpu_context *cpuctx,
@@ -2789,7 +2789,7 @@ static int perf_rotate_context(struct perf_cpu_context *cpuctx)
 	perf_ctx_lock(cpuctx, cpuctx->task_ctx);
 	perf_pmu_disable(cpuctx->ctx.pmu);
 
-	cpu_ctx_sched_out(cpuctx, EVENT_FLEXIBLE);
+	cpu_ctx_sched_out(cpuctx, EVENT_FLEXIBLE);     /*del*/
 	if (ctx)
 		ctx_sched_out(ctx, cpuctx, EVENT_FLEXIBLE);
 
@@ -2797,7 +2797,7 @@ static int perf_rotate_context(struct perf_cpu_context *cpuctx)
 	if (ctx)
 		rotate_ctx(ctx);
 
-	perf_event_sched_in(cpuctx, ctx, current);
+	perf_event_sched_in(cpuctx, ctx, current);     /*add*/
 
 	perf_pmu_enable(cpuctx->ctx.pmu);
 	perf_ctx_unlock(cpuctx, cpuctx->task_ctx);
@@ -3033,7 +3033,7 @@ errout:
 
 /*
  * Returns a matching context with refcount and pincount.
- */
+ */ /*获取pmu全局的或者是task自己的ctx*/
 static struct perf_event_context *
 find_get_context(struct pmu *pmu, struct task_struct *task, int cpu)
 {
@@ -3042,7 +3042,7 @@ find_get_context(struct pmu *pmu, struct task_struct *task, int cpu)
 	unsigned long flags;
 	int ctxn, err;
 
-	if (!task) {
+	if (!task) { /*对于全局的监控来说，返回pmu的ctx*/
 		/* Must be root to operate on a CPU event: */
 		if (perf_paranoid_cpu() && !capable(CAP_SYS_ADMIN))
 			return ERR_PTR(-EACCES);
@@ -3069,13 +3069,13 @@ find_get_context(struct pmu *pmu, struct task_struct *task, int cpu)
 		goto errout;
 
 retry:
-	ctx = perf_lock_task_context(task, ctxn, &flags);
+	ctx = perf_lock_task_context(task, ctxn, &flags);  /*查看task是否已经分配了ctx*/
 	if (ctx) {
 		unclone_ctx(ctx);
 		++ctx->pin_count;
 		raw_spin_unlock_irqrestore(&ctx->lock, flags);
 	} else {
-		ctx = alloc_perf_context(pmu, task);
+		ctx = alloc_perf_context(pmu, task);    /*没有的话就分配一个给task*/
 		err = -ENOMEM;
 		if (!ctx)
 			goto errout;
@@ -3280,7 +3280,7 @@ u64 perf_event_read_value(struct perf_event *event, u64 *enabled, u64 *running)
 	*running = 0;
 
 	mutex_lock(&event->child_mutex);
-	total += perf_event_read(event);
+	total += perf_event_read(event);   /*总共产生的次数*/
 	*enabled += event->total_time_enabled +
 			atomic64_read(&event->child_total_time_enabled);
 	*running += event->total_time_running +
@@ -3526,7 +3526,7 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct perf_event *event = file->private_data;
 	void (*func)(struct perf_event *);
 	u32 flags = arg;
-
+	printk("perf_ioctl %x\n",cmd);
 	switch (cmd) {
 	case PERF_EVENT_IOC_ENABLE:
 		func = perf_event_enable;
@@ -3544,7 +3544,7 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case PERF_EVENT_IOC_PERIOD:
 		return perf_event_period(event, (u64 __user *)arg);
 
-	case PERF_EVENT_IOC_SET_OUTPUT:
+	case PERF_EVENT_IOC_SET_OUTPUT:   /*共用某个perf_event来输出*/
 	{
 		int ret;
 		if (arg != -1) {
@@ -3992,7 +3992,9 @@ again:
 
 	rb = rb_alloc(nr_pages, 
 		event->attr.watermark ? event->attr.wakeup_watermark : 0,
-		event->cpu, flags);
+		event->cpu, flags);    /*创建ring_buffer。可以使用伙伴系统一页页分配，也可以使用vmalloc一次分配*/
+
+	printk("nr_pages %ld water %ld extra %ld %ld\n",nr_pages,event->attr.watermark,extra,user_extra);
 
 	if (!rb) {
 		ret = -ENOMEM;
@@ -4009,7 +4011,7 @@ again:
 	ring_buffer_attach(event, rb);
 	rcu_assign_pointer(event->rb, rb);
 
-	perf_event_update_userpage(event);
+	perf_event_update_userpage(event);  /*初始化perf_event_mmap_page*/
 
 unlock:
 	if (!ret)
@@ -4615,6 +4617,8 @@ void perf_prepare_sample(struct perf_event_header *header,
 		data->stack_user_size = stack_size;
 		header->size += size;
 	}
+	
+	printk("sample %llx ip:%llx\n",sample_type,data->ip);
 }
 
 static void perf_event_output(struct perf_event *event,
@@ -4627,14 +4631,14 @@ static void perf_event_output(struct perf_event *event,
 	/* protect the callchain buffers */
 	rcu_read_lock();
 
-	perf_prepare_sample(&header, data, event, regs);
+	perf_prepare_sample(&header, data, event, regs);  /*提取数据到sample中*/
 
-	if (perf_output_begin(&handle, event, header.size))
+	if (perf_output_begin(&handle, event, header.size))  /*设置好handle，指向该写的地址*/
 		goto exit;
 
-	perf_output_sample(&handle, &header, data, event);
+	perf_output_sample(&handle, &header, data, event); /*将数据写入ring_buffer中*/
 
-	perf_output_end(&handle);
+	perf_output_end(&handle);   /*更新perf_event_mmap_page中data_head指向末尾*/
 
 exit:
 	rcu_read_unlock();
@@ -5206,9 +5210,9 @@ static int __perf_event_overflow(struct perf_event *event,
 	}
 
 	if (event->overflow_handler)
-		event->overflow_handler(event, data, regs);
+		event->overflow_handler(event, data, regs);  /*hw_breakpoint会注册这个函数*/
 	else
-		perf_event_output(event, data, regs);
+		perf_event_output(event, data, regs);    /*分析并记录数据*/
 
 	if (event->fasync && event->pending_kill) {
 		event->pending_wakeup = 1;
@@ -5235,7 +5239,7 @@ struct swevent_htable {
 	int				hlist_refcount;
 
 	/* Recursion avoidance in each contexts */
-	int				recursion[PERF_NR_CONTEXTS];
+	int				recursion[PERF_NR_CONTEXTS];   /*用于跟踪处于task, softirq, hardirq, nmi哪个状态的计数*/
 };
 
 static DEFINE_PER_CPU(struct swevent_htable, swevent_htable);
@@ -5388,7 +5392,7 @@ find_swevent_head_rcu(struct swevent_htable *swhash, u64 type, u32 event_id)
 	return __find_swevent_head(hlist, type, event_id);
 }
 
-/* For the event head insertion and removal in the hlist */
+/* For the event head insertion and removal in the hlist 查找对应event应该在hlist的哪一行*/
 static inline struct hlist_head *
 find_swevent_head(struct swevent_htable *swhash, struct perf_event *event)
 {
@@ -5628,7 +5632,7 @@ static int perf_swevent_init(struct perf_event *event)
 	if (has_branch_stack(event))
 		return -EOPNOTSUPP;
 
-	switch (event_id) {
+	switch (event_id) {     /*这两个类型的就不应该走这里，因为已经注册过*/
 	case PERF_COUNT_SW_CPU_CLOCK:
 	case PERF_COUNT_SW_TASK_CLOCK:
 		return -ENOENT;
@@ -5647,7 +5651,7 @@ static int perf_swevent_init(struct perf_event *event)
 		if (err)
 			return err;
 
-		static_key_slow_inc(&perf_swevent_enabled[event_id]);
+		static_key_slow_inc(&perf_swevent_enabled[event_id]);  /*标记使能了*/
 		event->destroy = sw_perf_event_destroy;
 	}
 
@@ -5866,7 +5870,7 @@ static enum hrtimer_restart perf_swevent_hrtimer(struct hrtimer *hrtimer)
 	if (event->state != PERF_EVENT_STATE_ACTIVE)
 		return HRTIMER_NORESTART;
 
-	event->pmu->read(event);
+	event->pmu->read(event);    /*更新的event->count*/
 
 	perf_sample_data_init(&data, 0, event->hw.last_period);
 	regs = get_irq_regs();
@@ -6180,7 +6184,7 @@ static void free_pmu_context(struct pmu *pmu)
 out:
 	mutex_unlock(&pmus_lock);
 }
-static struct idr pmu_idr;
+static struct idr pmu_idr;   /*只有type小于0，并且有名字的才会在idr中*/
 
 static ssize_t
 type_show(struct device *dev, struct device_attribute *attr, char *page)
@@ -6314,12 +6318,12 @@ int perf_pmu_register(struct pmu *pmu, const char *name, int type)
 	}
 
 skip_type:
-	pmu->pmu_cpu_context = find_pmu_context(pmu->task_ctx_nr);
+	pmu->pmu_cpu_context = find_pmu_context(pmu->task_ctx_nr);   /*查找是不是已经创建过对应类型的上下文*/
 	if (pmu->pmu_cpu_context)
 		goto got_cpu_context;
 
 	ret = -ENOMEM;
-	pmu->pmu_cpu_context = alloc_percpu(struct perf_cpu_context);
+	pmu->pmu_cpu_context = alloc_percpu(struct perf_cpu_context);   /*分配cpu级上下文*/
 	if (!pmu->pmu_cpu_context)
 		goto free_dev;
 
@@ -6333,7 +6337,7 @@ skip_type:
 		cpuctx->ctx.type = cpu_context;
 		cpuctx->ctx.pmu = pmu;
 
-		__perf_cpu_hrtimer_init(cpuctx, cpu);
+		__perf_cpu_hrtimer_init(cpuctx, cpu);    /*初始化定时器,软件上下文的不需要在这里初始化，init的时候自会初始化*/
 
 		INIT_LIST_HEAD(&cpuctx->rotation_list);
 		cpuctx->unique_pmu = pmu;
@@ -6417,6 +6421,7 @@ struct pmu *perf_init_event(struct perf_event *event)
 	rcu_read_lock();
 	pmu = idr_find(&pmu_idr, event->attr.type);
 	rcu_read_unlock();
+	printk("perf_init_event type %d %x\n",event->attr.type,pmu);
 	if (pmu) {
 		event->pmu = pmu;
 		ret = pmu->event_init(event);
@@ -6425,7 +6430,8 @@ struct pmu *perf_init_event(struct perf_event *event)
 		goto unlock;
 	}
 
-	list_for_each_entry_rcu(pmu, &pmus, entry) {
+	list_for_each_entry_rcu(pmu, &pmus, entry) { /*按注册相反的顺序遍历所有pmu，找到一个类型和id匹配的运行*/
+		printk("pmu %s type %d\n",pmu->name,pmu->type);
 		event->pmu = pmu;
 		ret = pmu->event_init(event);
 		if (!ret)
@@ -6437,6 +6443,7 @@ struct pmu *perf_init_event(struct perf_event *event)
 		}
 	}
 	pmu = ERR_PTR(-ENOENT);
+	printk("error find pmu\n");
 unlock:
 	srcu_read_unlock(&pmus_srcu, idx);
 
@@ -6530,7 +6537,7 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 
 	hwc = &event->hw;
 	hwc->sample_period = attr->sample_period;
-	if (attr->freq && attr->sample_freq)
+	if (attr->freq && attr->sample_freq)    /*如果采用频率模式，周期固定为1*/
 		hwc->sample_period = 1;
 	hwc->last_period = hwc->sample_period;
 
@@ -6542,7 +6549,7 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 	if (attr->inherit && (attr->read_format & PERF_FORMAT_GROUP))
 		goto done;
 
-	pmu = perf_init_event(event);
+	pmu = perf_init_event(event);    /*根据event找到对应的pmu，并执行event_init*/
 
 done:
 	err = 0;
@@ -6811,12 +6818,12 @@ SYSCALL_DEFINE5(perf_event_open,
 	if (err)
 		return err;
 
-	if (!attr.exclude_kernel) {  /*对独占的处理*/
+	if (!attr.exclude_kernel) {  /*是否不跟踪内核*/
 		if (perf_paranoid_kernel() && !capable(CAP_SYS_ADMIN))
 			return -EACCES;
 	}
 
-	if (attr.freq) {
+	if (attr.freq) { /*如果使用频率模式，频率不能超过这个值*/
 		if (attr.sample_freq > sysctl_perf_event_sample_rate)
 			return -EINVAL;
 	}
@@ -6856,7 +6863,7 @@ SYSCALL_DEFINE5(perf_event_open,
 	get_online_cpus();
 
 	event = perf_event_alloc(&attr, cpu, task, group_leader, NULL,
-				 NULL, NULL);
+				 NULL, NULL);  /*分配并初始化perf_event结构，关联pmu*/
 	if (IS_ERR(event)) {
 		err = PTR_ERR(event);
 		goto err_task;
@@ -6907,7 +6914,7 @@ SYSCALL_DEFINE5(perf_event_open,
 	/*
 	 * Get the target context (task or percpu):
 	 */
-	ctx = find_get_context(pmu, task, event->cpu);
+	ctx = find_get_context(pmu, task, event->cpu);   /*获取ctx上下文*/
 	if (IS_ERR(ctx)) {
 		err = PTR_ERR(ctx);
 		goto err_alloc;
@@ -6950,12 +6957,12 @@ SYSCALL_DEFINE5(perf_event_open,
 	}
 
 	if (output_event) {
-		err = perf_event_set_output(event, output_event);
+		err = perf_event_set_output(event, output_event);    /*初始化ring_buffer*/
 		if (err)
 			goto err_context;
 	}
 
-	event_file = anon_inode_getfile("[perf_event]", &perf_fops, event, O_RDWR);
+	event_file = anon_inode_getfile("[perf_event]", &perf_fops, event, O_RDWR);   /*关联fops*/
 	if (IS_ERR(event_file)) {
 		err = PTR_ERR(event_file);
 		goto err_context;
@@ -6997,7 +7004,7 @@ SYSCALL_DEFINE5(perf_event_open,
 		}
 	}
 
-	perf_install_in_context(ctx, event, event->cpu);
+	perf_install_in_context(ctx, event, event->cpu);   /*将event加入到上下文中*/
 	++ctx->generation;
 	perf_unpin_context(ctx);
 	mutex_unlock(&ctx->mutex);
@@ -7013,7 +7020,7 @@ SYSCALL_DEFINE5(perf_event_open,
 	/*
 	 * Precalculate sample_data sizes
 	 */
-	perf_event__header_size(event);
+	perf_event__header_size(event);        /*更新头大小*/
 	perf_event__id_header_size(event);
 
 	/*
@@ -7749,7 +7756,7 @@ void __init perf_event_init(void)
 	perf_event_init_all_cpus();
 	init_srcu_struct(&pmus_srcu);
 	perf_pmu_register(&perf_swevent, "software", PERF_TYPE_SOFTWARE);
-	perf_pmu_register(&perf_cpu_clock, NULL, -1);
+	perf_pmu_register(&perf_cpu_clock, NULL, -1);  /*实际上这两个也是PERF_TYPE_SOFTWARE*/
 	perf_pmu_register(&perf_task_clock, NULL, -1);
 	perf_tp_register();
 	perf_cpu_notifier(perf_cpu_notify);

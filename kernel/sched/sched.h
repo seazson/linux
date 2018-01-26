@@ -603,7 +603,7 @@ struct sched_group_power {
 	 * CPU power of this group, SCHED_LOAD_SCALE being max power for a
 	 * single CPU.
 	 */
-	unsigned int power, power_orig;
+	unsigned int power, power_orig;  /*cpu的能力指数，最高1024*/
 	unsigned long next_update;
 	/*
 	 * Number of busy cpus in this group.
@@ -627,7 +627,7 @@ struct sched_group {
 	 * by attaching extra space to the end of the structure,
 	 * depending on how many CPUs the kernel has booted up with)
 	 */
-	unsigned long cpumask[0];
+	unsigned long cpumask[0];  /*本组包含哪些cpu*/
 };
 
 static inline struct cpumask *sched_group_cpus(struct sched_group *sg)

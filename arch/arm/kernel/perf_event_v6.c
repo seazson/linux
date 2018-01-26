@@ -646,7 +646,7 @@ static void armv6mpcore_pmu_disable_event(struct perf_event *event)
 	armv6_pmcr_write(val);
 	raw_spin_unlock_irqrestore(&events->pmu_lock, flags);
 }
-
+/*返回的值表示真正的硬件要设置的类型值*/
 static int armv6_map_event(struct perf_event *event)
 {
 	return armpmu_map_event(event, &armv6_perf_map,
