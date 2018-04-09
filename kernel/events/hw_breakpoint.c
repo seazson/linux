@@ -184,7 +184,7 @@ fetch_this_slot(struct bp_busy_slots *slots, int weight)
 static void toggle_bp_task_slot(struct perf_event *bp, int cpu,
 				enum bp_type_idx type, int weight)
 {
-	unsigned int *tsk_pinned = get_bp_info(cpu, type)->tsk_pinned;
+	unsigned int *tsk_pinned = get_bp_info(cpu, type)->tsk_pinned;  /*相同读写类型和相同task的断点的计数*/
 	int old_idx, new_idx;
 
 	old_idx = task_bp_pinned(cpu, bp, type) - 1;
@@ -210,13 +210,13 @@ toggle_bp_slot(struct perf_event *bp, bool enable, enum bp_type_idx type,
 		weight = -weight;
 
 	/* Pinned counter cpu profiling */
-	if (!bp->hw.bp_target) {
+	if (!bp->hw.bp_target) { /*没有设置task的话就为cpu级别*/
 		get_bp_info(bp->cpu, type)->cpu_pinned += weight;
 		return;
 	}
 
 	/* Pinned counter task profiling */
-	for_each_cpu(cpu, cpumask)
+	for_each_cpu(cpu, cpumask) /*如果是task级别会为每个cpu设置*/
 		toggle_bp_task_slot(bp, cpu, type, weight);
 
 	if (enable)
@@ -295,7 +295,7 @@ static int __reserve_bp_slot(struct perf_event *bp)
 	type = find_slot_idx(bp);  /*要监控的是指令类型还是数据类型*/
 	weight = hw_breakpoint_weight(bp);
 
-	fetch_bp_busy_slots(&slots, bp, type);
+	fetch_bp_busy_slots(&slots, bp, type); /*获取当前已设置的breakpoint的个数*/
 	/*
 	 * Simulate the addition of this breakpoint to the constraints
 	 * and see the result.
@@ -306,7 +306,7 @@ static int __reserve_bp_slot(struct perf_event *bp)
 	if (slots.pinned + (!!slots.flexible) > nr_slots[type])
 		return -ENOSPC;
 
-	toggle_bp_slot(bp, true, type, weight);
+	toggle_bp_slot(bp, true, type, weight); /*增加断点计数*/
 
 	return 0;
 }
@@ -371,7 +371,7 @@ static int validate_hw_breakpoint(struct perf_event *bp)
 {
 	int ret;
 
-	ret = arch_validate_hwbkpt_settings(bp);
+	ret = arch_validate_hwbkpt_settings(bp);  /*检查参数的合理性*/
 	if (ret)
 		return ret;
 
@@ -393,11 +393,11 @@ int register_perf_hw_breakpoint(struct perf_event *bp)
 {
 	int ret;
 
-	ret = reserve_bp_slot(bp);
+	ret = reserve_bp_slot(bp);  /*分配slot id*/
 	if (ret)
 		return ret;
 
-	ret = validate_hw_breakpoint(bp);
+	ret = validate_hw_breakpoint(bp); /*检查参数的合理性*/
 
 	/* if arch_validate_hwbkpt_settings() fails then release bp slot */
 	if (ret)
@@ -411,7 +411,7 @@ int register_perf_hw_breakpoint(struct perf_event *bp)
  * @attr: breakpoint attributes
  * @triggered: callback to trigger when we hit the breakpoint
  * @tsk: pointer to 'task_struct' of the process to which the address belongs
- */
+ */ /*跟踪进程级别断点，主要用于ptrace进行系统跟踪*/
 struct perf_event *
 register_user_hw_breakpoint(struct perf_event_attr *attr,
 			    perf_overflow_handler_t triggered,
@@ -494,7 +494,7 @@ EXPORT_SYMBOL_GPL(unregister_hw_breakpoint);
  * @triggered: callback to trigger when we hit the breakpoint
  *
  * @return a set of per_cpu pointers to perf events
- */
+ */ /*所有cpu上都会注册一个硬件断点*/
 struct perf_event * __percpu *
 register_wide_hw_breakpoint(struct perf_event_attr *attr,
 			    perf_overflow_handler_t triggered,

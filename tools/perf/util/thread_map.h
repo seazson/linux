@@ -6,7 +6,7 @@
 
 struct thread_map {
 	int nr;
-	pid_t map[];
+	pid_t map[];    /*里面存放的是要监控的进程tid。如果是cpu级别都监控则为-1，且nr=1*/
 };
 
 struct thread_map *thread_map__new_by_pid(pid_t pid);

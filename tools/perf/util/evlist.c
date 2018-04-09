@@ -63,7 +63,7 @@ void perf_evlist__config(struct perf_evlist *evlist,
 		opts->no_inherit = true;
 
 	list_for_each_entry(evsel, &evlist->entries, node) {
-		perf_evsel__config(evsel, opts);
+		perf_evsel__config(evsel, opts);    /*设置attr.sample_type*/
 
 		if (evlist->nr_entries > 1)
 			perf_evsel__set_sample_id(evsel);
@@ -421,9 +421,10 @@ void perf_evlist__munmap(struct perf_evlist *evlist)
 static int perf_evlist__alloc_mmap(struct perf_evlist *evlist)
 {
 	evlist->nr_mmaps = cpu_map__nr(evlist->cpus);
-	if (cpu_map__all(evlist->cpus))
+	if (cpu_map__all(evlist->cpus))  /*说明是以thread为主*/
 		evlist->nr_mmaps = thread_map__nr(evlist->threads);
 	evlist->mmap = zalloc(evlist->nr_mmaps * sizeof(struct perf_mmap));
+
 	return evlist->mmap != NULL ? 0 : -ENOMEM;
 }
 
@@ -460,7 +461,7 @@ static int perf_evlist__mmap_per_cpu(struct perf_evlist *evlist, int prot, int m
 				if (output == -1) {
 					output = fd;
 					if (__perf_evlist__mmap(evlist, cpu,
-								prot, mask, output) < 0)
+								prot, mask, output) < 0)   /*同一个cpu上的第一次evsel使用mmap，之后的追加到这个上*/
 						goto out_unmap;
 				} else {
 					if (ioctl(fd, PERF_EVENT_IOC_SET_OUTPUT, output) != 0)
@@ -557,14 +558,14 @@ int perf_evlist__mmap(struct perf_evlist *evlist, unsigned int pages,
 
 	mask = pages * page_size - 1;
 
-	if (evlist->mmap == NULL && perf_evlist__alloc_mmap(evlist) < 0)
+	if (evlist->mmap == NULL && perf_evlist__alloc_mmap(evlist) < 0)   /*会创建多个cpu或者thread类型的mmap*/
 		return -ENOMEM;
 
-	if (evlist->pollfd == NULL && perf_evlist__alloc_pollfd(evlist) < 0)
+	if (evlist->pollfd == NULL && perf_evlist__alloc_pollfd(evlist) < 0) /*创建cpu * thread * nr_entry个*/
 		return -ENOMEM;
 
 	evlist->overwrite = overwrite;
-	evlist->mmap_len = (pages + 1) * page_size;
+	evlist->mmap_len = (pages + 1) * page_size;   /*多出一页给头页*/
 
 	list_for_each_entry(evsel, &evlist->entries, node) {
 		if ((evsel->attr.read_format & PERF_FORMAT_ID) &&
@@ -574,26 +575,26 @@ int perf_evlist__mmap(struct perf_evlist *evlist, unsigned int pages,
 	}
 
 	if (cpu_map__all(cpus))
-		return perf_evlist__mmap_per_thread(evlist, prot, mask);
+		return perf_evlist__mmap_per_thread(evlist, prot, mask);  /*mmap指定cpu上的所有thread*/
 
-	return perf_evlist__mmap_per_cpu(evlist, prot, mask);
+	return perf_evlist__mmap_per_cpu(evlist, prot, mask);   /*mmap所有cpu上的所有thread*/
 }
 
 int perf_evlist__create_maps(struct perf_evlist *evlist,
 			     struct perf_target *target)
 {
 	evlist->threads = thread_map__new_str(target->pid, target->tid,
-					      target->uid);
+					      target->uid);  /*如果指定了要监控的进程，则thread->map[]下就是这些进程pid，否则是-1*/
 
 	if (evlist->threads == NULL)
 		return -1;
 
 	if (perf_target__has_task(target))
-		evlist->cpus = cpu_map__dummy_new();
+		evlist->cpus = cpu_map__dummy_new();  /*如果指定了pid则cpus->map[0] = -1，并且nr=1*/
 	else if (!perf_target__has_cpu(target) && !target->uses_mmap)
 		evlist->cpus = cpu_map__dummy_new();
 	else
-		evlist->cpus = cpu_map__new(target->cpu_list);
+		evlist->cpus = cpu_map__new(target->cpu_list);  /*没有指定pid，每个cpu都要建立*/
 
 	if (evlist->cpus == NULL)
 		goto out_delete_threads;

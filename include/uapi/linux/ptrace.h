@@ -7,21 +7,21 @@
 
 #include <linux/types.h>
 
-#define PTRACE_TRACEME		   0
-#define PTRACE_PEEKTEXT		   1
-#define PTRACE_PEEKDATA		   2
-#define PTRACE_PEEKUSR		   3
+#define PTRACE_TRACEME		   0  /*当子进程执行 execve() 之后，子进程会进入暂停状态*/
+#define PTRACE_PEEKTEXT		   1  /*获取子进程指定地址的数据.针对代码段*/
+#define PTRACE_PEEKDATA		   2  /*获取子进程指定地址的数据.针对数据段*/
+#define PTRACE_PEEKUSR		   3  /*读取子进程的信息封装到struct user中*/
 #define PTRACE_POKETEXT		   4
 #define PTRACE_POKEDATA		   5
 #define PTRACE_POKEUSR		   6
-#define PTRACE_CONT		   7
+#define PTRACE_CONT		   7       /*让子进程继续运行*/
 #define PTRACE_KILL		   8
-#define PTRACE_SINGLESTEP	   9
+#define PTRACE_SINGLESTEP	   9   /*让子程序进入单步模式*/
 
-#define PTRACE_ATTACH		  16
+#define PTRACE_ATTACH		  16   /*使进程成为要跟踪进程的父进程，并暂停子进程*/
 #define PTRACE_DETACH		  17
 
-#define PTRACE_SYSCALL		  24
+#define PTRACE_SYSCALL		  24   /*在进入系统调用和退出系统调用的时候分别会暂停*/
 
 /* 0x4200-0x4300 are reserved for architecture-independent additions.  */
 #define PTRACE_SETOPTIONS	0x4200

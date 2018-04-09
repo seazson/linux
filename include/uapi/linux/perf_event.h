@@ -201,7 +201,7 @@ enum perf_sample_regs_abi {
 enum perf_event_read_format {
 	PERF_FORMAT_TOTAL_TIME_ENABLED		= 1U << 0,
 	PERF_FORMAT_TOTAL_TIME_RUNNING		= 1U << 1,
-	PERF_FORMAT_ID				= 1U << 2,
+	PERF_FORMAT_ID				= 1U << 2,      /*采样的计数器类型超过一个会设置这个标志*/
 	PERF_FORMAT_GROUP			= 1U << 3,
 
 	PERF_FORMAT_MAX = 1U << 4,		/* non-ABI */
@@ -255,7 +255,7 @@ struct perf_event_attr {
 				inherit_stat   :  1, /* per task counts       */
 				enable_on_exec :  1, /* next exec enables     */
 				task           :  1, /* trace fork/exit       */
-				watermark      :  1, /* wakeup_watermark      */
+				watermark      :  1, /* wakeup_watermark      是否需要水标，设置-D后等于0*/
 				/*
 				 * precise_ip:
 				 *
@@ -279,13 +279,13 @@ struct perf_event_attr {
 				__reserved_1   : 41;
 
 	union {
-		__u32		wakeup_events;	  /* wakeup every n events */
+		__u32		wakeup_events;	  /* wakeup every n events 采集多少数据唤醒，设置-D后等于1*/
 		__u32		wakeup_watermark; /* bytes before wakeup   */
 	};
 
 	__u32			bp_type;
 	union {
-		__u64		bp_addr;
+		__u64		bp_addr; /*断点的地址*/
 		__u64		config1; /* extension of config */
 	};
 	union {

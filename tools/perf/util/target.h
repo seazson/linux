@@ -7,10 +7,10 @@
 struct perf_target {
 	const char   *pid;
 	const char   *tid;
-	const char   *cpu_list;
+	const char   *cpu_list;     /*监控哪些cpu*/
 	const char   *uid_str;
 	uid_t	     uid;
-	bool	     system_wide;
+	bool	     system_wide;   /*是否设置了-a选项*/
 	bool	     uses_mmap;
 };
 

@@ -12,7 +12,7 @@
 
 #include <asm/hwcap.h>
 
-#define PTRACE_GETREGS		12
+#define PTRACE_GETREGS		12    /*一次读取所有寄存器的值*/
 #define PTRACE_SETREGS		13
 #define PTRACE_GETFPREGS	14
 #define PTRACE_SETFPREGS	15

@@ -222,11 +222,11 @@ struct perf_record_opts {
 	bool	     sample_time;
 	bool	     period;
 	unsigned int freq;
-	unsigned int mmap_pages;
-	unsigned int user_freq;
+	unsigned int mmap_pages;     /*mmap的大小*/
+	unsigned int user_freq;      /*计数器采样频率*/
 	u64          branch_stack;
-	u64	     default_interval;
-	u64	     user_interval;
+	u64	     default_interval;   /*最终采用的频率*/
+	u64	     user_interval;      /*用户采样周期,单位是ns，如果也设置了user_freq以user_interval为主*/
 	u16	     stack_dump_size;
 };
 

@@ -156,9 +156,9 @@ struct hw_perf_event {
 			 * problem hw_breakpoint has with context
 			 * creation and event initalization.
 			 */
-			struct task_struct		*bp_target;
+			struct task_struct		*bp_target; /*如果断点是跟踪进程的话会设置。单步模式必须要设置task*/
 			struct arch_hw_breakpoint	info;
-			struct list_head		bp_list;
+			struct list_head		bp_list;   /*使能的断点会添加到bp_task_head头下面*/
 		};
 #endif
 	};
@@ -166,7 +166,7 @@ struct hw_perf_event {
 	local64_t			prev_count;    /*timer在启动的时候会保存启动的当前时间*/
 	u64				sample_period;     /*ktimer的采样周期，最少10000ns，由attr->sample_period复制*/
 	u64				last_period;
-	local64_t			period_left;   /*周期剩余时间*/
+	local64_t			period_left;   /*周期剩余时间，或者剩余次数*/
 	u64                             interrupts_seq;
 	u64				interrupts;
 
@@ -288,7 +288,7 @@ enum perf_event_active_state {
 
 struct file;
 struct perf_sample_data;
-
+/*计数器处理函数*/
 typedef void (*perf_overflow_handler_t)(struct perf_event *,
 					struct perf_sample_data *,
 					struct pt_regs *regs);
@@ -600,6 +600,7 @@ static inline void perf_sample_data_init(struct perf_sample_data *data,
 	data->stack_user_size = 0;
 	data->weight = 0;
 	data->data_src.val = 0;
+	printk("perf_sample_data_init period %lld\n",data->period);
 }
 
 extern void perf_output_sample(struct perf_output_handle *handle,
@@ -656,7 +657,7 @@ perf_sw_event(u32 event_id, u64 nr, struct pt_regs *regs, u64 addr)
 {
 	struct pt_regs hot_regs;
 
-	if (static_key_false(&perf_swevent_enabled[event_id])) {
+	if (static_key_false(&perf_swevent_enabled[event_id])) {  /*是否使能了某个软件计数器*/
 		if (!regs) {
 			perf_fetch_caller_regs(&hot_regs);
 			regs = &hot_regs;

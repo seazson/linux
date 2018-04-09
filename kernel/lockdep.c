@@ -2823,7 +2823,7 @@ static int mark_irqflags(struct task_struct *curr, struct held_lock *hlock)
 
 	return 1;
 }
-
+/*检查这次的锁和上次的锁是否在一个中断上下文中*/
 static int separate_irq_context(struct task_struct *curr,
 		struct held_lock *hlock)
 {
@@ -3076,7 +3076,7 @@ static int __lock_acquire(struct lockdep_map *lock, unsigned int subclass,
 	 * Not cached?
 	 */
 	if (unlikely(!class)) {
-		class = register_lock_class(lock, subclass, 0);
+		class = register_lock_class(lock, subclass, 0);  /*第一次会注册一个class*/
 		if (!class)
 			return 0;
 	}
@@ -3171,11 +3171,11 @@ static int __lock_acquire(struct lockdep_map *lock, unsigned int subclass,
 	}
 
 	hlock->prev_chain_key = chain_key;
-	if (separate_irq_context(curr, hlock)) {
+	if (separate_irq_context(curr, hlock)) {/*每当更改了上下文，hash值重新计算*/
 		chain_key = 0;
 		chain_head = 1;
 	}
-	chain_key = iterate_chain_key(chain_key, id);
+	chain_key = iterate_chain_key(chain_key, id); /*根据上一个锁和本次的class来计算hash值*/
 
 	if (nest_lock && !__lock_is_held(nest_lock))
 		return print_lock_nested_lock_not_held(curr, hlock, ip);
@@ -3196,8 +3196,8 @@ static int __lock_acquire(struct lockdep_map *lock, unsigned int subclass,
 		printk(KERN_DEBUG "depth: %i  max: %lu!\n",
 		       curr->lockdep_depth, MAX_LOCK_DEPTH);
 
-		lockdep_print_held_locks(current);
-		debug_show_all_locks();
+		lockdep_print_held_locks(current); /*显示进程当前持有的所有锁*/
+		debug_show_all_locks();  /*显示系统中所有进程持有的锁*/
 		dump_stack();
 
 		return 0;
@@ -3754,7 +3754,7 @@ __lock_acquired(struct lockdep_map *lock, unsigned long ip)
 		return;
 
 	prev_hlock = NULL;
-	for (i = depth-1; i >= 0; i--) {
+	for (i = depth-1; i >= 0; i--) {/*遍历当前进程所持有的锁*/
 		hlock = curr->held_locks + i;
 		/*
 		 * We must not cross into another context:

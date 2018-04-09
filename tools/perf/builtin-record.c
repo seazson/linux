@@ -63,14 +63,14 @@ static void __handle_on_exit_funcs(void)
 
 struct perf_record {
 	struct perf_tool	tool;
-	struct perf_record_opts	opts;
+	struct perf_record_opts	opts;   /*解析用户传入的参数信息*/
 	u64			bytes_written;
-	const char		*output_name;
+	const char		*output_name;   /*输出文件名*/
 	struct perf_evlist	*evlist;
 	struct perf_session	*session;
-	const char		*progname;
-	int			output;
-	unsigned int		page_size;
+	const char		*progname;      /*要监控的进程名称*/
+	int			output;             /*输出文件fd*/
+	unsigned int		page_size;  /*主机的页大小*/
 	int			realtime_prio;
 	bool			no_buildid;
 	bool			no_buildid_cache;
@@ -226,7 +226,7 @@ try_again:
 		goto out;
 	}
 
-	if (perf_evlist__mmap(evlist, opts->mmap_pages, false) < 0) {
+	if (perf_evlist__mmap(evlist, opts->mmap_pages, false) < 0) { /*以cpu为单位建立映射*/
 		if (errno == EPERM) {
 			pr_err("Permission error mapping pages.\n"
 			       "Consider increasing "
@@ -277,7 +277,7 @@ static void perf_record__exit(int status, void *arg)
 		if (!rec->no_buildid)
 			process_buildids(rec);
 		perf_session__write_header(rec->session, rec->evlist,
-					   rec->output, true);
+					   rec->output, true);  /*最后再更新下头，修正信息*/
 		perf_session__delete(rec->session);
 		perf_evlist__delete(rec->evlist);
 		symbol__exit();
@@ -394,13 +394,13 @@ static int __cmd_record(struct perf_record *rec, int argc, const char **argv)
 		output = open(output_name, flags, S_IRUSR | S_IWUSR);
 	if (output < 0) {
 		perror("failed to create output file");
-		return -1;
 	}
+	return -1;
 
 	rec->output = output;
 
 	session = perf_session__new(output_name, O_WRONLY,
-				    true, false, NULL);
+				    true, false, NULL);     /*创建一个会话*/
 	if (session == NULL) {
 		pr_err("Not enough memory for reading perf file header\n");
 		return -1;
@@ -420,7 +420,7 @@ static int __cmd_record(struct perf_record *rec, int argc, const char **argv)
 	if (!rec->opts.branch_stack)
 		perf_header__clear_feat(&session->header, HEADER_BRANCH_STACK);
 
-	if (forks) {
+	if (forks) {/*表示要创建子进程进行跟踪*/
 		err = perf_evlist__prepare_workload(evsel_list, &opts->target,
 						    argv, opts->pipe_output,
 						    true);
@@ -430,7 +430,7 @@ static int __cmd_record(struct perf_record *rec, int argc, const char **argv)
 		}
 	}
 
-	if (perf_record__open(rec) != 0) {
+	if (perf_record__open(rec) != 0) { /*进行perf_open和perf_mmap操作*/
 		err = -1;
 		goto out_delete_session;
 	}
@@ -449,7 +449,7 @@ static int __cmd_record(struct perf_record *rec, int argc, const char **argv)
 			goto out_delete_session;
 	} else {
 		err = perf_session__write_header(session, evsel_list,
-						 output, false);
+						 output, false);      /*写入文件头*/
 		if (err < 0)
 			goto out_delete_session;
 	}
@@ -499,7 +499,7 @@ static int __cmd_record(struct perf_record *rec, int argc, const char **argv)
 			advance_output(rec, err);
 		}
 	}
-
+	/*下面这一部分是写入映射信息*/
 	err = perf_event__synthesize_kernel_mmap(tool, process_synthesized_event,
 						 machine, "_text");
 	if (err < 0)
@@ -535,7 +535,7 @@ static int __cmd_record(struct perf_record *rec, int argc, const char **argv)
 	if (err != 0)
 		goto out_delete_session;
 
-	if (rec->realtime_prio) {
+	if (rec->realtime_prio) {  /*把perf进程换成fifo进程*/
 		struct sched_param param;
 
 		param.sched_priority = rec->realtime_prio;
@@ -552,18 +552,18 @@ static int __cmd_record(struct perf_record *rec, int argc, const char **argv)
 	 * so don't spoil it by prematurely enabling them.
 	 */
 	if (!perf_target__none(&opts->target))
-		perf_evlist__enable(evsel_list);
+		perf_evlist__enable(evsel_list);    /*使能计数器*/
 
 	/*
 	 * Let the child rip
 	 */
 	if (forks)
-		perf_evlist__start_workload(evsel_list);
+		perf_evlist__start_workload(evsel_list);  /*通知子进程执行exev操作*/
 
 	for (;;) {
 		int hits = rec->samples;
 
-		if (perf_record__mmap_read_all(rec) < 0) {
+		if (perf_record__mmap_read_all(rec) < 0) { /*写入实际数据*/
 			err = -1;
 			goto out_delete_session;
 		}
@@ -909,7 +909,7 @@ int cmd_record(int argc, const char **argv, const char *prefix __maybe_unused)
 	struct perf_record *rec = &record;
 	char errbuf[BUFSIZ];
 
-	evsel_list = perf_evlist__new();
+	evsel_list = perf_evlist__new();   /*分配evsel_list*/
 	if (evsel_list == NULL)
 		return -ENOMEM;
 
@@ -926,7 +926,7 @@ int cmd_record(int argc, const char **argv, const char *prefix __maybe_unused)
 		usage_with_options(record_usage, record_options);
 	}
 
-	symbol__init();
+	symbol__init();   /*初始化用来维护符号表的全局结构symbol_conf*/
 
 	if (symbol_conf.kptr_restrict)
 		pr_warning(
@@ -940,14 +940,14 @@ int cmd_record(int argc, const char **argv, const char *prefix __maybe_unused)
 
 	if (rec->no_buildid_cache || rec->no_buildid)
 		disable_buildid_cache();
-
+	printf("evsel_list->nr_entries %d\n",evsel_list->nr_entries);
 	if (evsel_list->nr_entries == 0 &&
-	    perf_evlist__add_default(evsel_list) < 0) {
+	    perf_evlist__add_default(evsel_list) < 0) {  /*没有指定计数器的话默认创建硬件0计数器，并加入evlist*/
 		pr_err("Not enough memory for event selector list\n");
 		goto out_symbol_exit;
 	}
 
-	err = perf_target__validate(&rec->opts.target);
+	err = perf_target__validate(&rec->opts.target);  /*检查作用范围是否有冲突。以pid为主*/
 	if (err) {
 		perf_target__strerror(&rec->opts.target, err, errbuf, BUFSIZ);
 		ui__warning("%s", errbuf);
@@ -965,7 +965,7 @@ int cmd_record(int argc, const char **argv, const char *prefix __maybe_unused)
 	}
 
 	err = -ENOMEM;
-	if (perf_evlist__create_maps(evsel_list, &rec->opts.target) < 0)
+	if (perf_evlist__create_maps(evsel_list, &rec->opts.target) < 0)  /*创建cpu和thread_map*/
 		usage_with_options(record_usage, record_options);
 
 	list_for_each_entry(pos, &evsel_list->entries, node) {

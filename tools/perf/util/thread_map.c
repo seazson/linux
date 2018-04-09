@@ -271,12 +271,12 @@ struct thread_map *thread_map__new_str(const char *pid, const char *tid,
 				       uid_t uid)
 {
 	if (pid)
-		return thread_map__new_by_pid_str(pid);
+		return thread_map__new_by_pid_str(pid);   /*指定了pid*/
 
 	if (!tid && uid != UINT_MAX)
-		return thread_map__new_by_uid(uid);
+		return thread_map__new_by_uid(uid);   /*指定了uid，将用户的所有进程纳入监控*/
 
-	return thread_map__new_by_tid_str(tid);
+	return thread_map__new_by_tid_str(tid); /*指定了tid，或者什么也没指定*/
 }
 
 void thread_map__delete(struct thread_map *threads)

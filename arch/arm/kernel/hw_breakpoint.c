@@ -299,7 +299,7 @@ int hw_breakpoint_slots(int type)
 /*
  * Check if 8-bit byte-address select is available.
  * This clobbers WRP 0.
- */
+ */ 
 static u8 get_max_wp_len(void)
 {
 	u32 ctrl_reg;
@@ -393,14 +393,14 @@ void arch_uninstall_hw_breakpoint(struct perf_event *bp)
 	struct perf_event **slot, **slots;
 	int i, max_slots, base;
 
-	if (info->ctrl.type == ARM_BREAKPOINT_EXECUTE) {
+	if (info->ctrl.type == ARM_BREAKPOINT_EXECUTE) { /*如果是可执行地址，则是breakporint类型*/
 		/* Breakpoint */
 		base = ARM_BASE_BCR;
 		slots = (struct perf_event **)__get_cpu_var(bp_on_reg);
 		max_slots = core_num_brps;
 	} else {
 		/* Watchpoint */
-		base = ARM_BASE_WCR;
+		base = ARM_BASE_WCR;                        /*不是可执行类型的话就是watchpoint*/
 		slots = (struct perf_event **)__get_cpu_var(wp_on_reg);
 		max_slots = core_num_wrps;
 	}
@@ -631,7 +631,7 @@ int arch_validate_hwbkpt_settings(struct perf_event *bp)
 	info->address &= ~alignment_mask;
 	info->ctrl.len <<= offset;
 
-	if (!bp->overflow_handler) {
+	if (!bp->overflow_handler) { /*mismatch只对v7以上才有*/
 		/*
 		 * Mismatch breakpoints are required for single-stepping
 		 * breakpoints.
@@ -666,7 +666,7 @@ out:
 
 /*
  * Enable/disable single-stepping over the breakpoint bp at address addr.
- */
+ */ /*使能单步，只对breakpoint类型*/
 static void enable_single_step(struct perf_event *bp, u32 addr)
 {
 	struct arch_hw_breakpoint *info = counter_arch_bp(bp);
@@ -754,7 +754,7 @@ static void watchpoint_handler(unsigned long addr, unsigned int fsr,
 		 * mismatch breakpoint so we can single-step over the
 		 * watchpoint trigger.
 		 */
-		if (!wp->overflow_handler)
+		if (!wp->overflow_handler)/*如果没有设置处理函数的话，设置一个临时的breakpoint类型*/
 			enable_single_step(wp, instruction_pointer(regs));
 
 unlock:
@@ -807,7 +807,7 @@ static void breakpoint_handler(unsigned long unknown, struct pt_regs *regs)
 	/* The exception entry code places the amended lr in the PC. */
 	addr = regs->ARM_pc;
 
-	/* Check the currently installed breakpoints first. */
+	/* Check the currently installed breakpoints first. 先检查原生的breakpoint*/
 	for (i = 0; i < core_num_brps; ++i) {
 		rcu_read_lock();
 
@@ -818,7 +818,7 @@ static void breakpoint_handler(unsigned long unknown, struct pt_regs *regs)
 
 		info = counter_arch_bp(bp);
 
-		/* Check if the breakpoint value matches. */
+		/* Check if the breakpoint value matches. 发生事件的地址是否是我们检测的地址*/
 		val = read_wb_reg(ARM_BASE_BVR + i);
 		if (val != (addr & ~0x3))
 			goto mismatch;
@@ -843,7 +843,7 @@ unlock:
 		rcu_read_unlock();
 	}
 
-	/* Handle any pending watchpoint single-step breakpoints. */
+	/* Handle any pending watchpoint single-step breakpoints. 这里表示是由watchpoint借用breakpoint单步调试*/
 	watchpoint_single_step_handler(addr);
 }
 
@@ -1069,7 +1069,7 @@ static int __init arch_hw_breakpoint_init(void)
 	has_ossr = core_has_os_save_restore();
 
 	/* Determine how many BRPs/WRPs are available. */
-	core_num_brps = get_num_brps();
+	core_num_brps = get_num_brps();   /*获取可用的硬件断点数*/
 	core_num_wrps = get_num_wrps();
 
 	/*

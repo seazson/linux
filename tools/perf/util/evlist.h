@@ -30,17 +30,17 @@ struct perf_evlist {
 	int		 nr_entries;
 	int		 nr_groups;
 	int		 nr_fds;
-	int		 nr_mmaps;
-	int		 mmap_len;
+	int		 nr_mmaps;   /*创建多少组映射，以cpu或者thread为主*/
+	int		 mmap_len;   /*比我们传入的会多一页，用来存head*/
 	struct {
 		int	cork_fd;
-		pid_t	pid;
+		pid_t	pid;      /*子进程pid*/
 	} workload;
 	bool		 overwrite;
 	struct perf_mmap *mmap;
 	struct pollfd	 *pollfd;
-	struct thread_map *threads;
-	struct cpu_map	  *cpus;
+	struct thread_map *threads;    /*维护要监控的进程，没有的话是map=-1，nr=1。thread和map关系到调用mmap的次数*/
+	struct cpu_map	  *cpus;       /*没有指定要监控的进程的话，就会使用cpu级别。指定进程的话是map=-1，nr=1*/
 	struct perf_evsel *selected;
 };
 

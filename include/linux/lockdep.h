@@ -210,7 +210,7 @@ struct lock_chain {
  * bitfield and hitting the BUG in hlock_class().
  */
 #define MAX_LOCKDEP_KEYS		((1UL << MAX_LOCKDEP_KEYS_BITS) - 1)
-
+/*表示被持有的锁信息*/
 struct held_lock {
 	/*
 	 * One-way hash of the dependency chain up to this point. We
@@ -227,14 +227,14 @@ struct held_lock {
 	 * with zero), here we store the previous hash value:
 	 */
 	u64				prev_chain_key;
-	unsigned long			acquire_ip;
-	struct lockdep_map		*instance;
+	unsigned long			acquire_ip;    /*请求这个锁的函数的地址*/
+	struct lockdep_map		*instance;     /*锁的实例*/
 	struct lockdep_map		*nest_lock;
 #ifdef CONFIG_LOCK_STAT
-	u64 				waittime_stamp;
-	u64				holdtime_stamp;
+	u64 				waittime_stamp;    /*开始等待锁的时间戳*/
+	u64				holdtime_stamp;        /*持有的时间戳*/
 #endif
-	unsigned int			class_idx:MAX_LOCKDEP_KEYS_BITS;
+	unsigned int			class_idx:MAX_LOCKDEP_KEYS_BITS;  /*锁所属的锁类编号*/
 	/*
 	 * The lock-stack is unified in that the lock chains of interrupt
 	 * contexts nest ontop of process context chains, but we 'separate'

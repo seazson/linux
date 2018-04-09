@@ -2044,7 +2044,7 @@ void perf_event_enable(struct perf_event *event)
 {
 	struct perf_event_context *ctx = event->ctx;
 	struct task_struct *task = ctx->task;
-	printk("perf_event_enable task:%d\n",task);
+
 	if (!task) {
 		/*
 		 * Enable the event on the cpu that it's on
@@ -3526,7 +3526,7 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct perf_event *event = file->private_data;
 	void (*func)(struct perf_event *);
 	u32 flags = arg;
-	printk("perf_ioctl %x\n",cmd);
+
 	switch (cmd) {
 	case PERF_EVENT_IOC_ENABLE:
 		func = perf_event_enable;
@@ -3993,8 +3993,6 @@ again:
 	rb = rb_alloc(nr_pages, 
 		event->attr.watermark ? event->attr.wakeup_watermark : 0,
 		event->cpu, flags);    /*创建ring_buffer。可以使用伙伴系统一页页分配，也可以使用vmalloc一次分配*/
-
-	printk("nr_pages %ld water %ld extra %ld %ld\n",nr_pages,event->attr.watermark,extra,user_extra);
 
 	if (!rb) {
 		ret = -ENOMEM;
@@ -4617,8 +4615,6 @@ void perf_prepare_sample(struct perf_event_header *header,
 		data->stack_user_size = stack_size;
 		header->size += size;
 	}
-	
-	printk("sample %llx ip:%llx\n",sample_type,data->ip);
 }
 
 static void perf_event_output(struct perf_event *event,
@@ -5186,7 +5182,7 @@ static int __perf_event_overflow(struct perf_event *event,
 		}
 	}
 
-	if (event->attr.freq) {
+	if (event->attr.freq) { /*如果是freq模式，之前init的时候会转换成period模式*/
 		u64 now = perf_clock();
 		s64 delta = now - hwc->freq_time_stamp;
 
@@ -5282,7 +5278,7 @@ static void perf_swevent_overflow(struct perf_event *event, u64 overflow,
 	int throttle = 0;
 
 	if (!overflow)
-		overflow = perf_swevent_set_period(event);
+		overflow = perf_swevent_set_period(event);  /*重置周期计数*/
 
 	if (hwc->interrupts == MAX_INTERRUPTS)
 		return;
@@ -5314,19 +5310,19 @@ static void perf_swevent_event(struct perf_event *event, u64 nr,
 	if (!is_sampling_event(event))
 		return;
 
-	if ((event->attr.sample_type & PERF_SAMPLE_PERIOD) && !event->attr.freq) {
+	if ((event->attr.sample_type & PERF_SAMPLE_PERIOD) && !event->attr.freq) {/*tracepoint会走这个*/
 		data->period = nr;
 		return perf_swevent_overflow(event, 1, data, regs);
 	} else
 		data->period = event->hw.last_period;
 
-	if (nr == 1 && hwc->sample_period == 1 && !event->attr.freq)
+	if (nr == 1 && hwc->sample_period == 1 && !event->attr.freq)  
 		return perf_swevent_overflow(event, 1, data, regs);
 
 	if (local64_add_negative(nr, &hwc->period_left))
 		return;
 
-	perf_swevent_overflow(event, 0, data, regs);
+	perf_swevent_overflow(event, 0, data, regs); /*软件类型计数器走这里*/
 }
 
 static int perf_exclude_event(struct perf_event *event,
@@ -5412,7 +5408,7 @@ find_swevent_head(struct swevent_htable *swhash, struct perf_event *event)
 
 	return __find_swevent_head(hlist, type, event_id);
 }
-
+/*软件计数器处理*/
 static void do_perf_sw_event(enum perf_type_id type, u32 event_id,
 				    u64 nr,
 				    struct perf_sample_data *data,
@@ -6537,12 +6533,11 @@ perf_event_alloc(struct perf_event_attr *attr, int cpu,
 
 	hwc = &event->hw;
 	hwc->sample_period = attr->sample_period;
-	if (attr->freq && attr->sample_freq)    /*如果采用频率模式，周期固定为1*/
-		hwc->sample_period = 1;
+	if (attr->freq && attr->sample_freq)    /*如果采用频率模式，周期固定为1。对于周期性事件init的时候会修改这个时间*/
+		hwc->sample_period = 1;             /*其他类型的就固定为1*/
 	hwc->last_period = hwc->sample_period;
 
 	local64_set(&hwc->period_left, hwc->sample_period);
-
 	/*
 	 * we currently do not support PERF_FORMAT_GROUP on inherited events
 	 */
@@ -6957,7 +6952,7 @@ SYSCALL_DEFINE5(perf_event_open,
 	}
 
 	if (output_event) {
-		err = perf_event_set_output(event, output_event);    /*初始化ring_buffer*/
+		err = perf_event_set_output(event, output_event);    /*初始化ring_buffer。通常是在mmap时初始化*/
 		if (err)
 			goto err_context;
 	}

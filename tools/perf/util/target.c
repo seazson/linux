@@ -21,7 +21,7 @@ enum perf_target_errno perf_target__validate(struct perf_target *target)
 		target->tid = target->pid;
 
 	/* CPU and PID are mutually exclusive */
-	if (target->tid && target->cpu_list) {
+	if (target->tid && target->cpu_list) { /*tid和cpu同时设置了的话，以tid为准*/
 		target->cpu_list = NULL;
 		if (ret == PERF_ERRNO_TARGET__SUCCESS)
 			ret = PERF_ERRNO_TARGET__PID_OVERRIDE_CPU;

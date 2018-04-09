@@ -19,9 +19,9 @@ struct arch_hw_breakpoint_ctrl {
 
 struct arch_hw_breakpoint {
 	u32	address;
-	u32	trigger;
-	struct	arch_hw_breakpoint_ctrl step_ctrl;
-	struct	arch_hw_breakpoint_ctrl ctrl;
+	u32	trigger;  /*如果是watchpoint类型会关联触发它的pc位置*/
+	struct	arch_hw_breakpoint_ctrl step_ctrl;  /*为breakpoint*/
+	struct	arch_hw_breakpoint_ctrl ctrl;       /*为watchpoint*/
 };
 
 static inline u32 encode_ctrl_reg(struct arch_hw_breakpoint_ctrl ctrl)

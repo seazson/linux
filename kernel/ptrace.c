@@ -1038,7 +1038,7 @@ SYSCALL_DEFINE4(ptrace, long, request, long, pid, unsigned long, addr,
 	struct task_struct *child;
 	long ret;
 
-	if (request == PTRACE_TRACEME) {
+	if (request == PTRACE_TRACEME) {  /*子进程主动要求被跟踪，设置状态标志*/
 		ret = ptrace_traceme();
 		if (!ret)
 			arch_ptrace_attach(current);

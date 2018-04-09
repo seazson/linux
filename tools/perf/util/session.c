@@ -138,7 +138,7 @@ struct perf_session *perf_session__new(const char *filename, int mode,
 		 * In O_RDONLY mode this will be performed when reading the
 		 * kernel MMAP event, in perf_event__process_mmap().
 		 */
-		if (perf_session__create_kernel_maps(self) < 0)
+		if (perf_session__create_kernel_maps(self) < 0)  /*根据内核符号表，创建内核的映射*/
 			goto out_delete;
 	}
 

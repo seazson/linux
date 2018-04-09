@@ -854,6 +854,7 @@ retry_sample_id:
 								     pid,
 								     cpus->map[cpu],
 								     group_fd, flags);
+			printf("__perf_evsel__open %d %d %d %d\n",pid,cpu,cpus->map[cpu],group_fd);
 			if (FD(evsel, cpu, thread) < 0) {
 				err = -errno;
 				goto try_fallback;

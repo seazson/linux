@@ -111,7 +111,7 @@ struct fetch_type {
 };
 
 struct fetch_param {
-	fetch_func_t		fn;
+	fetch_func_t		fn;   /*根据不同的参数类型，挂接对应的处理函数。例如返回堆栈地址*/
 	void 			*data;
 };
 

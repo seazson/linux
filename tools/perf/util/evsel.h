@@ -70,7 +70,7 @@ struct perf_evsel {
 		void		*data;
 	} handler;
 	struct cpu_map		*cpus;
-	unsigned int		sample_size;
+	unsigned int		sample_size;   /*一个采样数据的大小*/
 	bool 			supported;
 	bool 			needs_swap;
 	/* parse modifier helper */

@@ -1267,10 +1267,10 @@ struct task_struct {
 #endif
 #ifdef CONFIG_LOCKDEP
 # define MAX_LOCK_DEPTH 48UL
-	u64 curr_chain_key;
-	int lockdep_depth;
+	u64 curr_chain_key; /*最后一次获取的锁的hash值*/
+	int lockdep_depth;  /*表示持有多少层锁，目前一个进程不能超过MAX_LOCK_DEPTH=48层锁*/
 	unsigned int lockdep_recursion;
-	struct held_lock held_locks[MAX_LOCK_DEPTH];
+	struct held_lock held_locks[MAX_LOCK_DEPTH];  /*进程当前持有的锁*/
 	gfp_t lockdep_reclaim_gfp;
 #endif
 
