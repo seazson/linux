@@ -35,10 +35,10 @@ struct inode;
 # include <asm/uprobes.h>
 #endif
 
-#define UPROBE_HANDLER_REMOVE		1
+#define UPROBE_HANDLER_REMOVE		1   /*表示执行完成之后删除探针*/
 #define UPROBE_HANDLER_MASK		1
 
-#define MAX_URETPROBE_DEPTH		64
+#define MAX_URETPROBE_DEPTH		64 /*uprobe最大嵌套层数*/
 
 enum uprobe_filter_ctx {
 	UPROBE_FILTER_REGISTER,
@@ -73,8 +73,8 @@ struct uprobe_task {
 	enum uprobe_task_state		state;
 	struct arch_uprobe_task		autask;
 
-	struct return_instance		*return_instances;
-	unsigned int			depth;
+	struct return_instance		*return_instances; /*维护探针重入顺序*/
+	unsigned int			depth;   /*重入层次*/
 	struct uprobe			*active_uprobe;
 
 	unsigned long			xol_vaddr;
@@ -97,7 +97,7 @@ struct xol_area {
 	 * itself.  The probed process or a naughty kernel module could make
 	 * the vma go away, and we must handle that reasonably gracefully.
 	 */
-	unsigned long 		vaddr;		/* Page(s) of instruction slots */
+	unsigned long 		vaddr;		/* Page(s) of instruction slots 指向新分配页的虚拟地址*/
 };
 
 struct uprobes_state {

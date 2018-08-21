@@ -239,7 +239,7 @@ static void control_ops_free(struct ftrace_ops *ops)
 {
 	free_percpu(ops->disabled);
 }
-
+/*这里有三种情况*/
 static void update_global_ops(void)
 {
 	ftrace_func_t func;
@@ -250,7 +250,7 @@ static void update_global_ops(void)
 	 * registered callers.
 	 */
 	if (ftrace_global_list == &ftrace_list_end ||
-	    ftrace_global_list->next == &ftrace_list_end) {/*直挂接了一个处理函数的情况*/
+	    ftrace_global_list->next == &ftrace_list_end) {/*只挂接了一个处理函数的情况*/
 		func = ftrace_global_list->func;
 		/*
 		 * As we are calling the function directly.
@@ -282,7 +282,7 @@ static void update_ftrace_function(void)
 {
 	ftrace_func_t func;
 
-	update_global_ops();
+	update_global_ops();  /*设置全局global_ops执行函数*/
 
 	/*
 	 * If we are at the end of the list and this ops is
@@ -1106,11 +1106,11 @@ ftrace_filter_lseek(struct file *file, loff_t offset, int whence)
 #ifndef CONFIG_FTRACE_MCOUNT_RECORD
 # error Dynamic ftrace depends on MCOUNT_RECORD
 #endif
-
+/*用于函数过滤的全局哈希表，里面存放的都是ftrace_func_probe*/
 static struct hlist_head ftrace_func_hash[FTRACE_FUNC_HASHSIZE] __read_mostly;
-
+/*用于支持函数command*/
 struct ftrace_func_probe {
-	struct hlist_node	node;
+	struct hlist_node	node;   /*添加到ftrace_func_hash表中*/
 	struct ftrace_probe_ops	*ops;
 	unsigned long		flags;
 	unsigned long		ip;
@@ -1165,7 +1165,7 @@ static struct ftrace_page *ftrace_new_pgs;
 /* estimate from running different kernels */
 #define NR_TO_INIT		10000
 
-static struct ftrace_page	*ftrace_pages_start; /*指向开头*/
+static struct ftrace_page	*ftrace_pages_start; /*指向开头，用来维护动态函数表*/
 static struct ftrace_page	*ftrace_pages;   /*指向末尾*/
 
 static bool ftrace_hash_empty(struct ftrace_hash *hash)
@@ -1554,7 +1554,7 @@ int ftrace_text_reserved(void *start, void *end)
 
 	return (int)!!ret;
 }
-
+/*扫描filter和nofilter，如果要跟踪增加rec->flags计数，不跟踪就减少*/
 static void __ftrace_hash_rec_update(struct ftrace_ops *ops,
 				     int filter_hash,
 				     bool inc)
@@ -1818,8 +1818,8 @@ __ftrace_replace_code(struct dyn_ftrace *rec, int enable)
 	unsigned long ftrace_addr;
 	int ret;
 
-	ret = ftrace_update_record(rec, enable);  /*判断要如何对这个函数进行修改*/
-
+	ret = ftrace_update_record(rec, enable);  /*判断要如何对这个函数进行修改，也就是判断rec->flag是否大于1*/
+                                              /*大于1的话就需要修改代码，否则修改成nop*/
 	if (rec->flags & FTRACE_FL_REGS)
 		ftrace_addr = (unsigned long)FTRACE_REGS_ADDR;
 	else
@@ -1978,17 +1978,17 @@ int __weak ftrace_arch_code_modify_post_process(void)
 
 void ftrace_modify_all_code(int command)
 {
-	if (command & FTRACE_UPDATE_CALLS)
+	if (command & FTRACE_UPDATE_CALLS)  /*设置动态函数跟踪。修改的是每个函数里的mcount，图形化跟踪过滤也需要根据这个*/
 		ftrace_replace_code(1);
-	else if (command & FTRACE_DISABLE_CALLS)
+	else if (command & FTRACE_DISABLE_CALLS) /*取消动态函数跟踪(设置函数为nop)*/
 		ftrace_replace_code(0);
 
 	if (command & FTRACE_UPDATE_TRACE_FUNC)
-		ftrace_update_ftrace_func(ftrace_trace_function);
+		ftrace_update_ftrace_func(ftrace_trace_function); /*将ftrace_call替换成ftrace_trace_function。修改的是全局函数*/
 
-	if (command & FTRACE_START_FUNC_RET)   /*图形化跟踪时会调用*/
+	if (command & FTRACE_START_FUNC_RET)   /*开启动态图形化跟踪时会调用*/
 		ftrace_enable_ftrace_graph_caller();
-	else if (command & FTRACE_STOP_FUNC_RET)
+	else if (command & FTRACE_STOP_FUNC_RET) /*关闭动态图形化跟踪*/
 		ftrace_disable_ftrace_graph_caller();
 }
 
@@ -2045,7 +2045,7 @@ static void ftrace_run_update_code(int command)
 	 * is safe. The stop_machine() is the safest, but also
 	 * produces the most overhead.
 	 */
-	arch_ftrace_update_code(command);
+	arch_ftrace_update_code(command);  /*需要停止所有的cpu并修改代码*/
 
 	function_trace_stop--;
 
@@ -2061,7 +2061,7 @@ static void ftrace_startup_enable(int command)
 {
 	if (saved_ftrace_func != ftrace_trace_function) {
 		saved_ftrace_func = ftrace_trace_function;
-		command |= FTRACE_UPDATE_TRACE_FUNC;
+		command |= FTRACE_UPDATE_TRACE_FUNC;   /*桩函数发生了变换，需要修改ftrace_call代码段*/
 	}
 
 	if (!command || !ftrace_enabled)
@@ -2078,7 +2078,7 @@ static int ftrace_startup(struct ftrace_ops *ops, int command)
 		return -ENODEV;
 
 	ftrace_start_up++;
-	command |= FTRACE_UPDATE_CALLS;
+	command |= FTRACE_UPDATE_CALLS;  /*使能动态跟踪*/
 
 	/* ops marked global share the filter hashes */
 	if (ops->flags & FTRACE_OPS_FL_GLOBAL) {
@@ -2091,7 +2091,7 @@ static int ftrace_startup(struct ftrace_ops *ops, int command)
 
 	ops->flags |= FTRACE_OPS_FL_ENABLED;
 	if (hash_enable)
-		ftrace_hash_rec_enable(ops, 1);
+		ftrace_hash_rec_enable(ops, 1); /*根据hash表更新rec的计数*/
 
 	ftrace_startup_enable(command);
 
@@ -2415,9 +2415,9 @@ struct ftrace_iterator {
 	struct dyn_ftrace		*func;
 	struct ftrace_func_probe	*probe;
 	struct trace_parser		parser;   /*解析器*/
-	struct ftrace_hash		*hash;
+	struct ftrace_hash		*hash;    /*临时hash表，拷贝自ops*/
 	struct ftrace_ops		*ops;
-	int				hidx;
+	int				hidx;    /*在ftrace_func_hash中的位置*/
 	int				idx;
 	unsigned			flags;
 };
@@ -2755,7 +2755,7 @@ ftrace_regex_open(struct ftrace_ops *ops, int flag,
 		hash = ops->filter_hash;
 
 	if (file->f_mode & FMODE_WRITE) {
-		iter->hash = alloc_and_copy_ftrace_hash(FTRACE_HASH_DEFAULT_BITS, hash);
+		iter->hash = alloc_and_copy_ftrace_hash(FTRACE_HASH_DEFAULT_BITS, hash); /*从ops中拷过来，处理完成之后再拷回去*/
 		if (!iter->hash) {
 			trace_parser_put(&iter->parser);
 			kfree(iter);
@@ -3008,13 +3008,13 @@ static void function_trace_probe_call(unsigned long ip, unsigned long parent_ip,
 	 * on the hash. rcu_read_lock is too dangerous here.
 	 */
 	preempt_disable_notrace();
-	hlist_for_each_entry_rcu_notrace(entry, hhd, node) {
+	hlist_for_each_entry_rcu_notrace(entry, hhd, node) { /*一个ip地址可以注册多个命令*/
 		if (entry->ip == ip)
 			entry->ops->func(ip, parent_ip, &entry->data);
 	}
 	preempt_enable_notrace();
 }
-
+/*用于command，也就是带参数的函数过滤*/
 static struct ftrace_ops trace_probe_ops __read_mostly =
 {
 	.func		= function_trace_probe_call,
@@ -3084,7 +3084,7 @@ static void ftrace_free_entry(struct ftrace_func_probe *entry)
 
 int
 register_ftrace_function_probe(char *glob, struct ftrace_probe_ops *ops,
-			      void *data)
+			      void *data) /*data表示次数*/
 {
 	struct ftrace_func_probe *entry;
 	struct ftrace_hash **orig_hash = &trace_probe_ops.filter_hash;
@@ -3168,7 +3168,7 @@ register_ftrace_function_probe(char *glob, struct ftrace_probe_ops *ops,
 	if (ret < 0)
 		count = ret;
 
-	__enable_ftrace_function_probe();
+	__enable_ftrace_function_probe();  /*将命令ops注册到系统中*/
 
  out_unlock:
 	mutex_unlock(&ftrace_lock);
@@ -3355,7 +3355,7 @@ static int ftrace_process_regex(struct ftrace_hash *hash,
 	mutex_lock(&ftrace_cmd_mutex);
 	list_for_each_entry(p, &ftrace_commands, list) {
 		if (strcmp(p->name, command) == 0) {
-			ret = p->func(hash, func, command, next, enable);
+			ret = p->func(hash, func, command, next, enable);  /*执行 init_func_cmd_traceon 中注册的对应函数*/
 			goto out_unlock;
 		}
 	}
@@ -4341,7 +4341,7 @@ __ftrace_ops_list_func(unsigned long ip, unsigned long parent_ip,
 	 */
 	preempt_disable_notrace();
 	do_for_each_ftrace_op(op, ftrace_ops_list) {
-		if (ftrace_ops_test(op, ip, regs))
+		if (ftrace_ops_test(op, ip, regs))  /*查找此地址的函数是否需要跟踪，也就是设置了filter没有*/
 			op->func(ip, parent_ip, op, regs);
 	} while_for_each_ftrace_op(op);
 	preempt_enable_notrace();

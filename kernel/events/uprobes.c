@@ -66,7 +66,7 @@ struct uprobe {
 	struct rb_node		rb_node;	/* node in the rb tree */
 	atomic_t		ref;
 	struct rw_semaphore	register_rwsem;
-	struct rw_semaphore	consumer_rwsem;
+	struct rw_semaphore	consumer_rwsem;  /*保护*consumers链*/
 	struct list_head	pending_list;
 	struct uprobe_consumer	*consumers;
 	struct inode		*inode;		/* Also hold a ref to inode */
@@ -77,9 +77,9 @@ struct uprobe {
 
 struct return_instance {
 	struct uprobe		*uprobe;
-	unsigned long		func;
+	unsigned long		func;          /*异常地址，也就是函数入口*/
 	unsigned long		orig_ret_vaddr; /* original return address */
-	bool			chained;	/* true, if instance is nested */
+	bool			chained;	/* true, if instance is nested uprobe出现重入情况*/
 
 	struct return_instance	*next;		/* keep as stack */
 };
@@ -269,11 +269,11 @@ static int write_opcode(struct mm_struct *mm, unsigned long vaddr,
 
 retry:
 	/* Read the page with vaddr into memory */
-	ret = get_user_pages(NULL, mm, vaddr, 1, 0, 1, &old_page, &vma);
+	ret = get_user_pages(NULL, mm, vaddr, 1, 0, 1, &old_page, &vma); /*获取包含要修改地址的页，新版本中将他们固定到内存中*/
 	if (ret <= 0)
 		return ret;
 
-	ret = verify_opcode(old_page, vaddr, &opcode);
+	ret = verify_opcode(old_page, vaddr, &opcode); /*对于共享页可能已经在别的地方修改成断点指令了*/
 	if (ret <= 0)
 		goto put_old;
 
@@ -564,15 +564,15 @@ static int prepare_uprobe(struct uprobe *uprobe, struct file *file,
 	if (test_bit(UPROBE_COPY_INSN, &uprobe->flags))
 		goto out;
 
-	ret = copy_insn(uprobe, file);
+	ret = copy_insn(uprobe, file);  /*拷贝原始的指令，对于精简指令集就是拷贝一个指令，而对于x86需要拷贝多个指令*/
 	if (ret)
 		goto out;
 
 	ret = -ENOTSUPP;
-	if (is_trap_insn((uprobe_opcode_t *)uprobe->arch.insn))
+	if (is_trap_insn((uprobe_opcode_t *)uprobe->arch.insn)) /*判断原始指令是否是断点指令*/
 		goto out;
 
-	ret = arch_uprobe_analyze_insn(&uprobe->arch, mm, vaddr);
+	ret = arch_uprobe_analyze_insn(&uprobe->arch, mm, vaddr); /*解析指令能否设置断点*/
 	if (ret)
 		goto out;
 
@@ -619,7 +619,7 @@ install_breakpoint(struct uprobe *uprobe, struct mm_struct *mm,
 	bool first_uprobe;
 	int ret;
 
-	ret = prepare_uprobe(uprobe, vma->vm_file, mm, vaddr);
+	ret = prepare_uprobe(uprobe, vma->vm_file, mm, vaddr); /*备份指令，并检查指令能否被打断*/
 	if (ret)
 		return ret;
 
@@ -631,7 +631,7 @@ install_breakpoint(struct uprobe *uprobe, struct mm_struct *mm,
 	if (first_uprobe)
 		set_bit(MMF_HAS_UPROBES, &mm->flags);
 
-	ret = set_swbp(&uprobe->arch, mm, vaddr);
+	ret = set_swbp(&uprobe->arch, mm, vaddr); /*将指令修改成断点指令*/
 	if (!ret)
 		clear_bit(MMF_RECALC_UPROBES, &mm->flags);
 	else if (first_uprobe)
@@ -695,7 +695,7 @@ build_map_info(struct address_space *mapping, loff_t offset, bool is_register)
  again:
 	mutex_lock(&mapping->i_mmap_mutex);
 	vma_interval_tree_foreach(vma, &mapping->i_mmap, pgoff, pgoff) {
-		if (!valid_vma(vma, is_register))
+		if (!valid_vma(vma, is_register))  /*判断地址空间是否是可执行的*/
 			continue;
 
 		if (!prev && !more) {
@@ -1393,10 +1393,10 @@ static void prepare_uretprobe(struct uprobe *uprobe, struct pt_regs *regs)
 	unsigned long orig_ret_vaddr, trampoline_vaddr;
 	bool chained = false;
 
-	if (!get_xol_area())
+	if (!get_xol_area()) /*分配mm->uprobes_state.xol_area*/
 		return;
 
-	utask = get_utask();
+	utask = get_utask(); /*分配utask*/
 	if (!utask)
 		return;
 
@@ -1629,7 +1629,7 @@ static void handler_chain(struct uprobe *uprobe, struct pt_regs *regs)
 	}
 
 	if (need_prep && !remove)
-		prepare_uretprobe(uprobe, regs); /* put bp at return */
+		prepare_uretprobe(uprobe, regs); /* put bp at return */ /*需要监控返回值，设置返回值监控环境*/
 
 	if (remove && uprobe->consumers) {
 		WARN_ON(!uprobe_is_active(uprobe));
@@ -1651,7 +1651,7 @@ handle_uretprobe_chain(struct return_instance *ri, struct pt_regs *regs)
 	}
 	up_read(&uprobe->register_rwsem);
 }
-
+/*函数返回时调用*/
 static bool handle_trampoline(struct pt_regs *regs)
 {
 	struct uprobe_task *utask;
@@ -1671,10 +1671,10 @@ static bool handle_trampoline(struct pt_regs *regs)
 	 * longjmp(), currently we assume that the probed function always
 	 * returns.
 	 */
-	instruction_pointer_set(regs, ri->orig_ret_vaddr);
+	instruction_pointer_set(regs, ri->orig_ret_vaddr); /*恢复原来的返回地址*/
 
 	for (;;) {
-		handle_uretprobe_chain(ri, regs);
+		handle_uretprobe_chain(ri, regs); /*执行ret_handler挂接的函数*/
 
 		chained = ri->chained;
 		put_uprobe(ri->uprobe);
@@ -1706,7 +1706,7 @@ static void handle_swbp(struct pt_regs *regs)
 	unsigned long bp_vaddr;
 	int uninitialized_var(is_swbp);
 
-	bp_vaddr = uprobe_get_swbp_addr(regs);
+	bp_vaddr = uprobe_get_swbp_addr(regs); /*获取引起断点产生地址*/
 	if (bp_vaddr == get_trampoline_vaddr()) {
 		if (handle_trampoline(regs))
 			return;
@@ -1715,11 +1715,11 @@ static void handle_swbp(struct pt_regs *regs)
 						current->pid, current->tgid);
 	}
 
-	uprobe = find_active_uprobe(bp_vaddr, &is_swbp);
+	uprobe = find_active_uprobe(bp_vaddr, &is_swbp); /*根据vma和虚拟地址在全局红黑树中查找到对应的uprobe*/
 	if (!uprobe) {
 		if (is_swbp > 0) {
 			/* No matching uprobe; signal SIGTRAP. */
-			send_sig(SIGTRAP, current, 0);
+			send_sig(SIGTRAP, current, 0);   /*未知的断点*/
 		} else {
 			/*
 			 * Either we raced with uprobe_unregister() or we can't
@@ -1729,7 +1729,7 @@ static void handle_swbp(struct pt_regs *regs)
 			 * can pretend this insn was not executed yet and get
 			 * the (correct) SIGSEGV after restart.
 			 */
-			instruction_pointer_set(regs, bp_vaddr);
+			instruction_pointer_set(regs, bp_vaddr);   /*可能是断点已经被移除*/
 		}
 		return;
 	}
@@ -1743,14 +1743,14 @@ static void handle_swbp(struct pt_regs *regs)
 	 * new and not-yet-analyzed uprobe at the same address, restart.
 	 */
 	smp_rmb(); /* pairs with wmb() in install_breakpoint() */
-	if (unlikely(!test_bit(UPROBE_COPY_INSN, &uprobe->flags)))
+	if (unlikely(!test_bit(UPROBE_COPY_INSN, &uprobe->flags))) /*断点还未备份，不能操作*/
 		goto out;
 
-	handler_chain(uprobe, regs);
-	if (can_skip_sstep(uprobe, regs))
+	handler_chain(uprobe, regs); /*调用handle，如果需要监控返回值则建立环境*/
+	if (can_skip_sstep(uprobe, regs)) /*对于某些特殊指令可以跳过单步的过程，模拟指令*/
 		goto out;
 
-	if (!pre_ssout(uprobe, regs, bp_vaddr))
+	if (!pre_ssout(uprobe, regs, bp_vaddr)) /*准备好单步执行*/
 		return;
 
 	/* can_skip_sstep() succeeded, or restart if can't singlestep */
@@ -1803,9 +1803,9 @@ void uprobe_notify_resume(struct pt_regs *regs)
 
 	utask = current->utask;
 	if (utask && utask->active_uprobe)
-		handle_singlestep(utask, regs);
+		handle_singlestep(utask, regs); /*单步*/
 	else
-		handle_swbp(regs);
+		handle_swbp(regs); /*会进来两次断点*/
 }
 
 /*

@@ -160,7 +160,7 @@ struct trace_buffer {
 	struct trace_array		*tr;
 	struct ring_buffer		*buffer;
 	struct trace_array_cpu __percpu	*data;
-	cycle_t				time_start;
+	cycle_t				time_start;   /*时延开始点*/
 	int				cpu;
 };
 
@@ -286,7 +286,7 @@ extern void __ftrace_bad_type(void);
  * An option specific to a tracer. This is a boolean value.
  * The bit is the bit index that sets its value on the
  * flags value in struct tracer_flags.
- */
+ */ /*用于创建option下的文件*/
 struct tracer_opt {
 	const char	*name; /* Will appear on the trace_options file */
 	u32		bit; /* Mask assigned in val field in tracer_flags */
@@ -359,7 +359,7 @@ struct tracer {
 	struct tracer		*next;
 	struct tracer_flags	*flags;
 	bool			print_max;
-	bool			enabled;      /*表明这个tracer是否当前正在使用*/
+	bool			enabled;      /*表明这个tracer是否当前正在使用，并不是正在采集中*/
 #ifdef CONFIG_TRACER_MAX_TRACE
 	bool			use_max_tr;
 #endif

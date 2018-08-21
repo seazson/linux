@@ -391,7 +391,7 @@ unsigned long trace_flags = TRACE_ITER_PRINT_PARENT | TRACE_ITER_PRINTK |
 	TRACE_ITER_ANNOTATE | TRACE_ITER_CONTEXT_INFO | TRACE_ITER_SLEEP_TIME |
 	TRACE_ITER_GRAPH_TIME | TRACE_ITER_RECORD_CMD | TRACE_ITER_OVERWRITE |
 	TRACE_ITER_IRQ_INFO | TRACE_ITER_MARKERS | TRACE_ITER_FUNCTION;
-
+/*开启记录功能，对于tracepoint就是开启了，而对于tracer还需要进一步调用start*/
 static void tracer_tracing_on(struct trace_array *tr)
 {
 	if (tr->trace_buffer.buffer)
@@ -1115,7 +1115,7 @@ static inline int run_tracer_selftest(struct tracer *type)
  * @type - the plugin for the tracer
  *
  * Register a new plugin tracer.
- */
+ */ /*注册一个tracer，并执行自测。如果是默认tracer就使能*/
 int register_tracer(struct tracer *type)
 {
 	struct tracer *t;
@@ -1135,7 +1135,7 @@ int register_tracer(struct tracer *type)
 
 	tracing_selftest_running = true;
 
-	for (t = trace_types; t; t = t->next) {
+	for (t = trace_types; t; t = t->next) {/*所有的tracer都在这个链表上*/
 		if (strcmp(type->name, t->name) == 0) {
 			/* already found */
 			pr_info("Tracer %s already registered\n",
@@ -1155,7 +1155,7 @@ int register_tracer(struct tracer *type)
 	if (!type->wait_pipe)
 		type->wait_pipe = default_wait_pipe;
 
-	ret = run_tracer_selftest(type);
+	ret = run_tracer_selftest(type);  /*调用tracer的自测函数，如果使能了自测功能*/
 	if (ret < 0)
 		goto out;
 
@@ -1174,7 +1174,7 @@ int register_tracer(struct tracer *type)
 
 	printk(KERN_INFO "Starting tracer '%s'\n", type->name);
 	/* Do we want this tracer to start on bootup? */
-	tracing_set_tracer(type->name);
+	tracing_set_tracer(type->name);   /*如果设置了默认tracer，就使能*/
 	default_bootup_tracer = NULL;
 	/* disable other selftests, since this will break it. */
 	tracing_selftest_disabled = true;
@@ -1643,7 +1643,7 @@ struct ftrace_stack {
 
 static DEFINE_PER_CPU(struct ftrace_stack, ftrace_stack);
 static DEFINE_PER_CPU(int, ftrace_stack_reserve);
-
+/*将调用pc的堆栈写入ring_buffer*/
 static void __ftrace_trace_stack(struct ring_buffer *buffer,
 				 unsigned long flags,
 				 int skip, int pc, struct pt_regs *regs)
@@ -3366,7 +3366,7 @@ int set_tracer_flag(struct trace_array *tr, unsigned int mask, int enabled)
 
 	return 0;
 }
-
+/*设置共有或者私有选项*/
 static int trace_set_options(struct trace_array *tr, char *option)
 {
 	char *cmp;
@@ -3820,7 +3820,7 @@ static int tracing_set_tracer(const char *buf)
 	tr->current_trace = &nop_trace;
 
 #ifdef CONFIG_TRACER_MAX_TRACE
-	had_max_tr = tr->allocated_snapshot;
+	had_max_tr = tr->allocated_snapshot;    /*释放为最大延时准备的快照*/
 
 	if (had_max_tr && !t->use_max_tr) {
 		/*

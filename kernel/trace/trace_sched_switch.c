@@ -115,7 +115,7 @@ probe_sched_wakeup(void *ignore, struct task_struct *wakee, int success)
 	if (unlikely(!sched_ref))
 		return;
 
-	tracing_record_cmdline(current);
+	tracing_record_cmdline(current);   /*记录进程名称*/
 
 	if (!tracer_enabled || sched_stopped)
 		return;

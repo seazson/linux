@@ -1227,7 +1227,7 @@ static int __kprobes add_new_kprobe(struct kprobe *ap, struct kprobe *p)
 		unoptimize_kprobe(ap, true);	/* Fall back to normal kprobe */
 
 	if (p->break_handler) {
-		if (ap->break_handler)
+		if (ap->break_handler)  /*break_handler只有jprobe会设置，这里的意思是一个地址不许有多个jprobe*/
 			return -EEXIST;
 		list_add_tail_rcu(&p->list, &ap->list);
 		ap->break_handler = aggr_break_handler;
@@ -1433,7 +1433,7 @@ static __kprobes int check_kprobe_address_safe(struct kprobe *p,
 	 * If the address is located on a ftrace nop, set the
 	 * breakpoint to the following instruction.
 	 */
-	ftrace_addr = ftrace_location((unsigned long)p->addr);
+	ftrace_addr = ftrace_location((unsigned long)p->addr); /*判断要探测的地址是否是ftrace支持的*/
 	if (ftrace_addr) {
 #ifdef CONFIG_KPROBES_ON_FTRACE
 		/* Given address is not on the instruction boundary */
@@ -1449,9 +1449,9 @@ static __kprobes int check_kprobe_address_safe(struct kprobe *p,
 	preempt_disable();
 
 	/* Ensure it is not in reserved area nor out of text */
-	if (!kernel_text_address((unsigned long) p->addr) ||
-	    in_kprobes_functions((unsigned long) p->addr) ||
-	    jump_label_text_reserved(p->addr, p->addr)) {
+	if (!kernel_text_address((unsigned long) p->addr) ||  /*必须是在内核或者模块的代码段*/
+	    in_kprobes_functions((unsigned long) p->addr) || /*必须不在kprobe代码段和黑名单上*/
+	    jump_label_text_reserved(p->addr, p->addr)) {   /*必须不在jumptable段中*/
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1494,12 +1494,12 @@ int __kprobes register_kprobe(struct kprobe *p)
 	kprobe_opcode_t *addr;
 
 	/* Adjust probe address from symbol */
-	addr = kprobe_addr(p);
+	addr = kprobe_addr(p); /*根据函数名和相对偏移找到要探测的地址*/
 	if (IS_ERR(addr))
 		return PTR_ERR(addr);
 	p->addr = addr;
 
-	ret = check_kprobe_rereg(p);
+	ret = check_kprobe_rereg(p); /*查找探针是否已经注册过*/
 	if (ret)
 		return ret;
 
@@ -1508,13 +1508,13 @@ int __kprobes register_kprobe(struct kprobe *p)
 	p->nmissed = 0;
 	INIT_LIST_HEAD(&p->list);
 
-	ret = check_kprobe_address_safe(p, &probed_mod);
+	ret = check_kprobe_address_safe(p, &probed_mod);  /*地址合法性检查*/
 	if (ret)
 		return ret;
 
 	mutex_lock(&kprobe_mutex);
 
-	old_p = get_kprobe(p->addr);
+	old_p = get_kprobe(p->addr);  /*探测点是否已经注册过*/
 	if (old_p) {
 		/* Since this may unoptimize old_p, locking text_mutex. */
 		ret = register_aggr_kprobe(old_p, p);
@@ -1522,7 +1522,7 @@ int __kprobes register_kprobe(struct kprobe *p)
 	}
 
 	mutex_lock(&text_mutex);	/* Avoiding text modification */
-	ret = prepare_kprobe(p);
+	ret = prepare_kprobe(p);    /*提取探测点的指令，分析是否可以被探测*/
 	mutex_unlock(&text_mutex);
 	if (ret)
 		goto out;
@@ -1731,7 +1731,7 @@ int __kprobes register_jprobes(struct jprobe **jps, int num)
 
 		/* Verify probepoint is a function entry point */
 		if (kallsyms_lookup_size_offset(addr, NULL, &offset) &&
-		    offset == 0) {
+		    offset == 0) { /*回调函数必须是内和空间，而且是函数头*/
 			jp->kp.pre_handler = setjmp_pre_handler;
 			jp->kp.break_handler = longjmp_break_handler;
 			ret = register_kprobe(&jp->kp);
@@ -1802,10 +1802,10 @@ static int __kprobes pre_handler_kretprobe(struct kprobe *p,
 		raw_spin_unlock_irqrestore(&rp->lock, flags);
 
 		ri->rp = rp;
-		ri->task = current;
+		ri->task = current;     /*取出一个空闲的instance并赋值*/
 
 		if (rp->entry_handler && rp->entry_handler(ri, regs)) {
-			raw_spin_lock_irqsave(&rp->lock, flags);
+			raw_spin_lock_irqsave(&rp->lock, flags);   /*进来的话表示执行出错*/
 			hlist_add_head(&ri->hlist, &rp->free_instances);
 			raw_spin_unlock_irqrestore(&rp->lock, flags);
 			return 0;
@@ -1836,7 +1836,7 @@ int __kprobes register_kretprobe(struct kretprobe *rp)
 		addr = kprobe_addr(&rp->kp);
 		if (IS_ERR(addr))
 			return PTR_ERR(addr);
-
+		/*对于某些体系结构而言，有些函数是不能被kret跟踪的，例如x86的__switch_to*/
 		for (i = 0; kretprobe_blacklist[i].name != NULL; i++) {
 			if (kretprobe_blacklist[i].addr == addr)
 				return -EINVAL;
@@ -2103,7 +2103,7 @@ static int __init init_kprobes(void)
 	 * the range of addresses that belong to the said functions,
 	 * since a kprobe need not necessarily be at the beginning
 	 * of a function.
-	 */
+	 */ /*初始化黑名单，也就是不让跟踪的函数*/
 	for (kb = kprobe_blacklist; kb->name != NULL; kb++) {
 		kprobe_lookup_name(kb->name, addr);
 		if (!addr)
@@ -2141,11 +2141,11 @@ static int __init init_kprobes(void)
 	/* By default, kprobes are armed */
 	kprobes_all_disarmed = false;
 
-	err = arch_init_kprobes();
+	err = arch_init_kprobes();  /*注册中断处理函数*/
 	if (!err)
 		err = register_die_notifier(&kprobe_exceptions_nb);
 	if (!err)
-		err = register_module_notifier(&kprobe_module_nb);
+		err = register_module_notifier(&kprobe_module_nb); /*为了在移除模块的时候删除断点*/
 
 	kprobes_initialized = (err == 0);
 

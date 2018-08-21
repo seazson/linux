@@ -275,7 +275,7 @@ static int __ftrace_event_enable_disable(struct ftrace_event_file *file,
 		 * we do nothing. Do not disable the tracepoint, otherwise
 		 * "soft enable"s (clearing the SOFT_DISABLED bit) wont work.
 		 */
-		if (soft_disable) {
+		if (soft_disable) { /*使用set_ftrace_filter cmd模式会置1*/
 			if (atomic_dec_return(&file->sm_ref) > 0)
 				break;
 			disable = file->flags & FTRACE_EVENT_FL_SOFT_DISABLED;
@@ -324,7 +324,7 @@ static int __ftrace_event_enable_disable(struct ftrace_event_file *file,
 				tracing_start_cmdline_record();
 				set_bit(FTRACE_EVENT_FL_RECORDED_CMD_BIT, &file->flags);
 			}
-			ret = call->class->reg(call, TRACE_REG_REGISTER, file);     /*默认会调用ftrace_event_reg*/
+			ret = call->class->reg(call, TRACE_REG_REGISTER, file);     /*默认会调用 ftrace_event_reg */
 			if (ret) {
 				tracing_stop_cmdline_record();
 				pr_info("event trace: Could not enable event "

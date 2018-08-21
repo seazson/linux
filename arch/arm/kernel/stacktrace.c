@@ -71,7 +71,7 @@ static int save_trace(struct stackframe *frame, void *d)
 	struct stack_trace *trace = data->trace;
 	unsigned long addr = frame->pc;
 
-	if (data->no_sched_functions && in_sched_functions(addr))
+	if (data->no_sched_functions && in_sched_functions(addr)) /*在任务切换中*/
 		return 0;
 	if (data->skip) {
 		data->skip--;
@@ -82,7 +82,7 @@ static int save_trace(struct stackframe *frame, void *d)
 
 	return trace->nr_entries >= trace->max_entries;
 }
-
+/*获取任务当前的栈回溯*/
 void save_stack_trace_tsk(struct task_struct *tsk, struct stack_trace *trace)
 {
 	struct stack_trace_data data;

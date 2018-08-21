@@ -21,7 +21,7 @@
 
 struct module;
 struct tracepoint;
-
+/*一个tracepoint上可以使用多个处理函数*/
 struct tracepoint_func {
 	void *func;
 	void *data;
@@ -30,7 +30,7 @@ struct tracepoint_func {
 struct tracepoint {
 	const char *name;		/* Tracepoint name */
 	struct static_key key;
-	void (*regfunc)(void);
+	void (*regfunc)(void);  /*由每个tracepoint自己定义，大部分没定义。列如系统调用定义的是：syscall_regfunc, syscall_unregfunc*/
 	void (*unregfunc)(void);
 	struct tracepoint_func __rcu *funcs;
 };

@@ -430,7 +430,7 @@ static const struct fetch_type *find_fetch_type(const char *type)
 	int i;
 
 	if (!type)
-		type = DEFAULT_FETCH_TYPE_STR;
+		type = DEFAULT_FETCH_TYPE_STR;  /*默认u32*/
 
 	/* Special case: bitfield */
 	if (*type == 'b') {
@@ -529,7 +529,7 @@ static int parse_probe_vars(char *arg, const struct fetch_type *t,
 	} else if (strncmp(arg, "stack", 5) == 0) {
 		if (arg[5] == '\0') {
 			if (strcmp(t->name, DEFAULT_FETCH_TYPE_STR) == 0)
-				f->fn = fetch_stack_address;
+				f->fn = fetch_stack_address;  /*获取栈地址*/
 			else
 				ret = -EINVAL;
 		} else if (isdigit(arg[5])) {
@@ -537,7 +537,7 @@ static int parse_probe_vars(char *arg, const struct fetch_type *t,
 			if (ret || param > PARAM_MAX_STACK)
 				ret = -EINVAL;
 			else {
-				f->fn = t->fetch[FETCH_MTD_stack];
+				f->fn = t->fetch[FETCH_MTD_stack];  /*获取栈数据*/
 				f->data = (void *)param;
 			}
 		} else
@@ -564,12 +564,12 @@ static int parse_probe_arg(char *arg, const struct fetch_type *t,
 		return -EINVAL;
 
 	switch (arg[0]) {
-	case '$':
+	case '$': /*获取栈数据*/
 		ret = parse_probe_vars(arg + 1, t, f, is_return);
 		break;
 
-	case '%':	/* named register */
-		ret = regs_query_register_offset(arg + 1);
+	case '%':	/* named register 获取寄存器*/
+		ret = regs_query_register_offset(arg + 1);  /*将寄存器名称转换成相对偏移*/
 		if (ret >= 0) {
 			f->fn = t->fetch[FETCH_MTD_reg];
 			f->data = (void *)(unsigned long)ret;
@@ -577,7 +577,7 @@ static int parse_probe_arg(char *arg, const struct fetch_type *t,
 		}
 		break;
 
-	case '@':	/* memory or symbol */
+	case '@':	/* memory or symbol 获取内存数据*/
 		if (isdigit(arg[1])) {
 			ret = kstrtoul(arg + 1, 0, &param);
 			if (ret)
@@ -585,7 +585,7 @@ static int parse_probe_arg(char *arg, const struct fetch_type *t,
 
 			f->fn = t->fetch[FETCH_MTD_memory];
 			f->data = (void *)param;
-		} else {
+		} else { /*指定了符号名*/
 			ret = traceprobe_split_symbol_offset(arg + 1, &offset);
 			if (ret)
 				break;
@@ -700,9 +700,9 @@ int traceprobe_parse_probe_arg(char *arg, ssize_t *size,
 	t = strchr(parg->comm, ':');
 	if (t) {
 		arg[t - parg->comm] = '\0';
-		t++;
+		t++;  /*此时t等于数据类型*/
 	}
-	parg->type = find_fetch_type(t);  /*解析数据类型，如果有设置冒号的话*/
+	parg->type = find_fetch_type(t);  /*解析数据类型，如果有设置冒号的话，没有冒号返回固定cpu长度*/
 	if (!parg->type) {
 		pr_info("Unsupported type: %s\n", t);
 		return -EINVAL;

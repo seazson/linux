@@ -4580,7 +4580,7 @@ void perf_prepare_sample(struct perf_event_header *header,
 		perf_sample_regs_user(&data->regs_user, regs);
 
 		if (data->regs_user.regs) {
-			u64 mask = event->attr.sample_regs_user;
+			u64 mask = event->attr.sample_regs_user; /*¼Ä´æÆ÷Î»Í¼*/
 			size += hweight64(mask) * sizeof(u64);
 		}
 

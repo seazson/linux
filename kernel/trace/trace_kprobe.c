@@ -117,7 +117,7 @@ static struct trace_probe *alloc_trace_probe(const char *group,
 	struct trace_probe *tp;
 	int ret = -ENOMEM;
 
-	tp = kzalloc(SIZEOF_TRACE_PROBE(nargs), GFP_KERNEL);
+	tp = kzalloc(SIZEOF_TRACE_PROBE(nargs), GFP_KERNEL); /*分配探针和参数空间*/
 	if (!tp)
 		return ERR_PTR(ret);
 
@@ -490,7 +490,7 @@ static int create_trace_probe(int argc, char **argv)
 		}
 	}
 	if (!group)
-		group = KPROBE_EVENT_SYSTEM;
+		group = KPROBE_EVENT_SYSTEM;  /*默认组名称是kprobes*/
 
 	if (is_delete) {
 		if (!event) {
@@ -798,7 +798,7 @@ static __kprobes void store_trace_args(int ent_size, struct trace_probe *tp,
 		} else
 			/* Just fetching data normally */
 			call_fetch(&tp->args[i].fetch, regs,
-				   data + tp->args[i].offset);
+				   data + tp->args[i].offset); /*调用fetch函数将数据存放到data+offset处*/
 	}
 }
 
@@ -833,7 +833,7 @@ __kprobe_trace_func(struct trace_probe *tp, struct pt_regs *regs,
 
 	entry = ring_buffer_event_data(event);
 	entry->ip = (unsigned long)tp->rp.kp.addr;
-	store_trace_args(sizeof(*entry), tp, regs, (u8 *)&entry[1], dsize);
+	store_trace_args(sizeof(*entry), tp, regs, (u8 *)&entry[1], dsize); /*提取参数*/
 
 	if (!filter_current_check_discard(buffer, call, entry, event))
 		trace_buffer_unlock_commit_regs(buffer, event,

@@ -130,8 +130,8 @@ enum perf_event_sample_format {
 	PERF_SAMPLE_STREAM_ID			= 1U << 9,
 	PERF_SAMPLE_RAW				= 1U << 10,
 	PERF_SAMPLE_BRANCH_STACK		= 1U << 11,
-	PERF_SAMPLE_REGS_USER			= 1U << 12,
-	PERF_SAMPLE_STACK_USER			= 1U << 13,
+	PERF_SAMPLE_REGS_USER			= 1U << 12,    /*保存寄存器*/
+	PERF_SAMPLE_STACK_USER			= 1U << 13,    /*拷贝用户空间当前栈的一段，用于给dwraf解析栈*/
 	PERF_SAMPLE_WEIGHT			= 1U << 14,
 	PERF_SAMPLE_DATA_SRC			= 1U << 15,
 

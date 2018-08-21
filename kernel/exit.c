@@ -1077,11 +1077,11 @@ static int wait_task_zombie(struct wait_opts *wo, struct task_struct *p)
 		 * group, which consolidates times for all threads in the
 		 * group including the group leader.
 		 */
-		thread_group_cputime_adjusted(p, &tgutime, &tgstime);
+		thread_group_cputime_adjusted(p, &tgutime, &tgstime);  /*获取线程组所有线程执行时间总和，包括活动的和终止的线程*/
 		spin_lock_irq(&p->real_parent->sighand->siglock);
 		psig = p->real_parent->signal;
 		sig = p->signal;
-		psig->cutime += tgutime + sig->cutime;
+		psig->cutime += tgutime + sig->cutime; /*当前进程组的所有执行时间，以及线程组创建的子进程的执行时间都会加到父进程的cu中去*/
 		psig->cstime += tgstime + sig->cstime;
 		psig->cgtime += task_gtime(p) + sig->gtime + sig->cgtime;
 		psig->cmin_flt +=

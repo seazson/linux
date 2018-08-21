@@ -37,10 +37,10 @@ typedef void (kprobe_insn_fn_t)(void);
 
 /* Architecture specific copy of original instruction. */
 struct arch_specific_insn {
-	kprobe_opcode_t			*insn;
-	kprobe_insn_handler_t		*insn_handler;
-	kprobe_check_cc			*insn_check_cc;
-	kprobe_insn_singlestep_t	*insn_singlestep;
+	kprobe_opcode_t			*insn;                 /*原始指令*/
+	kprobe_insn_handler_t		*insn_handler;     /*模拟被替换的指令执行，根据不同类型的指令有不同的函数*/
+	kprobe_check_cc			*insn_check_cc;        /*判断条件*/
+	kprobe_insn_singlestep_t	*insn_singlestep;  /*单步函数 arm_singlestep */
 	kprobe_insn_fn_t		*insn_fn;
 };
 

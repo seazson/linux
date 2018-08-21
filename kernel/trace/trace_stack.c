@@ -26,9 +26,9 @@
 # define fentry		0
 #endif
 
-static unsigned long stack_dump_trace[STACK_TRACE_ENTRIES+1] =
+static unsigned long stack_dump_trace[STACK_TRACE_ENTRIES+1] = /*该帧对应的函数地址*/
 	 { [0 ... (STACK_TRACE_ENTRIES)] = ULONG_MAX };
-static unsigned stack_dump_index[STACK_TRACE_ENTRIES];
+static unsigned stack_dump_index[STACK_TRACE_ENTRIES]; /*该帧在堆栈中的偏移*/
 
 /*
  * Reserve one entry for the passed in ip. This will allow
@@ -58,7 +58,7 @@ check_stack(unsigned long ip, unsigned long *stack)
 	static int tracer_frame;
 	int frame_size = ACCESS_ONCE(tracer_frame);
 	int i;
-
+	/*根据局部变量相对偏移获取当前的栈大小*/
 	this_size = ((unsigned long)stack) & (THREAD_SIZE-1);
 	this_size = THREAD_SIZE - this_size;
 	/* Remove the frame of the tracer */
@@ -87,7 +87,7 @@ check_stack(unsigned long ip, unsigned long *stack)
 	max_stack_trace.nr_entries	= 0;
 	max_stack_trace.skip		= 3;
 
-	save_stack_trace(&max_stack_trace);
+	save_stack_trace(&max_stack_trace); /*提取调用栈信息*/
 
 	/*
 	 * Add the passed in ip from the function tracer.

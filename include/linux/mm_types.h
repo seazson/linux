@@ -303,11 +303,11 @@ struct core_state {
 	struct core_thread dumper;
 	struct completion startup;
 };
-/*用于统计进程的内存使用情况*/
+/*用于统计进程的内存使用情况，这是实际使用了物理内存，是在缺页异常中分配的*/
 enum {
-	MM_FILEPAGES,
-	MM_ANONPAGES,
-	MM_SWAPENTS,
+	MM_FILEPAGES,   /*有文件映射的页*/
+	MM_ANONPAGES,   /*匿名页，没有文件映射*/
+	MM_SWAPENTS,    /*页交换的页*/
 	NR_MM_COUNTERS
 };
 
@@ -350,17 +350,17 @@ struct mm_struct {
 						 */
 
 
-	unsigned long hiwater_rss;	/* High-watermark of RSS usage */
-	unsigned long hiwater_vm;	/* High-water virtual memory usage */
-
-	unsigned long total_vm;		/* Total pages mapped */
-	unsigned long locked_vm;	/* Pages that have PG_mlocked set */
-	unsigned long pinned_vm;	/* Refcount permanently increased */
-	unsigned long shared_vm;	/* Shared pages (files) */
-	unsigned long exec_vm;		/* VM_EXEC & ~VM_WRITE */
-	unsigned long stack_vm;		/* VM_GROWSUP/DOWN */
+	unsigned long hiwater_rss;	/* High-watermark of RSS usage 最大驻留内存值*/
+	unsigned long hiwater_vm;	/* High-water virtual memory usage 最大虚拟内存值*/
+    /*统计的都是虚拟内存*/
+	unsigned long total_vm;		/* Total pages mapped 当前分配的总虚拟内存*/
+	unsigned long locked_vm;	/* Pages that have PG_mlocked set 被锁的内存*/
+	unsigned long pinned_vm;	/* Refcount permanently increased 固定的内存*/
+	unsigned long shared_vm;	/* Shared pages (files) 文件类型的映射*/
+	unsigned long exec_vm;		/* VM_EXEC & ~VM_WRITE 可执行段的大小，属于shared_vm的一部分*/
+	unsigned long stack_vm;		/* VM_GROWSUP/DOWN 栈使用的内存*/
 	unsigned long def_flags;
-	unsigned long nr_ptes;		/* Page table pages */
+	unsigned long nr_ptes;		/* Page table pages 页表使用的内存*/
 	unsigned long start_code, end_code, start_data, end_data;
 	unsigned long start_brk, brk, start_stack;
 	unsigned long arg_start, arg_end, env_start, env_end;
@@ -370,7 +370,7 @@ struct mm_struct {
 	/*
 	 * Special counters, in some configurations protected by the
 	 * page_table_lock, in other configurations by being atomic.
-	 */
+	 */ /*物理内存在这里统计*/
 	struct mm_rss_stat rss_stat;
 
 	struct linux_binfmt *binfmt;

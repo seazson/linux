@@ -50,7 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
  */
 #define TRACEPOINT_HASH_BITS 6
 #define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
-static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
+static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE]; /*已注册的tracepoint*/
 
 /*
  * Note about RCU :
@@ -61,7 +61,7 @@ static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
 struct tracepoint_entry {
 	struct hlist_node hlist;
 	struct tracepoint_func *funcs;
-	int refcount;	/* Number of times armed. 0 if disarmed. */ /*表示有过个注册的函数在这个tracepoint上*/
+	int refcount;	/* Number of times armed. 0 if disarmed. */ /*表示有多少个注册的函数在这个tracepoint上*/
 	char name[0];
 };
 
@@ -376,7 +376,7 @@ tracepoint_add_probe(const char *name, void *probe, void *data)
  *
  * Returns 0 if ok, error value on error.
  * The probe address must at least be aligned on the architecture pointer size.
- */
+ */ /*在一个tracepoint上添加一个探针*/
 int tracepoint_probe_register(const char *name, void *probe, void *data)
 {
 	struct tracepoint_func *old;

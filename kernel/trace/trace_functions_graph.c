@@ -36,7 +36,7 @@ struct fgraph_data {
 	int				cpu;
 };
 
-#define TRACE_GRAPH_INDENT	2
+#define TRACE_GRAPH_INDENT	2  /*上级函数和下降函数之间间隔两个空格*/
 
 /* Flag options */
 #define TRACE_GRAPH_PRINT_OVERRUN	0x1
@@ -473,7 +473,7 @@ print_graph_lat_fmt(struct trace_seq *s, struct trace_entry *entry)
 
 	return trace_print_lat_fmt(s, entry);
 }
-
+/*打印进程切换信息*/
 /* If the pid changed since the last trace, output this event */
 static enum print_line_t
 verif_pid(struct trace_seq *s, pid_t pid, int cpu, struct fgraph_data *data)
@@ -889,7 +889,7 @@ print_graph_prologue(struct trace_iterator *iter, struct trace_seq *s,
 
 	if (type) {
 		/* Interrupt */
-		ret = print_graph_irq(iter, addr, type, cpu, ent->pid, flags);
+		ret = print_graph_irq(iter, addr, type, cpu, ent->pid, flags);  /*如果函数地址在中断上下文，会插入=====>*/
 		if (ret == TRACE_TYPE_PARTIAL_LINE)
 			return TRACE_TYPE_PARTIAL_LINE;
 	}
@@ -1047,14 +1047,14 @@ print_graph_entry(struct ftrace_graph_ent_entry *field, struct trace_seq *s,
 	if (check_irq_entry(iter, flags, call->func, call->depth))
 		return TRACE_TYPE_HANDLED;
 
-	if (print_graph_prologue(iter, s, TRACE_GRAPH_ENT, call->func, flags))
+	if (print_graph_prologue(iter, s, TRACE_GRAPH_ENT, call->func, flags)) /*打印每行前面的信息*/
 		return TRACE_TYPE_PARTIAL_LINE;
 
 	leaf_ret = get_return_for_leaf(iter, field);
 	if (leaf_ret)
-		ret = print_graph_entry_leaf(iter, field, leaf_ret, s, flags);
+		ret = print_graph_entry_leaf(iter, field, leaf_ret, s, flags); /*函数只有一层*/
 	else
-		ret = print_graph_entry_nested(iter, field, s, cpu, flags);
+		ret = print_graph_entry_nested(iter, field, s, cpu, flags);  /*函数有嵌套*/
 
 	if (data) {
 		/*

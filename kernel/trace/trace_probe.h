@@ -118,9 +118,9 @@ struct fetch_param {
 struct probe_arg {
 	struct fetch_param	fetch;
 	struct fetch_param	fetch_size;
-	unsigned int		offset;	/* Offset from argument entry */
+	unsigned int		offset;	/* Offset from argument entry */ /*数据相对于第一个参数数据的偏移*/
 	const char		*name;	/* Name of this argument */ /*要跟踪的变量所设置的别名*/
-	const char		*comm;	/* Command of this argument */ /*要跟踪的命令。寄存器，堆还是参数?*/
+	const char		*comm;	/* Command of this argument */ /*要跟踪的参数字符串。寄存器，堆还是参数?*/
 	const struct fetch_type	*type;	/* Type of this argument *//*数据类型*/
 };
 

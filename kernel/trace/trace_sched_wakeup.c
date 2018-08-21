@@ -411,18 +411,18 @@ probe_wakeup_sched_switch(void *ignore,
 	data = per_cpu_ptr(wakeup_trace->trace_buffer.data, wakeup_cpu);
 
 	__trace_function(wakeup_trace, CALLER_ADDR0, CALLER_ADDR1, flags, pc);
-	tracing_sched_switch_trace(wakeup_trace, prev, next, flags, pc);
+	tracing_sched_switch_trace(wakeup_trace, prev, next, flags, pc); /*将进程切换信息写入ring_buffer*/
 
-	T0 = data->preempt_timestamp;
-	T1 = ftrace_now(cpu);
+	T0 = data->preempt_timestamp; /*开始记录的时间*/
+	T1 = ftrace_now(cpu);      /*当前时间*/
 	delta = T1-T0;
 
-	if (!report_latency(delta))
+	if (!report_latency(delta)) /*是否是最大延时*/
 		goto out_unlock;
 
 	if (likely(!is_tracing_stopped())) {
 		tracing_max_latency = delta;
-		update_max_tr(wakeup_trace, wakeup_task, wakeup_cpu);
+		update_max_tr(wakeup_trace, wakeup_task, wakeup_cpu);  /*记录最大时延信息*/
 	}
 
 out_unlock:

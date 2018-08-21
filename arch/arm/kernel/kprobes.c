@@ -74,7 +74,7 @@ int __kprobes arch_prepare_kprobe(struct kprobe *p)
 	if (addr & 0x3)
 		return -EINVAL;
 	insn = *p->addr;
-	decode_insn = arm_kprobe_decode_insn;
+	decode_insn = arm_kprobe_decode_insn; /*用于判断指令是什么类型的，是否可以被探测*/
 #endif
 
 	p->opcode = insn;
@@ -212,8 +212,8 @@ void __kprobes kprobe_handler(struct pt_regs *regs)
 	struct kprobe *p, *cur;
 	struct kprobe_ctlblk *kcb;
 
-	kcb = get_kprobe_ctlblk();
-	cur = kprobe_running();
+	kcb = get_kprobe_ctlblk(); /*保存当前cpu的处理状态*/
+	cur = kprobe_running(); /*当前cpu正在处理的kprobe*/
 
 #ifdef CONFIG_THUMB2_KERNEL
 	/*
@@ -230,7 +230,7 @@ void __kprobes kprobe_handler(struct pt_regs *regs)
 #endif
 
 	if (p) {
-		if (cur) {
+		if (cur) {/*kprobe重入*/
 			/* Kprobe is pending, so we're recursing. */
 			switch (kcb->kprobe_status) {
 			case KPROBE_HIT_ACTIVE:
@@ -247,7 +247,7 @@ void __kprobes kprobe_handler(struct pt_regs *regs)
 				/* impossible cases */
 				BUG();
 			}
-		} else if (p->ainsn.insn_check_cc(regs->ARM_cpsr)) {
+		} else if (p->ainsn.insn_check_cc(regs->ARM_cpsr)) {/*常见情况，检查是否允许探测*/
 			/* Probe hit and conditional execution check ok. */
 			set_current_kprobe(p);
 			kcb->kprobe_status = KPROBE_HIT_ACTIVE;
@@ -259,8 +259,8 @@ void __kprobes kprobe_handler(struct pt_regs *regs)
 			 * for calling the break_handler below on re-entry,
 			 * so get out doing nothing more here.
 			 */
-			if (!p->pre_handler || !p->pre_handler(p, regs)) {
-				kcb->kprobe_status = KPROBE_HIT_SS;
+			if (!p->pre_handler || !p->pre_handler(p, regs)) {/*对于jprobe，在setjmp_pre_handler执行后返回的是1，就不会再往下执行*/
+				kcb->kprobe_status = KPROBE_HIT_SS;    /*而是返回kprobe之前的地方执行用户注册程序*/
 				singlestep(p, regs, kcb);
 				if (p->post_handler) {
 					kcb->kprobe_status = KPROBE_HIT_SSDONE;
@@ -268,7 +268,7 @@ void __kprobes kprobe_handler(struct pt_regs *regs)
 				}
 				reset_current_kprobe();
 			}
-		} else {
+		} else {/*条件不满足跳过这条指令*/
 			/*
 			 * Probe hit but conditional execution check failed,
 			 * so just skip the instruction and continue as if
@@ -467,8 +467,8 @@ int __kprobes setjmp_pre_handler(struct kprobe *p, struct pt_regs *regs)
 	long cpsr;
 
 	kcb->jprobe_saved_regs = *regs;
-	memcpy(kcb->jprobes_stack, (void *)sp_addr, MIN_STACK_SIZE(sp_addr));
-	regs->ARM_pc = (long)jp->entry;
+	memcpy(kcb->jprobes_stack, (void *)sp_addr, MIN_STACK_SIZE(sp_addr)); /*拷贝原始上下文的栈*/
+	regs->ARM_pc = (long)jp->entry; /*返回后执行用户回调函数*/
 
 	cpsr = regs->ARM_cpsr | PSR_I_BIT;
 #ifdef CONFIG_THUMB2_KERNEL
@@ -481,7 +481,7 @@ int __kprobes setjmp_pre_handler(struct kprobe *p, struct pt_regs *regs)
 	regs->ARM_cpsr = cpsr;
 
 	preempt_disable();
-	return 1;
+	return 1;  /*关中断关抢占*/
 }
 
 void __kprobes jprobe_return(void)
@@ -612,7 +612,7 @@ int __init arch_init_kprobes()
 	register_undef_hook(&kprobes_thumb16_break_hook);
 	register_undef_hook(&kprobes_thumb32_break_hook);
 #else
-	register_undef_hook(&kprobes_arm_break_hook);
+	register_undef_hook(&kprobes_arm_break_hook); /*挂接未定义指令处理函数*/
 #endif
 	return 0;
 }

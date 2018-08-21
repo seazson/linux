@@ -31,7 +31,7 @@ static int function_trace_init(struct trace_array *tr)
 	tr->trace_buffer.cpu = get_cpu();
 	put_cpu();
 
-	tracing_start_cmdline_record();
+	tracing_start_cmdline_record();   /*使能进程切换的tracepoint*/
 	tracing_start_function_trace();
 	return 0;
 }
@@ -438,7 +438,7 @@ ftrace_trace_probe_callback(struct ftrace_probe_ops *ops,
 
 static int
 ftrace_trace_onoff_callback(struct ftrace_hash *hash,
-			    char *glob, char *cmd, char *param, int enable)
+			    char *glob, char *cmd, char *param, int enable) /*glob是函数名称字符串*/
 {
 	struct ftrace_probe_ops *ops;
 

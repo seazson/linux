@@ -553,7 +553,7 @@ struct signal_struct {
 	 * Live threads maintain their own counters and add to these
 	 * in __exit_signal, except for the group leader.
 	 */
-	cputime_t utime, stime, cutime, cstime;  /*所有线程的和*/
+	cputime_t utime, stime, cutime, cstime;  /*u/stime是线程组中所有已终止的线程的和，运行中的线程在自己的u/stime中。cu代表是子进程的执行时间和，不包括自己，子进程的cu由包括子子进程的*/
 	cputime_t gtime;
 	cputime_t cgtime;
 #ifndef CONFIG_VIRT_CPU_ACCOUNTING_NATIVE
@@ -1132,8 +1132,8 @@ struct task_struct {
 	 * older sibling, respectively.  (p->father can be replaced with
 	 * p->real_parent->pid)
 	 */
-	struct task_struct __rcu *real_parent; /* real parent process */
-	struct task_struct __rcu *parent; /* recipient of SIGCHLD, wait4() reports */
+	struct task_struct __rcu *real_parent; /* real parent process 谁创建此进程，谁就是他的真实父亲*/
+	struct task_struct __rcu *parent; /* recipient of SIGCHLD, wait4() reports 在ptrace的时候会修改成ptrace的那个进程作为父进程*/
 	/*
 	 * children/sibling forms the list of my natural children
 	 */

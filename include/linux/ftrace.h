@@ -64,7 +64,7 @@ typedef void (*ftrace_func_t)(unsigned long ip, unsigned long parent_ip,
  * ENABLED - set/unset when ftrace_ops is registered/unregistered
  * GLOBAL  - set manualy by ftrace_ops user to denote the ftrace_ops
  *           is part of the global tracers sharing the same filter
- *           via set_ftrace_* debugfs files.
+ *           via set_ftrace_* debugfs files. 如果要使用通用的函数过滤，定义这个标志
  * DYNAMIC - set when ftrace_ops is registered to denote dynamically
  *           allocated ftrace_ops which need special care 不是内核原生的，通过模块方式加入的
  * CONTROL - set manualy by ftrace_ops user to denote the ftrace_ops
@@ -320,7 +320,7 @@ struct dyn_ftrace {
 		unsigned long		ip; /* address of mcount call-site */
 		struct dyn_ftrace	*freelist;
 	};
-	unsigned long		flags;
+	unsigned long		flags;  /*低位时引用计数*/
 	struct dyn_arch_ftrace		arch;
 };
 
@@ -339,8 +339,8 @@ int register_ftrace_command(struct ftrace_func_command *cmd);
 int unregister_ftrace_command(struct ftrace_func_command *cmd);
 
 enum {
-	FTRACE_UPDATE_CALLS		= (1 << 0),
-	FTRACE_DISABLE_CALLS		= (1 << 1),
+	FTRACE_UPDATE_CALLS		= (1 << 0),       /*修改要跟踪的函数*/
+	FTRACE_DISABLE_CALLS		= (1 << 1),   /*将要跟踪的函数修改为nop*/
 	FTRACE_UPDATE_TRACE_FUNC	= (1 << 2),
 	FTRACE_START_FUNC_RET		= (1 << 3),
 	FTRACE_STOP_FUNC_RET		= (1 << 4),
@@ -665,7 +665,7 @@ struct ftrace_graph_ent {
 struct ftrace_graph_ret {
 	unsigned long func; /* Current function */ /*指明是哪个函数*/
 	unsigned long long calltime;  /*调用的时间*/
-	unsigned long long rettime;   /*返回的时间*/
+	unsigned long long rettime;   /*返回的时间，获取的是sched时间*/
 	/* Number of functions that overran the depth limit for current task */
 	unsigned long overrun;
 	int depth;   /*调用时嵌套的层次*/

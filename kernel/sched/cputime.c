@@ -276,7 +276,7 @@ static __always_inline bool steal_account_process_tick(void)
 /*
  * Accumulate raw cputime values of dead tasks (sig->[us]time) and live
  * tasks (sum on group iteration) belonging to @tsk's group.
- */
+ */ /*获取线程组中所有线程的执行时间总和，包括已经退出的线程*/
 void thread_group_cputime(struct task_struct *tsk, struct task_cputime *times)
 {
 	struct signal_struct *sig = tsk->signal;

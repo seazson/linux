@@ -96,7 +96,7 @@ static int ftrace_modify_code(unsigned long pc, unsigned long old,
 
 	return 0;
 }
-
+/*替换ftrace_call为用户定义的函数*/
 int ftrace_update_ftrace_func(ftrace_func_t func)
 {
 	unsigned long pc;

@@ -181,12 +181,12 @@ struct ftrace_event_call;
 
 struct ftrace_event_class {
 	char			*system;   /*class的名称*/
-	void			*probe;
+	void			*probe;    /*写入ftrace ring_buffer的函数*/
 #ifdef CONFIG_PERF_EVENTS
 	void			*perf_probe;
 #endif
 	int			(*reg)(struct ftrace_event_call *event,
-				       enum trace_reg type, void *data);
+				       enum trace_reg type, void *data);  /*使能函数*/
 	int			(*define_fields)(struct ftrace_event_call *);
 	struct list_head	*(*get_fields)(struct ftrace_event_call *);
 	struct list_head	fields;

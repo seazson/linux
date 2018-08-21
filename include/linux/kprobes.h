@@ -74,7 +74,7 @@ struct kprobe {
 	struct hlist_node hlist;
 
 	/* list of kprobes for multi-handler support */
-	struct list_head list;
+	struct list_head list; /*连接同一个观测点下的所有probe*/
 
 	/*count the number of times this probe was temporarily disarmed */
 	unsigned long nmissed;
@@ -89,22 +89,22 @@ struct kprobe {
 	unsigned int offset;
 
 	/* Called before addr is executed. */
-	kprobe_pre_handler_t pre_handler;
+	kprobe_pre_handler_t pre_handler; /*先于被替换的指令执行*/
 
 	/* Called after addr is executed, unless... */
-	kprobe_post_handler_t post_handler;
+	kprobe_post_handler_t post_handler; /*后于被替换的指令执行后再执行*/
 
 	/*
 	 * ... called if executing addr causes a fault (eg. page fault).
 	 * Return 1 if it handled fault, otherwise kernel will see it.
 	 */
-	kprobe_fault_handler_t fault_handler;
+	kprobe_fault_handler_t fault_handler; /*执行过程中出现内存异常时触发此函数*/
 
 	/*
 	 * ... called if breakpoint trap occurs in probe handler.
 	 * Return 1 if it handled break, otherwise kernel will see it.
 	 */
-	kprobe_break_handler_t break_handler;
+	kprobe_break_handler_t break_handler; /*执行过程中触发断点后执行，用于实现jprobe*/
 
 	/* Saved opcode (which has been replaced with breakpoint) */
 	kprobe_opcode_t opcode;
@@ -127,7 +127,7 @@ struct kprobe {
 				   * NOTE:
 				   * this flag is only for optimized_kprobe.
 				   */
-#define KPROBE_FLAG_FTRACE	8 /* probe is using ftrace */
+#define KPROBE_FLAG_FTRACE	8 /* probe is using ftrace */ /*当我们要探测的地址是ftrace支持的（也就是在ftrace_pages_start中），会设置这个标志*/
 
 /* Has this kprobe gone ? */
 static inline int kprobe_gone(struct kprobe *p)
@@ -165,7 +165,7 @@ static inline int kprobe_ftrace(struct kprobe *p)
  */
 struct jprobe {
 	struct kprobe kp;
-	void *entry;	/* probe handling code to jump to */
+	void *entry;	/* probe handling code to jump to 回调函数*/
 };
 
 /* For backward compatibility with old code using JPROBE_ENTRY() */
@@ -183,19 +183,19 @@ struct jprobe {
  */
 struct kretprobe {
 	struct kprobe kp;
-	kretprobe_handler_t handler;
-	kretprobe_handler_t entry_handler;
-	int maxactive;
+	kretprobe_handler_t handler;       /*函数执行后调用*/
+	kretprobe_handler_t entry_handler; /*函数执行前调用*/
+	int maxactive;                     /*同一个函数同时跟踪的个数*/
 	int nmissed;
-	size_t data_size;
-	struct hlist_head free_instances;
+	size_t data_size;                  /*私有数据大小*/
+	struct hlist_head free_instances;  /*未用的instance*/
 	raw_spinlock_t lock;
 };
 
 struct kretprobe_instance {
 	struct hlist_node hlist;
 	struct kretprobe *rp;
-	kprobe_opcode_t *ret_addr;
+	kprobe_opcode_t *ret_addr;   /*保存最原始的返回地址*/
 	struct task_struct *task;
 	char data[0];
 };
