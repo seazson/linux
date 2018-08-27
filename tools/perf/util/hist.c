@@ -522,7 +522,7 @@ static struct hist_entry *hists__findnew_entry(struct hists *hists,
 		 * function when searching an entry regardless which sort
 		 * keys were used.
 		 */
-		cmp = hist_entry__cmp(he, entry);
+		cmp = hist_entry__cmp(he, entry);  /*调用hpp的比较函数比较两个数据*/
 
 		if (!cmp) {
 			if (sample_self) {
@@ -557,7 +557,7 @@ static struct hist_entry *hists__findnew_entry(struct hists *hists,
 			p = &(*p)->rb_right;
 	}
 
-	he = hist_entry__new(entry, sample_self);
+	he = hist_entry__new(entry, sample_self);  /*分配hist_entry和callchain_root空间*/
 	if (!he)
 		return NULL;
 
@@ -837,7 +837,7 @@ iter_add_single_normal_entry(struct hist_entry_iter *iter, struct addr_location 
 	struct perf_evsel *evsel = iter->evsel;
 	struct perf_sample *sample = iter->sample;
 	struct hist_entry *he;
-
+	/*新建一个hist_entry，并按照排序要求加入红黑树中*/
 	he = hists__add_entry(evsel__hists(evsel), al, iter->parent, NULL, NULL,
 			      sample, true);
 	if (he == NULL)
@@ -1039,7 +1039,7 @@ int hist_entry_iter__add(struct hist_entry_iter *iter, struct addr_location *al,
 		alm = map__get(al->map);
 
 	err = sample__resolve_callchain(iter->sample, &callchain_cursor, &iter->parent,
-					iter->evsel, al, max_stack_depth);
+					iter->evsel, al, max_stack_depth);  /*一组栈回溯，回溯的信息保存在callchain_cursor链表上*/
 	if (err)
 		return err;
 
@@ -1049,12 +1049,12 @@ int hist_entry_iter__add(struct hist_entry_iter *iter, struct addr_location *al,
 	if (err)
 		goto out;
 
-	err = iter->ops->add_single_entry(iter, al);
+	err = iter->ops->add_single_entry(iter, al);  /*新建一个hist_entry，并按照排序要求加入红黑树中*/
 	if (err)
 		goto out;
 
-	if (iter->he && iter->add_entry_cb) {
-		err = iter->add_entry_cb(iter, al, true, arg);
+	if (iter->he && iter->add_entry_cb) { 
+		err = iter->add_entry_cb(iter, al, true, arg);   /*普通的是 hist_iter__report_callback*/
 		if (err)
 			goto out;
 	}
@@ -1685,7 +1685,7 @@ static void __hists__insert_output_entry(struct rb_root *entries,
 		parent = *p;
 		iter = rb_entry(parent, struct hist_entry, rb_node);
 
-		if (hist_entry__sort(he, iter) > 0)
+		if (hist_entry__sort(he, iter) > 0)   /*遍历sort链表进行比较*/
 			p = &(*p)->rb_left;
 		else
 			p = &(*p)->rb_right;
@@ -1694,7 +1694,7 @@ static void __hists__insert_output_entry(struct rb_root *entries,
 	rb_link_node(&he->rb_node, parent, p);
 	rb_insert_color(&he->rb_node, entries);
 
-	perf_hpp_list__for_each_sort_list(&perf_hpp_list, fmt) {
+	perf_hpp_list__for_each_sort_list(&perf_hpp_list, fmt) {  /*更新tracepoint类型数据的最大长度*/
 		if (perf_hpp__is_dynamic_entry(fmt) &&
 		    perf_hpp__defined_dynamic_entry(fmt, he->hists))
 			fmt->sort(fmt, he, NULL);  /* update column width */
@@ -1717,7 +1717,7 @@ static void output_resort(struct hists *hists, struct ui_progress *prog,
 	min_callchain_hits = callchain_total * (callchain_param.min_percent / 100);
 
 	hists__reset_stats(hists);
-	hists__reset_col_len(hists);
+	hists__reset_col_len(hists);  /*重置每一项的最大宽度*/
 
 	if (symbol_conf.report_hierarchy) {
 		hists__hierarchy_output_resort(hists, prog,
@@ -1743,12 +1743,12 @@ static void output_resort(struct hists *hists, struct ui_progress *prog,
 
 		if (cb && cb(n))
 			continue;
-
+        /*以sort链表定义的排序顺序重新排序到hists->entries下*/
 		__hists__insert_output_entry(&hists->entries, n, min_callchain_hits, use_callchain);
-		hists__inc_stats(hists, n);
+		hists__inc_stats(hists, n);  /*增加总时间*/
 
 		if (!n->filtered)
-			hists__calc_col_len(hists, n);
+			hists__calc_col_len(hists, n);  /*修正每项的最大长度*/
 
 		if (prog)
 			ui_progress__update(prog, 1);

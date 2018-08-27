@@ -23,11 +23,11 @@ struct symbol;
 
 /* kprobe-tracer and uprobe-tracer tracing point */
 struct probe_trace_point {
-	char		*realname;	/* function real name (if needed) */
+	char		*realname;	/* function real name (if needed) 真正的函数名*/
 	char		*symbol;	/* Base symbol */
 	char		*module;	/* Module name */
-	unsigned long	offset;		/* Offset from symbol */
-	unsigned long	address;	/* Actual address of the trace point */
+	unsigned long	offset;		/* Offset from symbol 相对于它所属的符号的偏移*/
+	unsigned long	address;	/* Actual address of the trace point 相对于.text的偏移*/
 	bool		retprobe;	/* Return probe flag */
 };
 
@@ -39,10 +39,10 @@ struct probe_trace_arg_ref {
 
 /* kprobe-tracer and uprobe-tracer tracing argument */
 struct probe_trace_arg {
-	char				*name;	/* Argument name */
-	char				*value;	/* Base value */
-	char				*type;	/* Type name */
-	struct probe_trace_arg_ref	*ref;	/* Referencing offset */
+	char				*name;	/* Argument name 为变量起的别名*/
+	char				*value;	/* Base value 符号名*/
+	char				*type;	/* Type name 符号类型*/
+	struct probe_trace_arg_ref	*ref;	/* Referencing offset 偏移等信息*/
 };
 
 /* kprobe-tracer and uprobe-tracer tracing event (point + arg) */
@@ -101,12 +101,12 @@ struct perf_probe_event {
 struct line_range {
 	char			*file;		/* File name */
 	char			*function;	/* Function name */
-	int			start;		/* Start line number */
+	int			start;		/* Start line number 函数在文件中的起始行*/
 	int			end;		/* End line number */
-	int			offset;		/* Start line offset */
+	int			offset;		/* Start line offset 相对于文件的偏移*/
 	char			*path;		/* Real path name */
 	char			*comp_dir;	/* Compile directory */
-	struct intlist		*line_list;	/* Visible lines */
+	struct intlist		*line_list;	/* Visible lines 保存了这个函数中所有可跟踪的行*/
 };
 
 struct strlist;
@@ -114,7 +114,7 @@ struct strlist;
 /* List of variables */
 struct variable_list {
 	struct probe_trace_point	point;	/* Actual probepoint */
-	struct strlist			*vars;	/* Available variables */
+	struct strlist			*vars;	/* Available variables 某个跟踪点下的所有变量名*/
 };
 
 struct map;

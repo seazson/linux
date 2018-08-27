@@ -162,7 +162,7 @@ int ordered_events__queue(struct ordered_events *oe, union perf_event *event,
 	u64 timestamp = sample->time;
 	struct ordered_event *oevent;
 
-	if (!timestamp || timestamp == ~0ULL)
+	if (!timestamp || timestamp == ~0ULL) /*sample以外的事件会返回*/
 		return -ETIME;
 
 	if (timestamp < oe->last_flush) {

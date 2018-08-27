@@ -88,7 +88,7 @@ struct intlist;
 
 struct symbol_conf {
 	unsigned short	priv_size;
-	unsigned short	nr_events;
+	unsigned short	nr_events;   /*有多少attr*/
 	bool		try_vmlinux_path,
 			init_annotation,
 			force,
@@ -129,7 +129,7 @@ struct symbol_conf {
 			*default_guest_kallsyms,
 			*default_guest_modules;
 	const char	*guestmount;
-	const char	*dso_list_str,
+	const char	*dso_list_str,   /*表示自定义了要跟踪的*/
 			*comm_list_str,
 			*pid_list_str,
 			*tid_list_str,

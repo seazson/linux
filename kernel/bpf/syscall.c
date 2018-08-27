@@ -330,7 +330,7 @@ static int map_create(union bpf_attr *attr)
 		return -EINVAL;
 
 	/* find map type and init map: hashtable vs rbtree vs bloom vs ... */
-	map = find_and_alloc_map(attr);
+	map = find_and_alloc_map(attr);   /*调用具体类型的alloc，创建数据结构和bpf_map*/
 	if (IS_ERR(map))
 		return PTR_ERR(map);
 
@@ -996,7 +996,7 @@ static int bpf_prog_load(union bpf_attr *attr)
 	license[sizeof(license) - 1] = 0;
 
 	/* eBPF programs must be GPL compatible to use GPL-ed functions */
-	is_gpl = license_is_gpl_compatible(license);
+	is_gpl = license_is_gpl_compatible(license);  /*许可是否满足gpl*/
 
 	if (attr->insn_cnt == 0 || attr->insn_cnt > BPF_MAXINSNS)
 		return -E2BIG;
@@ -1011,7 +1011,7 @@ static int bpf_prog_load(union bpf_attr *attr)
 		return -EPERM;
 
 	/* plain bpf_prog allocation */
-	prog = bpf_prog_alloc(bpf_prog_size(attr->insn_cnt), GFP_USER);
+	prog = bpf_prog_alloc(bpf_prog_size(attr->insn_cnt), GFP_USER);  /*分配bpf_prog结构以及指令空间*/
 	if (!prog)
 		return -ENOMEM;
 
@@ -1038,20 +1038,20 @@ static int bpf_prog_load(union bpf_attr *attr)
 		goto free_prog;
 
 	/* run eBPF verifier */
-	err = bpf_check(&prog, attr);
+	err = bpf_check(&prog, attr);   /*固件代码的合理性检查*/
 	if (err < 0)
 		goto free_used_maps;
 
 	/* eBPF program is ready to be JITed */
-	prog = bpf_prog_select_runtime(prog, &err);
+	prog = bpf_prog_select_runtime(prog, &err);  /*在线编译成机器代码*/
 	if (err < 0)
 		goto free_used_maps;
 
-	err = bpf_prog_alloc_id(prog);
+	err = bpf_prog_alloc_id(prog);   /*分配id号*/
 	if (err)
 		goto free_used_maps;
 
-	err = bpf_prog_new_fd(prog);
+	err = bpf_prog_new_fd(prog);     /*分配文件描述符，以便能够长期存在*/
 	if (err < 0) {
 		/* failed to allocate fd.
 		 * bpf_prog_put() is needed because the above
@@ -1063,7 +1063,7 @@ static int bpf_prog_load(union bpf_attr *attr)
 		return err;
 	}
 
-	bpf_prog_kallsyms_add(prog);
+	bpf_prog_kallsyms_add(prog);  /*添加符号表*/
 	trace_bpf_prog_load(prog, err);
 	return err;
 
@@ -1484,7 +1484,7 @@ SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, siz
 		err = map_get_next_key(&attr);
 		break;
 	case BPF_PROG_LOAD:
-		err = bpf_prog_load(&attr);
+		err = bpf_prog_load(&attr);   /*加载并编译固件*/
 		break;
 	case BPF_OBJ_PIN:
 		err = bpf_obj_pin(&attr);

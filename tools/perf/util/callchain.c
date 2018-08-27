@@ -504,7 +504,7 @@ int callchain_register_param(struct callchain_param *param)
 /*
  * Create a child for a parent. If inherit_children, then the new child
  * will become the new parent of it's parent children
- */
+ */ /*创建一个子node。inherit_children表示是否将子节点加入父节点，只有在父节点拆分的时候会设置*/
 static struct callchain_node *
 create_child(struct callchain_node *parent, bool inherit_children)
 {
@@ -528,7 +528,7 @@ create_child(struct callchain_node *parent, bool inherit_children)
 
 		n = rb_first(&new->rb_root_in);
 		while (n) {
-			child = rb_entry(n, struct callchain_node, rb_node_in);
+			child = rb_entry(n, struct callchain_node, rb_node_in);  /*将子节点下的子节点的父节点指向子节点*/
 			child->parent = new;
 			n = rb_next(n);
 		}
@@ -544,7 +544,7 @@ create_child(struct callchain_node *parent, bool inherit_children)
 
 /*
  * Fill the node with callchain values
- */
+ */ /*将cursor中的栈链表拷贝到node下*/
 static int
 fill_node(struct callchain_node *node, struct callchain_cursor *cursor)
 {
@@ -607,7 +607,7 @@ fill_node(struct callchain_node *node, struct callchain_cursor *cursor)
 	}
 	return 0;
 }
-
+/*创建一个node，并将cursor当前位置下剩余链表数据拷贝到node的链表下*/
 static struct callchain_node *
 add_child(struct callchain_node *parent,
 	  struct callchain_cursor *cursor,
@@ -764,7 +764,7 @@ split_add_child(struct callchain_node *parent,
 	if (new == NULL)
 		return -1;
 
-	/* split the callchain and move a part to the new child */
+	/* split the callchain and move a part to the new child 把父节点的链表分为两个*/
 	old_tail = parent->val.prev;
 	list_del_range(&to_split->list, old_tail);
 	new->val.next = &to_split->list;
@@ -772,7 +772,7 @@ split_add_child(struct callchain_node *parent,
 	to_split->list.prev = &new->val;
 	old_tail->next = &new->val;
 
-	/* split the hits */
+	/* split the hits 更新父子节点的hit信息，主要是把父节点的信息给子节点，父节点归1*/
 	new->hit = parent->hit;
 	new->children_hit = parent->children_hit;
 	parent->children_hit = callchain_cumul_hits(new);
@@ -783,7 +783,7 @@ split_add_child(struct callchain_node *parent,
 	parent->children_count = callchain_cumul_counts(new);
 
 	/* create a new child for the new branch if any */
-	if (idx_total < cursor->nr) {
+	if (idx_total < cursor->nr) { /*创建新的节点到父节点的分支下*/
 		struct callchain_node *first;
 		struct callchain_list *cnode;
 		struct callchain_cursor_node *node;
@@ -837,7 +837,7 @@ append_chain_children(struct callchain_node *root,
 	struct rb_node **p = &root->rb_root_in.rb_node;
 	struct rb_node *parent = NULL;
 
-	node = callchain_cursor_current(cursor);
+	node = callchain_cursor_current(cursor);  /*取出栈链表。代表的是一个调用链*/
 	if (!node)
 		return -1;
 
@@ -861,7 +861,7 @@ append_chain_children(struct callchain_node *root,
 			p = &parent->rb_right;
 	}
 	/* nothing in children, add to the current node */
-	rnode = add_child(root, cursor, period);
+	rnode = add_child(root, cursor, period);   /*新建一个node，组合剩余的栈数据*/
 	if (rnode == NULL)
 		return -1;
 
@@ -891,7 +891,7 @@ append_chain(struct callchain_node *root,
 	 * anywhere inside a function, unless function
 	 * mode is disabled.
 	 */
-	list_for_each_entry(cnode, &root->val, list) {
+	list_for_each_entry(cnode, &root->val, list) {  /*一级级的匹配*/
 		struct callchain_cursor_node *node;
 
 		node = callchain_cursor_current(cursor);
@@ -908,7 +908,7 @@ append_chain(struct callchain_node *root,
 	}
 
 	/* matches not, relay no the parent */
-	if (!found) {
+	if (!found) { /*第一级就不匹配*/
 		WARN_ONCE(cmp == MATCH_ERROR, "Chain comparison error\n");
 		return cmp;
 	}
@@ -916,22 +916,22 @@ append_chain(struct callchain_node *root,
 	matches = cursor->pos - start;
 
 	/* we match only a part of the node. Split it and add the new chain */
-	if (matches < root->val_nr) {
+	if (matches < root->val_nr) {   /*只匹配了一部分，说明要分叉*/
 		if (split_add_child(root, cursor, cnode, start, matches,
-				    period) < 0)
+				    period) < 0)  /*将父节点分为两个，并将新加入的节点放在父节点下*/
 			return MATCH_ERROR;
 
 		return MATCH_EQ;
 	}
 
 	/* we match 100% of the path, increment the hit */
-	if (matches == root->val_nr && cursor->pos == cursor->nr) {
+	if (matches == root->val_nr && cursor->pos == cursor->nr) {  /*两个完全匹配*/
 		root->hit += period;
 		root->count++;
 		return MATCH_EQ;
 	}
 
-	/* We match the node and still have a part remaining */
+	/* We match the node and still have a part remaining */   /*新来的不仅完全匹配原来的，并且还比原来的数据多，在父节点下增加子节点*/
 	if (append_chain_children(root, cursor, period) < 0)
 		return MATCH_ERROR;
 
@@ -1041,7 +1041,7 @@ int callchain_cursor_append(struct callchain_cursor *cursor,
 
 	return 0;
 }
-
+/*解析一组栈，并将数据形成链表添加到cursor上*/
 int sample__resolve_callchain(struct perf_sample *sample,
 			      struct callchain_cursor *cursor, struct symbol **parent,
 			      struct perf_evsel *evsel, struct addr_location *al,

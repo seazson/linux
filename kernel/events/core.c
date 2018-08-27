@@ -8081,7 +8081,7 @@ static void bpf_overflow_handler(struct perf_event *event,
 	if (unlikely(__this_cpu_inc_return(bpf_prog_active) != 1))
 		goto out;
 	rcu_read_lock();
-	ret = BPF_PROG_RUN(event->prog, &ctx);
+	ret = BPF_PROG_RUN(event->prog, &ctx);   /*先执行bpf程序*/
 	rcu_read_unlock();
 out:
 	__this_cpu_dec(bpf_prog_active);
@@ -8089,7 +8089,7 @@ out:
 	if (!ret)
 		return;
 
-	event->orig_overflow_handler(event, data, regs);
+	event->orig_overflow_handler(event, data, regs); /*再执行原始的perf event处理函数*/
 }
 
 static int perf_event_set_bpf_handler(struct perf_event *event, u32 prog_fd)
@@ -8140,7 +8140,7 @@ static int perf_event_set_bpf_prog(struct perf_event *event, u32 prog_fd)
 	struct bpf_prog *prog;
 
 	if (event->attr.type != PERF_TYPE_TRACEPOINT)
-		return perf_event_set_bpf_handler(event, prog_fd);
+		return perf_event_set_bpf_handler(event, prog_fd);   /*说明是采样事件*/
 
 	if (event->tp_event->prog)
 		return -EEXIST;

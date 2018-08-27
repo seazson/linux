@@ -52,7 +52,7 @@ void perf_evlist__init(struct perf_evlist *evlist, struct cpu_map *cpus,
 	evlist->workload.pid = -1;
 	evlist->bkw_mmap_state = BKW_MMAP_NOTREADY;
 }
-
+/*简单的分配一个evlist结构，并初始化成员变量*/
 struct perf_evlist *perf_evlist__new(void)
 {
 	struct perf_evlist *evlist = zalloc(sizeof(*evlist));
@@ -1686,7 +1686,7 @@ out_err:
 	errno = -err;
 	return err;
 }
-
+/*启动一个子线程，等待父进程写入一个字节便开始运行*/
 int perf_evlist__prepare_workload(struct perf_evlist *evlist, struct target *target,
 				  const char *argv[], bool pipe_output,
 				  void (*exec_error)(int signo, siginfo_t *info, void *ucontext))
@@ -1819,11 +1819,11 @@ int perf_evlist__start_workload(struct perf_evlist *evlist)
 
 	return 0;
 }
-
+/*解析event到sample中*/
 int perf_evlist__parse_sample(struct perf_evlist *evlist, union perf_event *event,
 			      struct perf_sample *sample)
 {
-	struct perf_evsel *evsel = perf_evlist__event2evsel(evlist, event);
+	struct perf_evsel *evsel = perf_evlist__event2evsel(evlist, event); /*根据event找到计数器*/
 
 	if (!evsel)
 		return -EFAULT;

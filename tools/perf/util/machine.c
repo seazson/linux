@@ -1730,7 +1730,7 @@ static int add_callchain_ip(struct thread *thread,
 			return 0;
 		}
 		thread__find_addr_location(thread, *cpumode, MAP__FUNCTION,
-					   ip, &al);
+					   ip, &al);   /*根据虚拟地址和所属的线程，找到对应的符号信息*/
 	}
 
 	if (al.sym != NULL) {
@@ -1756,7 +1756,7 @@ static int add_callchain_ip(struct thread *thread,
 
 	return callchain_cursor_append(cursor, al.addr, al.map, al.sym,
 				       branch, flags, nr_loop_iter,
-				       iter_cycles, branch_from);
+				       iter_cycles, branch_from);  /*创建node并添加到cursor上*/
 }
 
 struct branch_info *sample__resolve_bstack(struct perf_sample *sample,
@@ -1964,7 +1964,7 @@ static int thread__resolve_callchain_sample(struct thread *thread,
 	 * Based on DWARF debug information, some architectures skip
 	 * a callchain entry saved by the kernel.
 	 */
-	skip_idx = arch_skip_callchain_idx(thread, chain);
+	skip_idx = arch_skip_callchain_idx(thread, chain);  /*只对powerpc有用*/
 
 	/*
 	 * Add branches to call stack for easier browsing. This gives
@@ -2044,7 +2044,7 @@ check_calls:
 	     i < chain_nr && nr_entries < max_stack; i++) {
 		u64 ip;
 
-		if (callchain_param.order == ORDER_CALLEE)
+		if (callchain_param.order == ORDER_CALLEE)  /*caller和callee的栈顺序是反的*/
 			j = i;
 		else
 			j = chain->nr - i - 1;
@@ -2060,7 +2060,7 @@ check_calls:
 
 		err = add_callchain_ip(thread, cursor, parent,
 				       root_al, &cpumode, ip,
-				       false, NULL, NULL, 0);
+				       false, NULL, NULL, 0);  /*解析符号，并将信息添加到cursor上*/
 
 		if (err)
 			return (err < 0) ? err : 0;
@@ -2099,7 +2099,7 @@ static int thread__resolve_callchain_unwind(struct thread *thread,
 	return unwind__get_entries(unwind_entry, cursor,
 				   thread, sample, max_stack);
 }
-
+/*栈回溯*/
 int thread__resolve_callchain(struct thread *thread,
 			      struct callchain_cursor *cursor,
 			      struct perf_evsel *evsel,
@@ -2127,7 +2127,7 @@ int thread__resolve_callchain(struct thread *thread,
 						       evsel, sample,
 						       max_stack);
 		if (ret)
-			return ret;
+			return ret;  /*正常解析了就返回，否则返回0*/
 		ret = thread__resolve_callchain_sample(thread, cursor,
 						       evsel, sample,
 						       parent, root_al,

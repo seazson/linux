@@ -356,9 +356,9 @@ static int kernel_get_module_dso(const char *module, struct dso **pdso)
 	vmlinux_name = symbol_conf.vmlinux_name;
 	dso->load_errno = 0;
 	if (vmlinux_name)
-		ret = dso__load_vmlinux(dso, map, vmlinux_name, false);
+		ret = dso__load_vmlinux(dso, map, vmlinux_name, false);    /*指定vmlinux的方式加载*/
 	else
-		ret = dso__load_vmlinux_path(dso, map);
+		ret = dso__load_vmlinux_path(dso, map);  /*使用默认路径查找再加载*/
 found:
 	*pdso = dso;
 	return ret;
@@ -629,14 +629,14 @@ error:
 	return ret ? : -ENOENT;
 }
 
-/* Adjust symbol name and address */
+/* Adjust symbol name and address 修正probe_trace_point成相对地址*/
 static int post_process_probe_trace_point(struct probe_trace_point *tp,
 					   struct map *map, unsigned long offs)
 {
 	struct symbol *sym;
 	u64 addr = tp->address - offs;
 
-	sym = map__find_symbol(map, addr);
+	sym = map__find_symbol(map, addr);  /*根据相对地址来查找符号*/
 	if (!sym)
 		return -ENOENT;
 
@@ -852,7 +852,7 @@ static int try_to_find_probe_trace_events(struct perf_probe_event *pev,
 
 	pr_debug("Try to find probe point from debuginfo.\n");
 	/* Searching trace events corresponding to a probe event */
-	ntevs = debuginfo__find_trace_events(dinfo, pev, tevs);
+	ntevs = debuginfo__find_trace_events(dinfo, pev, tevs);    /*根据传入的参数，在debug信息中查找，并分配tevs*/
 
 	if (ntevs == 0)	{  /* Not found, retry with an alternative */
 		ret = get_alternative_probe_event(dinfo, pev, &tmp);
@@ -870,7 +870,7 @@ static int try_to_find_probe_trace_events(struct perf_probe_event *pev,
 	if (ntevs > 0) {	/* Succeeded to find trace events */
 		pr_debug("Found %d probe_trace_events.\n", ntevs);
 		ret = post_process_probe_trace_events(pev, *tevs, ntevs,
-					pev->target, pev->uprobes, dinfo);
+					pev->target, pev->uprobes, dinfo);  /*修正probe_trace_point*/
 		if (ret < 0 || ret == ntevs) {
 			pr_debug("Post processing failed or all events are skipped. (%d)\n", ret);
 			clear_probe_trace_events(*tevs, ntevs);
@@ -881,7 +881,7 @@ static int try_to_find_probe_trace_events(struct perf_probe_event *pev,
 
 	debuginfo__delete(dinfo);
 
-	if (ntevs == 0)	{	/* No error but failed to find probe point. */
+	if (ntevs == 0)	{	/* No error but failed to find probe point. 有debug信息，但是找不到对应的行号*/
 		pr_warning("Probe point '%s' not found.\n",
 			   synthesize_perf_probe_point(&pev->point));
 		return -ENOENT;
@@ -901,7 +901,7 @@ static int try_to_find_probe_trace_events(struct perf_probe_event *pev,
 
 #define LINEBUF_SIZE 256
 #define NR_ADDITIONAL_LINES 2
-
+/*打印fp的代码和行号l*/
 static int __show_one_line(FILE *fp, int l, bool skip, bool show_num)
 {
 	char buf[LINEBUF_SIZE], sbuf[STRERR_BUFSIZE];
@@ -966,7 +966,7 @@ static int __show_line_range(struct line_range *lr, const char *module,
 	if (!dinfo)
 		return -ENOENT;
 
-	ret = debuginfo__find_line_range(dinfo, lr);
+	ret = debuginfo__find_line_range(dinfo, lr);  /*关键是这个函数，根据debug信息，建立可跟踪的行信息*/
 	if (!ret) {	/* Not found, retry with an alternative */
 		ret = get_alternative_line_range(dinfo, lr, module, user);
 		if (!ret)
@@ -1008,7 +1008,7 @@ static int __show_line_range(struct line_range *lr, const char *module,
 			   str_error_r(errno, sbuf, sizeof(sbuf)));
 		return -errno;
 	}
-	/* Skip to starting line number */
+	/* Skip to starting line number 跳过文件前面的行，一直到要显示的函数那里。l是相对于文件行偏移*/
 	while (l < lr->start) {
 		ret = skip_one_line(fp, l++);
 		if (ret < 0)
@@ -1071,7 +1071,7 @@ static int show_available_vars_at(struct debuginfo *dinfo,
 		return -EINVAL;
 	pr_debug("Searching variables at %s\n", buf);
 
-	ret = debuginfo__find_available_vars_at(dinfo, pev, &vls);
+	ret = debuginfo__find_available_vars_at(dinfo, pev, &vls);  /*分析debug信息，得出变量名称*/
 	if (!ret) {  /* Not found, retry with an alternative */
 		ret = get_alternative_probe_event(dinfo, pev, &tmp);
 		if (!ret) {
@@ -1561,7 +1561,7 @@ static int parse_perf_probe_point(char *arg, struct perf_probe_event *pev)
 	return 0;
 }
 
-/* Parse perf-probe event argument */
+/* Parse perf-probe event argument 分析字符串类型的额外参数到perf_probe_arg*/
 static int parse_perf_probe_arg(char *str, struct perf_probe_arg *arg)
 {
 	char *tmp, *goodname;
@@ -1661,7 +1661,7 @@ static int parse_perf_probe_arg(char *str, struct perf_probe_arg *arg)
 	return 0;
 }
 
-/* Parse perf-probe event command */
+/* Parse perf-probe event command 分析字符串类型的参数，转换成perf_probe_event*/
 int parse_perf_probe_command(const char *cmd, struct perf_probe_event *pev)
 {
 	char **argv;
@@ -1729,7 +1729,7 @@ bool perf_probe_event_need_dwarf(struct perf_probe_event *pev)
 	return false;
 }
 
-/* Parse probe_events event into struct probe_point */
+/* Parse probe_events event into struct probe_point 将内核输出的字符串探针信息转换成结构体*/
 int parse_probe_trace_command(const char *cmd, struct probe_trace_event *tev)
 {
 	struct probe_trace_point *tp = &tev->point;
@@ -1978,7 +1978,7 @@ static int __synthesize_probe_trace_arg_ref(struct probe_trace_arg_ref *ref,
 	err = strbuf_addf(buf, "%+ld(", ref->offset);
 	return (err < 0) ? err : depth;
 }
-
+/*将参数转换成要写入probe_event文件的格式*/
 static int synthesize_probe_trace_arg(struct probe_trace_arg *arg,
 				      struct strbuf *buf)
 {
@@ -2020,7 +2020,7 @@ static int synthesize_probe_trace_arg(struct probe_trace_arg *arg,
 
 	return err;
 }
-
+/*构造要写入的字符串*/
 char *synthesize_probe_trace_command(struct probe_trace_event *tev)
 {
 	struct probe_trace_point *tp = &tev->point;
@@ -2034,7 +2034,7 @@ char *synthesize_probe_trace_command(struct probe_trace_event *tev)
 
 	if (strbuf_init(&buf, 32) < 0)
 		return NULL;
-
+	/*构造名称*/
 	if (strbuf_addf(&buf, "%c:%s/%s ", tp->retprobe ? 'r' : 'p',
 			tev->group, tev->event) < 0)
 		goto error;
@@ -2048,7 +2048,7 @@ char *synthesize_probe_trace_command(struct probe_trace_event *tev)
 		if (!tp->symbol || strcmp(tp->symbol, "0x0"))
 			goto error;
 	}
-
+	/*构造地址*/
 	/* Use the tp->address for uprobes */
 	if (tev->uprobes)
 		err = strbuf_addf(&buf, "%s:0x%lx", tp->module, tp->address);
@@ -2061,7 +2061,7 @@ char *synthesize_probe_trace_command(struct probe_trace_event *tev)
 				tp->module ? ":" : "", tp->symbol, tp->offset);
 	if (err)
 		goto error;
-
+	/*构造参数*/
 	for (i = 0; i < tev->nargs; i++)
 		if (synthesize_probe_trace_arg(&tev->args[i], &buf) < 0)
 			goto error;
@@ -2402,7 +2402,7 @@ kprobe_blacklist__find_by_address(struct list_head *blacklist,
 	return NULL;
 }
 
-static LIST_HEAD(kprobe_blacklist);
+static LIST_HEAD(kprobe_blacklist); /*从debugfs/kprobes/blacklist中读入的所有探针信息*/
 
 static void kprobe_blacklist__init(void)
 {
@@ -2511,17 +2511,17 @@ static int __show_perf_probe_events(int fd, bool is_kprobe,
 	memset(&tev, 0, sizeof(tev));
 	memset(&pev, 0, sizeof(pev));
 
-	rawlist = probe_file__get_rawlist(fd);
+	rawlist = probe_file__get_rawlist(fd); /*读取文件内容，提取每一行到链表中*/
 	if (!rawlist)
 		return -ENOMEM;
 
 	strlist__for_each_entry(ent, rawlist) {
-		ret = parse_probe_trace_command(ent->s, &tev);
+		ret = parse_probe_trace_command(ent->s, &tev); /*解析字符串信息到probe_trace_event*/ 
 		if (ret >= 0) {
 			if (!filter_probe_trace_event(&tev, filter))
 				goto next;
 			ret = convert_to_perf_probe_event(&tev, &pev,
-								is_kprobe);
+								is_kprobe);            /*将probe_trace_event信息转换成perf_probe_event*/
 			if (ret < 0)
 				goto next;
 			ret = show_perf_probe_event(pev.group, pev.event,
@@ -2555,7 +2555,7 @@ int show_perf_probe_events(struct strfilter *filter)
 	if (ret < 0)
 		return ret;
 
-	ret = probe_file__open_both(&kp_fd, &up_fd, 0);
+	ret = probe_file__open_both(&kp_fd, &up_fd, 0);  /*打开kprobe_events，uprobe_events这两个文件*/
 	if (ret < 0)
 		return ret;
 
@@ -2649,7 +2649,7 @@ out:
 	free(buf);
 }
 
-/* Set new name from original perf_probe_event and namelist */
+/* Set new name from original perf_probe_event and namelist 确定要加入的名字和组，并查找当前内核是否已经设置了*/
 static int probe_trace_event__set_name(struct probe_trace_event *tev,
 				       struct perf_probe_event *pev,
 				       struct strlist *namelist,
@@ -2680,7 +2680,7 @@ static int probe_trace_event__set_name(struct probe_trace_event *tev,
 	else
 		group = PERFPROBE_GROUP;
 
-	/* Get an unused new event name */
+	/* Get an unused new event name 判断当前内核是否已经设置了*/
 	ret = get_new_event_name(buf, 64, event,
 				 namelist, allow_suffix);
 	if (ret < 0)
@@ -2703,12 +2703,12 @@ static int __open_probe_file_and_namelist(bool uprobe,
 {
 	int fd;
 
-	fd = probe_file__open(PF_FL_RW | (uprobe ? PF_FL_UPROBE : 0));
+	fd = probe_file__open(PF_FL_RW | (uprobe ? PF_FL_UPROBE : 0));  /*打开kprobe_events或者uprobe_events*/
 	if (fd < 0)
 		return fd;
 
 	/* Get current event names */
-	*namelist = probe_file__get_namelist(fd);
+	*namelist = probe_file__get_namelist(fd); /*建立已有探针信息字符串树*/
 	if (!(*namelist)) {
 		pr_debug("Failed to get current event list.\n");
 		close(fd);
@@ -2728,7 +2728,7 @@ static int __add_probe_trace_events(struct perf_probe_event *pev,
 	struct nscookie nsc;
 
 	up = pev->uprobes ? 1 : 0;
-	fd[up] = __open_probe_file_and_namelist(up, &namelist[up]);
+	fd[up] = __open_probe_file_and_namelist(up, &namelist[up]);  /*打开内核或者用户态探针文件，并建立已有探针的树结构*/
 	if (fd[up] < 0)
 		return fd[up];
 
@@ -2743,17 +2743,17 @@ static int __add_probe_trace_events(struct perf_probe_event *pev,
 				goto close_out;
 		}
 		/* Skip if the symbol is out of .text or blacklisted */
-		if (!tev->point.symbol && !pev->uprobes)
+		if (!tev->point.symbol && !pev->uprobes)  /*内核态探针没有符号名是不行的*/
 			continue;
 
 		/* Set new name for tev (and update namelist) */
 		ret = probe_trace_event__set_name(tev, pev, namelist[up],
-						  allow_suffix);
+						  allow_suffix);         /*确定最终要加入的名字，并查询是否已经存在*/
 		if (ret < 0)
 			break;
 
 		nsinfo__mountns_enter(pev->nsi, &nsc);
-		ret = probe_file__add_event(fd[up], tev);
+		ret = probe_file__add_event(fd[up], tev);  /*构造要写入的字符串，并写入文件里*/
 		nsinfo__mountns_exit(&nsc);
 		if (ret < 0)
 			break;
@@ -2967,7 +2967,7 @@ err_out:
 	zfree(tevs);
 	goto out;
 }
-
+/*需要dwraf信息的话跳过*/
 static int try_to_find_absolute_address(struct perf_probe_event *pev,
 					struct probe_trace_event **tevs)
 {
@@ -2978,7 +2978,7 @@ static int try_to_find_absolute_address(struct perf_probe_event *pev,
 
 	if (!(pev->point.function && !strncmp(pev->point.function, "0x", 2)))
 		return -EINVAL;
-	if (perf_probe_event_need_dwarf(pev))
+	if (perf_probe_event_need_dwarf(pev)) /*指定了行号，文件或者变量名的话就需要dwarf信息*/
 		return -EINVAL;
 
 	/*
@@ -3012,7 +3012,7 @@ static int try_to_find_absolute_address(struct perf_probe_event *pev,
 	if (asprintf(&tp->symbol, "0x%lx", tp->address) < 0)
 		goto errout;
 
-	/* For kprobe, check range */
+	/* For kprobe, check range 内核探针的地址必须符合要求*/
 	if ((!tev->uprobes) &&
 	    (kprobe_warn_out_range(tev->point.symbol,
 				   tev->point.address))) {
@@ -3046,7 +3046,7 @@ static int try_to_find_absolute_address(struct perf_probe_event *pev,
 	if (!tev->args)
 		goto errout;
 
-	for (i = 0; i < tev->nargs; i++)
+	for (i = 0; i < tev->nargs; i++)  /*拷贝额外的参数*/
 		copy_to_probe_trace_arg(&tev->args[i], &pev->args[i]);
 
 	return 1;
@@ -3249,7 +3249,7 @@ out:
 	probe_cache__delete(cache);
 	return ret;
 }
-
+/*解析地址信息*/
 static int convert_to_probe_trace_events(struct perf_probe_event *pev,
 					 struct probe_trace_event **tevs)
 {
@@ -3268,7 +3268,7 @@ static int convert_to_probe_trace_events(struct perf_probe_event *pev,
 		}
 	}
 
-	ret = try_to_find_absolute_address(pev, tevs);
+	ret = try_to_find_absolute_address(pev, tevs);  /*解析原始信息tp到绝对地址tp*/
 	if (ret > 0)
 		return ret;
 
@@ -3278,7 +3278,7 @@ static int convert_to_probe_trace_events(struct perf_probe_event *pev,
 		return ret == 0 ? -ENOENT : ret; /* Found in probe cache */
 
 	/* Convert perf_probe_event with debuginfo */
-	ret = try_to_find_probe_trace_events(pev, tevs);
+	ret = try_to_find_probe_trace_events(pev, tevs);   /*根据dwarf信息解析要添加的探针*/
 	if (ret != 0)
 		return ret;	/* Found in debuginfo or got an error */
 
@@ -3293,7 +3293,7 @@ int convert_perf_probe_events(struct perf_probe_event *pevs, int npevs)
 	for (i = 0; i < npevs; i++) {
 		/* Init kprobe blacklist if needed */
 		if (!pevs[i].uprobes)
-			kprobe_blacklist__init();
+			kprobe_blacklist__init();   /*读入内核已有探针信息*/
 		/* Convert with or without debuginfo */
 		ret  = convert_to_probe_trace_events(&pevs[i], &pevs[i].tevs);
 		if (ret < 0)

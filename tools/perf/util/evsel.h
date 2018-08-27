@@ -84,7 +84,7 @@ struct perf_evsel_config_term {
  *          PERF_SAMPLE_IDENTIFIER) in a non-sample event i.e. if sample_id_all
  *          is used there is an id sample appended to non-sample events
  * @priv:   And what is in its containing unnamed union are tool specific
- */
+ */ /*代表一个计数器*/
 struct perf_evsel {
 	struct list_head	node;
 	struct perf_evlist	*evlist;
@@ -100,12 +100,12 @@ struct perf_evsel {
 	char			*name;
 	double			scale;
 	const char		*unit;
-	struct event_format	*tp_format;
+	struct event_format	*tp_format;    /*计数器是tracepoint类型*/
 	off_t			id_offset;
 	void			*priv;
 	u64			db_id;
 	struct cgroup_sel	*cgrp;
-	void			*handler;
+	void			*handler;    /*处理函数，用于找到对应类型数据时调用*/
 	struct cpu_map		*cpus;
 	struct cpu_map		*own_cpus;
 	struct thread_map	*threads;

@@ -50,7 +50,7 @@ static struct stats runtime_aperf_stats[NUM_CTX][MAX_NR_CPUS];
 static struct rblist runtime_saved_values;
 static bool have_frontend_stalled;
 
-struct stats walltime_nsecs_stats;
+struct stats walltime_nsecs_stats;  /*保存有程序总共运行的时间，不一定都在cpu上*/
 
 struct saved_value {
 	struct rb_node rb_node;

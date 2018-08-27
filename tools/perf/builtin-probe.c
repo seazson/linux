@@ -351,11 +351,11 @@ static int perf_add_probe_events(struct perf_probe_event *pevs, int npevs)
 	int i, k;
 	const char *event = NULL, *group = NULL;
 
-	ret = init_probe_symbol_maps(pevs->uprobes);
+	ret = init_probe_symbol_maps(pevs->uprobes);  /*初始化symbols结构体，并创建一个host machine*/
 	if (ret < 0)
 		return ret;
 
-	ret = convert_perf_probe_events(pevs, npevs);
+	ret = convert_perf_probe_events(pevs, npevs); /*分析并转换event参数*/
 	if (ret < 0)
 		goto out_cleanup;
 
@@ -364,13 +364,13 @@ static int perf_add_probe_events(struct perf_probe_event *pevs, int npevs)
 		goto out_cleanup;
 	}
 
-	ret = apply_perf_probe_events(pevs, npevs);
+	ret = apply_perf_probe_events(pevs, npevs);  /*添加探针*/
 	if (ret < 0)
 		goto out_cleanup;
 
 	for (i = k = 0; i < npevs; i++)
 		k += pevs[i].ntevs;
-
+	/*打印这一次添加的探针信息*/
 	pr_info("Added new event%s\n", (k > 1) ? "s:" : ":");
 	for (i = 0; i < npevs; i++) {
 		struct perf_probe_event *pev = &pevs[i];
@@ -652,12 +652,12 @@ __cmd_probe(int argc, const char **argv)
 	 * Except for --list, --del and --add, other command doesn't depend
 	 * nor change running kernel. So if user gives offline vmlinux,
 	 * ignore its buildid.
-	 */
-	if (!strchr("lda", params.command) && symbol_conf.vmlinux_name)
+	 */ /*只有--list, --del 和--add这三个命令需要使用活动的内核，所以要确保id一致。否则不用*/
+//	if (!strchr("lda", params.command) && symbol_conf.vmlinux_name)
 		symbol_conf.ignore_vmlinux_buildid = true;
 
 	switch (params.command) {
-	case 'l':
+	case 'l':  /*通过读取k/uprobe_event文件，显示当前所有探针的信息*/
 		if (params.uprobes) {
 			pr_err("  Error: Don't use --list with --exec.\n");
 			parse_options_usage(probe_usage, options, "l", true);
@@ -668,20 +668,20 @@ __cmd_probe(int argc, const char **argv)
 		if (ret < 0)
 			pr_err_with_code("  Error: Failed to show event list.", ret);
 		return ret;
-	case 'F':
+	case 'F':  /*通过读取elf格式获取符号表*/
 		ret = show_available_funcs(params.target, params.nsi,
 					   params.filter, params.uprobes);
 		if (ret < 0)
 			pr_err_with_code("  Error: Failed to show functions.", ret);
 		return ret;
 #ifdef HAVE_DWARF_SUPPORT
-	case 'L':
+	case 'L':  /*读取debug信息，建立可跟踪的行号信息*/
 		ret = show_line_range(&params.line_range, params.target,
 				      params.nsi, params.uprobes);
 		if (ret < 0)
 			pr_err_with_code("  Error: Failed to show lines.", ret);
 		return ret;
-	case 'V':
+	case 'V':  /*读取debug信息，建立跟踪点可以跟踪的行号*/
 		if (!params.filter)
 			params.filter = strfilter__new(DEFAULT_VAR_FILTER,
 						       NULL);
@@ -710,7 +710,7 @@ __cmd_probe(int argc, const char **argv)
 			return -EINVAL;
 		}
 
-		ret = perf_add_probe_events(params.events, params.nevents);
+		ret = perf_add_probe_events(params.events, params.nevents);  /*添加探针*/
 		if (ret < 0) {
 			pr_err_with_code("  Error: Failed to add events.", ret);
 			return ret;

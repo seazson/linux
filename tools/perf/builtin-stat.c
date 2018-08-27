@@ -209,7 +209,7 @@ static void perf_stat__reset_stats(void)
 	perf_evlist__reset_stats(evsel_list);
 	perf_stat__reset_shadow_stats();
 }
-
+/*打开一个计数器*/
 static int create_perf_stat_counter(struct perf_evsel *evsel)
 {
 	struct perf_event_attr *attr = &evsel->attr;
@@ -349,7 +349,7 @@ static int read_counter(struct perf_evsel *counter)
 			 * (via perf_evsel__read_counter) and sets threir count->loaded.
 			 */
 			if (!count->loaded &&
-			    perf_evsel__read_counter(counter, cpu, thread)) {
+			    perf_evsel__read_counter(counter, cpu, thread)) {/*读取计数器的值*/
 				counter->counts->scaled = -1;
 				perf_counts(counter->counts, cpu, thread)->ena = 0;
 				perf_counts(counter->counts, cpu, thread)->run = 0;
@@ -617,7 +617,7 @@ static int __run_perf_stat(int argc, const char **argv)
 
 	evlist__for_each_entry(evsel_list, counter) {
 try_again:
-		if (create_perf_stat_counter(counter) < 0) {
+		if (create_perf_stat_counter(counter) < 0) { /*打开计数器*/
 			/*
 			 * PPC returns ENXIO for HW counters until 2.6.37
 			 * (behavior changed with commit b0a873e).
@@ -659,14 +659,14 @@ try_again:
 			return -1;
 	}
 
-	if (perf_evlist__apply_filters(evsel_list, &counter)) {
+	if (perf_evlist__apply_filters(evsel_list, &counter)) { /*如果是event类型的话还可以设置过滤器*/
 		pr_err("failed to set filter \"%s\" on event %s with %d (%s)\n",
 			counter->filter, perf_evsel__name(counter), errno,
 			str_error_r(errno, msg, sizeof(msg)));
 		return -1;
 	}
 
-	if (perf_evlist__apply_drv_configs(evsel_list, &counter, &err_term)) {
+	if (perf_evlist__apply_drv_configs(evsel_list, &counter, &err_term)) { /*如果是pmu会调用它的config*/
 		pr_err("failed to set config \"%s\" on event %s with %d (%s)\n",
 		      err_term->val.drv_cfg, perf_evsel__name(counter), errno,
 		      str_error_r(errno, msg, sizeof(msg)));
@@ -698,16 +698,16 @@ try_again:
 	clock_gettime(CLOCK_MONOTONIC, &ref_time);
 
 	if (forks) {
-		perf_evlist__start_workload(evsel_list);
-		enable_counters();
+		perf_evlist__start_workload(evsel_list);  /*运行子进程*/
+		enable_counters();  /*使能所有计数器*/
 
-		if (interval) {
+		if (interval) {/*间隔统计方式，每隔一段时间统计一次*/
 			while (!waitpid(child_pid, &status, WNOHANG)) {
 				nanosleep(&ts, NULL);
 				process_interval();
 			}
 		}
-		waitpid(child_pid, &status, 0);
+		waitpid(child_pid, &status, 0); /*等待子进程结束*/
 
 		if (workload_exec_errno) {
 			const char *emsg = str_error_r(workload_exec_errno, msg, sizeof(msg));
@@ -730,7 +730,7 @@ try_again:
 
 	t1 = rdclock();
 
-	update_stats(&walltime_nsecs_stats, t1 - t0);
+	update_stats(&walltime_nsecs_stats, t1 - t0);  /*更新统计时间*/
 
 	/*
 	 * Closing a group leader splits the group, and as we only disable
@@ -738,7 +738,7 @@ try_again:
 	 * avoid arbitrary skew, we must read all counters before closing any
 	 * group leaders.
 	 */
-	read_counters();
+	read_counters();   /*读取计数器的值*/
 	perf_evlist__close(evsel_list);
 
 	return WEXITSTATUS(status);
@@ -1649,7 +1649,7 @@ static void print_counters(struct timespec *ts, int argc, const char **argv)
 	if (interval)
 		print_interval(prefix = buf, ts);
 	else
-		print_header(argc, argv);
+		print_header(argc, argv);    /*打印头信息*/
 
 	if (metric_only) {
 		static int num_print_iv;
@@ -1673,7 +1673,7 @@ static void print_counters(struct timespec *ts, int argc, const char **argv)
 		break;
 	case AGGR_GLOBAL:
 		evlist__for_each_entry(evsel_list, counter)
-			print_counter_aggr(counter, prefix);
+			print_counter_aggr(counter, prefix);     /*打印每个计数器的统计*/
 		if (metric_only)
 			fputc('\n', stat_config.output);
 		break;
@@ -1691,7 +1691,7 @@ static void print_counters(struct timespec *ts, int argc, const char **argv)
 	}
 
 	if (!interval && !csv_output)
-		print_footer();
+		print_footer();   /*打印结尾，运行时间*/
 
 	fflush(stat_config.output);
 }
@@ -1792,7 +1792,7 @@ static const struct option stat_options[] = {
 		    "disable CPU count aggregation", AGGR_NONE),
 	OPT_BOOLEAN(0, "no-merge", &no_merge, "Do not merge identical named events"),
 	OPT_STRING('x', "field-separator", &csv_sep, "separator",
-		   "print counts with custom separator"),
+		   "print counts with custom separator"),  /*以cvs的格式输出，-x规定分隔符*/
 	OPT_CALLBACK('G', "cgroup", &evsel_list, "name",
 		     "monitor event in cgroup name only", parse_cgroups),
 	OPT_STRING('o', "output", &output_name, "file", "output file name"),
@@ -2063,7 +2063,7 @@ __weak void arch_topdown_group_warn(void)
 /*
  * Add default attributes, if there were no attributes specified or
  * if -d/--detailed, -d -d or -d -d -d is used:
- */
+ */ /*stat命令默认会观测的计数器*/
 static int add_default_attributes(void)
 {
 	int err;
@@ -2703,7 +2703,7 @@ int cmd_stat(int argc, const char **argv)
 		goto out;
 	}
 
-	if (add_default_attributes())
+	if (add_default_attributes())  /*添加默认的几个计数器*/
 		goto out;
 
 	target__validate(&target);
@@ -2759,12 +2759,12 @@ int cmd_stat(int argc, const char **argv)
 	signal(SIGABRT, skip_signal);
 
 	status = 0;
-	for (run_idx = 0; forever || run_idx < run_count; run_idx++) {
+	for (run_idx = 0; forever || run_idx < run_count; run_idx++) {/*run_count是重复次数*/
 		if (run_count != 1 && verbose > 0)
 			fprintf(output, "[ perf stat: executing run #%d ... ]\n",
 				run_idx + 1);
 
-		status = run_perf_stat(argc, argv);
+		status = run_perf_stat(argc, argv);  /*运行子进程，启动定时器，子进程结束关闭定时器，读取计数值*/
 		if (forever && status != -1) {
 			print_counters(NULL, argc, argv);
 			perf_stat__reset_stats();
@@ -2772,7 +2772,7 @@ int cmd_stat(int argc, const char **argv)
 	}
 
 	if (!forever && status != -1 && !interval)
-		print_counters(NULL, argc, argv);
+		print_counters(NULL, argc, argv);    /*打印结果*/
 
 	if (STAT_RECORD) {
 		/*

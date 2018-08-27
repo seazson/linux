@@ -68,7 +68,7 @@ static int zero_flag_atom;
 static PyObject *main_module, *main_dict;
 
 struct tables {
-	struct db_export	dbe;
+	struct db_export	dbe;   /*需要把数据导出到数据库*/
 	PyObject		*evsel_handler;
 	PyObject		*machine_handler;
 	PyObject		*thread_handler;
@@ -153,7 +153,7 @@ static void call_object(PyObject *handler, PyObject *args, const char *die_msg)
 		handler_call_die(die_msg);
 	Py_DECREF(retval);
 }
-
+/*获取要调用的函数*/
 static void try_call_object(const char *handler_name, PyObject *args)
 {
 	PyObject *handler;
@@ -552,7 +552,7 @@ static void python_process_tracepoint(struct perf_sample *sample,
 	if (!test_and_set_bit(event->id, events_defined))
 		define_event_symbols(event, handler_name, event->print_fmt.args);
 
-	handler = get_handler(handler_name);
+	handler = get_handler(handler_name);  /*查找tracepoint对应的函数*/
 	if (!handler) {
 		handler = get_handler(default_handler_name);
 		if (!handler)
@@ -561,7 +561,7 @@ static void python_process_tracepoint(struct perf_sample *sample,
 		if (!dict)
 			Py_FatalError("couldn't create Python dict");
 	}
-
+	/*构造函数参数*/
 	t = PyTuple_New(MAX_FIELDS);
 	if (!t)
 		Py_FatalError("couldn't create Python tuple");
@@ -644,9 +644,9 @@ static void python_process_tracepoint(struct perf_sample *sample,
 		Py_FatalError("error resizing Python tuple");
 
 	if (!dict) {
-		call_object(handler, t, handler_name);
+		call_object(handler, t, handler_name);  /*找到tracepoint对应的python函数就调用*/
 	} else {
-		call_object(handler, t, default_handler_name);
+		call_object(handler, t, default_handler_name); /*否则调用python的trace_unhandled函数*/
 		Py_DECREF(dict);
 	}
 
@@ -1091,7 +1091,7 @@ static void python_process_stat_interval(u64 tstamp)
 
 	Py_DECREF(t);
 }
-
+/*调用begin方法*/
 static int run_start_sub(void)
 {
 	main_module = PyImport_AddModule("__main__");
@@ -1122,7 +1122,7 @@ error:
 
 #define SET_TABLE_HANDLER(name) \
 	SET_TABLE_HANDLER_(name, name ## _handler, name ## _table)
-
+/*是否要导出到数据库*/
 static void set_table_handlers(struct tables *tables)
 {
 	const char *perf_db_export_mode = "perf_db_export_mode";
@@ -1229,9 +1229,9 @@ static int python_start_script(const char *script, int argc, const char **argv)
 
 	Py_Initialize();
 
-	initperf_trace_context();
+	initperf_trace_context();    /*初始化模块*/
 
-	PySys_SetArgv(argc + 1, (char **)command_line);
+	PySys_SetArgv(argc + 1, (char **)command_line);  /*导入参数到python环境*/
 
 	fp = fopen(script, "r");
 	if (!fp) {
@@ -1241,13 +1241,13 @@ static int python_start_script(const char *script, int argc, const char **argv)
 		goto error;
 	}
 
-	err = PyRun_SimpleFile(fp, script);
+	err = PyRun_SimpleFile(fp, script);   /*运行脚本*/
 	if (err) {
 		fprintf(stderr, "Error running python script %s\n", script);
 		goto error;
 	}
 
-	err = run_start_sub();
+	err = run_start_sub(); /*调用trace_begin函数*/
 	if (err) {
 		fprintf(stderr, "Error starting python script %s\n", script);
 		goto error;

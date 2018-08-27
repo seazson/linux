@@ -141,7 +141,7 @@ struct perf_session *perf_session__new(struct perf_data_file *file,
 
 		session->file = file;
 
-		if (perf_data_file__is_read(file)) {
+		if (perf_data_file__is_read(file)) {/*report模式*/
 			if (perf_session__open(session) < 0)
 				goto out_close;
 
@@ -158,7 +158,7 @@ struct perf_session *perf_session__new(struct perf_data_file *file,
 		session->machines.host.env = &perf_env;
 	}
 
-	if (!file || perf_data_file__is_write(file)) {
+	if (!file || perf_data_file__is_write(file)) { /*record模式*/
 		/*
 		 * In O_RDONLY mode this will be performed when reading the
 		 * kernel MMAP event, in perf_event__process_mmap().
@@ -1225,7 +1225,7 @@ static int deliver_sample_group(struct perf_evlist *evlist,
 
 	return ret;
 }
-
+/*调用sample处理函数，默认是*/
 static int
  perf_evlist__deliver_sample(struct perf_evlist *evlist,
 			     struct perf_tool *tool,
@@ -1507,23 +1507,23 @@ static s64 perf_session__process_event(struct perf_session *session,
 	events_stats__inc(&evlist->stats, event->header.type);
 
 	if (event->header.type >= PERF_RECORD_USER_TYPE_START)
-		return perf_session__process_user_event(session, event, file_offset);
+		return perf_session__process_user_event(session, event, file_offset);  /*分析用户程序产生的事件*/
 
 	/*
 	 * For all kernel events we get the sample data
 	 */
-	ret = perf_evlist__parse_sample(evlist, event, &sample);
+	ret = perf_evlist__parse_sample(evlist, event, &sample);     /*分析内核产生的事件，将event转换成sample*/
 	if (ret)
 		return ret;
 
 	if (tool->ordered_events) {
-		ret = perf_session__queue_event(session, event, &sample, file_offset);
+		ret = perf_session__queue_event(session, event, &sample, file_offset);  /*分配ordered_event关联sample，并按照时间顺序添加到链表中*/
 		if (ret != -ETIME)
-			return ret;
+			return ret;     /*如果是sapmle类型的事件，在这里就返回了*/
 	}
 
 	return perf_session__deliver_event(session, event, &sample, tool,
-					   file_offset);
+					   file_offset);    /*调用事件的处理函数，对于sample类型的事件此时暂时不处理*/
 }
 
 void perf_event_header__bswap(struct perf_event_header *hdr)
@@ -1838,7 +1838,7 @@ static int __perf_session__process_events(struct perf_session *session,
 	struct ui_progress prog;
 	s64 skip;
 
-	perf_tool__fill_defaults(tool);
+	perf_tool__fill_defaults(tool);   /*设置各种类型的默认处理函数，其实都是空函数*/
 
 	page_offset = page_size * (data_offset / page_size);
 	file_offset = page_offset;
@@ -1869,7 +1869,7 @@ static int __perf_session__process_events(struct perf_session *session,
 	}
 remap:
 	buf = mmap(NULL, mmap_size, mmap_prot, mmap_flags, fd,
-		   file_offset);
+		   file_offset);                  /*映射文件*/
 	if (buf == MAP_FAILED) {
 		pr_err("failed to mmap file\n");
 		err = -errno;
@@ -1884,7 +1884,7 @@ remap:
 	}
 
 more:
-	event = fetch_mmaped_event(session, head, mmap_size, buf);
+	event = fetch_mmaped_event(session, head, mmap_size, buf);  /*从文件中取出一个事件*/
 	if (!event) {
 		if (mmaps[map_idx]) {
 			munmap(mmaps[map_idx], mmap_size);
@@ -1900,7 +1900,7 @@ more:
 	size = event->header.size;
 
 	if (size < sizeof(struct perf_event_header) ||
-	    (skip = perf_session__process_event(session, event, file_pos)) < 0) {
+	    (skip = perf_session__process_event(session, event, file_pos)) < 0) { /*对事件进行处理*/
 		pr_err("%#" PRIx64 " [%#x]: failed to process type: %d\n",
 		       file_offset + head, event->header.size,
 		       event->header.type);
@@ -1924,7 +1924,7 @@ more:
 
 out:
 	/* do the final flush for ordered samples */
-	err = ordered_events__flush(oe, OE_FLUSH__FINAL);
+	err = ordered_events__flush(oe, OE_FLUSH__FINAL);   /*遍历所有的采样事件进行分析*/
 	if (err)
 		goto out_err;
 	err = auxtrace__flush_events(session, tool);
@@ -1943,12 +1943,12 @@ out_err:
 	session->one_mmap = false;
 	return err;
 }
-
+/*遍历记录文件，分析每一个事件*/
 int perf_session__process_events(struct perf_session *session)
 {
 	u64 size = perf_data_file__size(session->file);
 	int err;
-
+	/*创建一个idle 线程对应的结构*/
 	if (perf_session__register_idle_thread(session) < 0)
 		return -ENOMEM;
 
@@ -2111,7 +2111,7 @@ void perf_session__fprintf_info(struct perf_session *session, FILE *fp,
 	fprintf(fp, "# ========\n#\n");
 }
 
-
+/*设置event类型的计数器的数据处理函数*/
 int __perf_session__set_tracepoints_handlers(struct perf_session *session,
 					     const struct perf_evsel_str_handler *assocs,
 					     size_t nr_assocs)

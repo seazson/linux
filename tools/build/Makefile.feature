@@ -128,7 +128,7 @@ $(call feature_check,all,$(MSG))
 #
 # Just in case the build freshly failed, make sure we print the
 # feature matrix:
-#
+# 特性检查
 ifeq ($(feature-all), 1)
   #
   # test-all.c passed - just set all the core feature flags to 1:
@@ -143,12 +143,13 @@ ifeq ($(feature-all), 1)
   $(call feature_check,bionic)
   $(call feature_check,libbabeltrace)
 else
+  $(warning $(FEATURE_TESTS))
   $(foreach feat,$(FEATURE_TESTS),$(call feature_check,$(feat)))
 endif
 
 #
 # Print the result of the feature test:
-#
+# 打印函数
 feature_print_status = $(eval $(feature_print_status_code)) $(info $(MSG))
 
 define feature_print_status_code
@@ -167,7 +168,7 @@ endef
 #
 # generates feature value assignment for name, like:
 #   $(call feature_assign,dwarf) == feature-dwarf=1
-#
+# 这是要写入文件中的格式，实际上测试结果已经在内存变量$(feature-$(1))中了
 feature_assign = feature-$(1)=$(feature-$(1))
 
 FEATURE_DUMP_FILENAME = $(OUTPUT)FEATURE-DUMP$(FEATURE_USER)
@@ -196,12 +197,12 @@ $(foreach feat,$(FEATURE_TESTS),$(call feature_dump_check,$(call feature_assign,
 #   last build (in $(FEATURE_DUMP_FILENAME) file)
 # - one of the $(FEATURE_DISPLAY) is not detected
 # - VF is enabled
-
+#将结果输出到文件FEATURE-DUMP中
 ifeq ($(feature_dump_changed),1)
   $(shell rm -f $(FEATURE_DUMP_FILENAME))
   $(foreach feat,$(FEATURE_TESTS),$(shell echo "$(call feature_assign,$(feat))" >> $(FEATURE_DUMP_FILENAME)))
 endif
-
+#检查是否要显示结果，有一个特性没有使能就会触发显示所有特性情况
 feature_display_check = $(eval $(feature_check_display_code))
 define feature_check_display_code
   ifneq ($(feature-$(1)), 1)

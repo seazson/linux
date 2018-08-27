@@ -1473,7 +1473,7 @@ static int dso__find_perf_map(char *filebuf, size_t bufsz,
 
 	return rc;
 }
-
+/*½âÎö¼ÓÔØ·ûºÅ±í*/
 int dso__load(struct dso *dso, struct map *map)
 {
 	char *name;

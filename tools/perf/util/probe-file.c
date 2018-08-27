@@ -136,7 +136,7 @@ int probe_file__open_both(int *kfd, int *ufd, int flag)
 
 	return 0;
 }
-
+/*读取文件内容，提取每一行到链表中*/
 /* Get raw string list of current kprobe_events  or uprobe_events */
 struct strlist *probe_file__get_rawlist(int fd)
 {
@@ -198,13 +198,13 @@ static struct strlist *__probe_file__get_namelist(int fd, bool include_group)
 	int ret = 0;
 
 	memset(&tev, 0, sizeof(tev));
-	rawlist = probe_file__get_rawlist(fd);
+	rawlist = probe_file__get_rawlist(fd);  /*获取现有已存在的探针*/
 	if (!rawlist)
 		return NULL;
 	sl = strlist__new(NULL, NULL);
 	strlist__for_each_entry(ent, rawlist) {
-		ret = parse_probe_trace_command(ent->s, &tev);
-		if (ret < 0)
+		ret = parse_probe_trace_command(ent->s, &tev); /*将探针由字符串转换成probe_trace_event格式*/
+		if (ret < 0)                                   /*临时使用，主要是为了检测事件的合法性*/
 			break;
 		if (include_group) {
 			ret = e_snprintf(buf, 128, "%s:%s", tev.group,
@@ -212,7 +212,7 @@ static struct strlist *__probe_file__get_namelist(int fd, bool include_group)
 			if (ret >= 0)
 				ret = strlist__add(sl, buf);
 		} else
-			ret = strlist__add(sl, tev.event);
+			ret = strlist__add(sl, tev.event);  /*新建一个字符串节点，添加到strlist中*/
 		clear_probe_trace_event(&tev);
 		if (ret < 0)
 			break;
@@ -226,7 +226,7 @@ static struct strlist *__probe_file__get_namelist(int fd, bool include_group)
 	return sl;
 }
 
-/* Get current perf-probe event names */
+/* Get current perf-probe event names 根据内核文件，获取所有探针的信息，并建立字符串红黑树*/
 struct strlist *probe_file__get_namelist(int fd)
 {
 	return __probe_file__get_namelist(fd, false);
@@ -235,7 +235,7 @@ struct strlist *probe_file__get_namelist(int fd)
 int probe_file__add_event(int fd, struct probe_trace_event *tev)
 {
 	int ret = 0;
-	char *buf = synthesize_probe_trace_command(tev);
+	char *buf = synthesize_probe_trace_command(tev); /*构造要写入的字符串*/
 	char sbuf[STRERR_BUFSIZE];
 
 	if (!buf) {
@@ -245,7 +245,7 @@ int probe_file__add_event(int fd, struct probe_trace_event *tev)
 
 	pr_debug("Writing event: %s\n", buf);
 	if (!probe_event_dry_run) {
-		if (write(fd, buf, strlen(buf)) < (int)strlen(buf)) {
+		if (write(fd, buf, strlen(buf)) < (int)strlen(buf)) { /*写入*/
 			ret = -errno;
 			pr_warning("Failed to write event: %s\n",
 				   str_error_r(errno, sbuf, sizeof(sbuf)));

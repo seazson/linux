@@ -187,7 +187,7 @@ endif
 # we issue the requested build with FIXDEP=1 variable.
 #
 # The fixdep build is disabled for $(NON_CONFIG_TARGETS)
-# targets, because it's not necessary.
+# targets, because it's not necessary. 第一轮编译的时候FIXDEP为0，是为了编译fixdep工具，第二次为1
 
 ifdef FIXDEP
   force_fixdep := 0
@@ -197,7 +197,7 @@ endif
 
 export srctree OUTPUT RM CC CXX LD AR CFLAGS CXXFLAGS V BISON FLEX AWK
 export HOSTCC HOSTLD HOSTAR
-
+#定义了编译fixdep的规则
 include $(srctree)/tools/build/Makefile.include
 
 ifeq ($(force_fixdep),1)
@@ -219,7 +219,7 @@ SUBCMD_DIR      = $(srctree)/tools/lib/subcmd/
 # Set FEATURE_TESTS to 'all' so all possible feature checkers are executed.
 # Without this setting the output feature dump file misses some features, for
 # example, liberty. Select all checkers so we won't get an incomplete feature
-# dump file.
+# dump file. 第二轮编译的时候会走到这里 进行特性检查
 ifeq ($(config),1)
 ifdef MAKECMDGOALS
 ifeq ($(filter feature-dump,$(MAKECMDGOALS)),feature-dump)
@@ -353,7 +353,7 @@ endif
 ifneq ($(OUTPUT),)
   CFLAGS += -I$(OUTPUT)
 endif
-
+CFLAGS += -g
 ifndef NO_GTK2
   ALL_PROGRAMS += $(OUTPUT)libperf-gtk.so
   GTK_IN := $(OUTPUT)gtk-in.o

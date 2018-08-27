@@ -2480,7 +2480,7 @@ int perf_header__process_sections(struct perf_header *header, int fd,
 	int feat;
 	int err;
 
-	nr_sections = bitmap_weight(header->adds_features, HEADER_FEAT_BITS);
+	nr_sections = bitmap_weight(header->adds_features, HEADER_FEAT_BITS);  /*有多少位置位了*/
 	if (!nr_sections)
 		return 0;
 
@@ -2812,7 +2812,7 @@ static int read_attr(int fd, struct perf_header *ph,
 
 	return ret <= 0 ? -1 : 0;
 }
-
+/*找到event对应的输出format*/
 static int perf_evsel__prepare_tracepoint_event(struct perf_evsel *evsel,
 						struct pevent *pevent)
 {
@@ -2869,7 +2869,7 @@ int perf_session__read_header(struct perf_session *session)
 	int nr_attrs, nr_ids, i, j;
 	int fd = perf_data_file__fd(file);
 
-	session->evlist = perf_evlist__new();
+	session->evlist = perf_evlist__new(); /*创建evlist*/
 	if (session->evlist == NULL)
 		return -ENOMEM;
 
@@ -2878,7 +2878,7 @@ int perf_session__read_header(struct perf_session *session)
 	if (perf_data_file__is_pipe(file))
 		return perf_header__read_pipe(session);
 
-	if (perf_file_header__read(&f_header, header, fd) < 0)
+	if (perf_file_header__read(&f_header, header, fd) < 0)  /*读取perf_file_header*/
 		return -EINVAL;
 
 	/*
@@ -2910,7 +2910,7 @@ int perf_session__read_header(struct perf_session *session)
 		}
 
 		tmp = lseek(fd, 0, SEEK_CUR);
-		evsel = perf_evsel__new(&f_attr.attr);
+		evsel = perf_evsel__new(&f_attr.attr);   /*创建evsel*/
 
 		if (evsel == NULL)
 			goto out_delete_evlist;
@@ -2946,10 +2946,10 @@ int perf_session__read_header(struct perf_session *session)
 	symbol_conf.nr_events = nr_attrs;
 
 	perf_header__process_sections(header, fd, &session->tevent,
-				      perf_file_section__process);
+				      perf_file_section__process);   /*解析头的特性*/
 
 	if (perf_evlist__prepare_tracepoint_events(session->evlist,
-						   session->tevent.pevent))
+						   session->tevent.pevent))  /*关联evsel和event_format*/
 		goto out_delete_evlist;
 
 	return 0;

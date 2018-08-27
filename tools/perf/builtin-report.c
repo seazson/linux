@@ -186,16 +186,16 @@ static int process_sample_event(struct perf_tool *tool,
 	};
 	int ret = 0;
 
-	if (perf_time__skip_sample(&rep->ptime, sample->time))
+	if (perf_time__skip_sample(&rep->ptime, sample->time))  /*必须在时间范围以内*/
 		return 0;
 
-	if (machine__resolve(machine, &al, sample) < 0) {
+	if (machine__resolve(machine, &al, sample) < 0) {  /*查找并建立符号表*/
 		pr_debug("problem processing %d event, skipping it.\n",
 			 event->header.type);
 		return -1;
 	}
 
-	if (symbol_conf.hide_unresolved && al.sym == NULL)
+	if (symbol_conf.hide_unresolved && al.sym == NULL)  /*没有找到符号，并且设置了不显示未解析符号就返回*/
 		goto out_put;
 
 	if (rep->cpu_list && !test_bit(sample->cpu, rep->cpu_bitmap))
@@ -222,7 +222,7 @@ static int process_sample_event(struct perf_tool *tool,
 	if (al.map != NULL)
 		al.map->dso->hit = 1;
 
-	ret = hist_entry_iter__add(&iter, &al, rep->max_stack, rep);
+	ret = hist_entry_iter__add(&iter, &al, rep->max_stack, rep);  /*添加到hist_list链表*/
 	if (ret < 0)
 		pr_debug("problem adding hist entry, skipping event\n");
 out_put:
@@ -413,7 +413,7 @@ static int perf_evlist__tty_browse_hists(struct perf_evlist *evlist,
 		    !perf_evsel__is_group_leader(pos))
 			continue;
 
-		hists__fprintf_nr_sample_events(hists, rep, evname, stdout);
+		hists__fprintf_nr_sample_events(hists, rep, evname, stdout);    /*显示每个evsel采集了多少个数据*/
 		hists__fprintf(hists, !quiet, 0, 0, rep->min_percent, stdout,
 			       symbol_conf.use_callchain ||
 			       symbol_conf.show_branchflag_count);
@@ -595,7 +595,7 @@ static int __cmd_report(struct report *rep)
 		return ret;
 	}
 
-	ret = perf_session__process_events(session);
+	ret = perf_session__process_events(session);     /*分析每个事件*/
 	if (ret) {
 		ui__error("failed to process sample\n");
 		return ret;
@@ -642,9 +642,9 @@ static int __cmd_report(struct report *rep)
 		return 0;
 	}
 
-	report__output_resort(rep);
+	report__output_resort(rep);   /*将分析完成的事件根据sort链表定义的优先级进行行排序*/
 
-	return report__browse_hists(rep);
+	return report__browse_hists(rep);  /*按照feild定义的列优先级输出*/
 }
 
 static int
@@ -883,7 +883,7 @@ int cmd_report(int argc, const char **argv)
 	struct perf_data_file file = {
 		.mode  = PERF_DATA_MODE_READ,
 	};
-	int ret = hists__init();
+	int ret = hists__init();   /*改变evsel的大小，让其后面为hists*/
 
 	if (ret < 0)
 		return ret;
@@ -906,7 +906,7 @@ int cmd_report(int argc, const char **argv)
 
 	if (quiet)
 		perf_quiet_option();
-
+	/*确保指定的内核符号表可用*/
 	if (symbol_conf.vmlinux_name &&
 	    access(symbol_conf.vmlinux_name, R_OK)) {
 		pr_err("Invalid file: %s\n", symbol_conf.vmlinux_name);
@@ -917,7 +917,7 @@ int cmd_report(int argc, const char **argv)
 		pr_err("Invalid file: %s\n", symbol_conf.kallsyms_name);
 		return -EINVAL;
 	}
-
+	/*输出方式选择*/
 	if (report.use_stdio)
 		use_browser = 0;
 	else if (report.use_tui)
@@ -945,7 +945,7 @@ int cmd_report(int argc, const char **argv)
 	file.force = symbol_conf.force;
 
 repeat:
-	session = perf_session__new(&file, false, &report.tool);
+	session = perf_session__new(&file, false, &report.tool);   /*新建一个会话， 解读头。并创建evlist， evsel。如果是tp，还会关联对应的event_format*/
 	if (session == NULL)
 		return -1;
 
@@ -1024,7 +1024,7 @@ repeat:
 	else
 		use_browser = 0;
 
-	if (setup_sorting(session->evlist) < 0) {
+	if (setup_sorting(session->evlist) < 0) {  /*分析排序参数，建立排序结构体*/
 		if (sort_order)
 			parse_options_usage(report_usage, options, "s", 1);
 		if (field_order)
@@ -1033,7 +1033,7 @@ repeat:
 		goto error;
 	}
 
-	if ((report.header || report.header_only) && !quiet) {
+	if ((report.header || report.header_only) && !quiet) { /*显示头信息*/
 		perf_session__fprintf_info(session, stdout,
 					   report.show_full_info);
 		if (report.header_only) {
@@ -1071,7 +1071,7 @@ repeat:
 		}
 	}
 
-	if (symbol__init(&session->header.env) < 0)
+	if (symbol__init(&session->header.env) < 0)  /*建立命令行定义的要采样的pid，dso，符号信息*/
 		goto error;
 
 	if (perf_time__parse_str(&report.ptime, report.time_str) != 0) {

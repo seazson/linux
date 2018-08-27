@@ -16,10 +16,10 @@ enum {
 	HEADER_TRACING_DATA	= 1,
 	HEADER_BUILD_ID,
 
-	HEADER_HOSTNAME,
-	HEADER_OSRELEASE,
+	HEADER_HOSTNAME,      /*uname -n*/
+	HEADER_OSRELEASE,     /*uname -r*/
 	HEADER_VERSION,
-	HEADER_ARCH,
+	HEADER_ARCH,          /*uname -m*/
 	HEADER_NRCPUS,
 	HEADER_CPUDESC,
 	HEADER_CPUID,
@@ -49,14 +49,14 @@ struct perf_file_section {
 };
 
 struct perf_file_header {
-	u64				magic;
-	u64				size;
-	u64				attr_size;
-	struct perf_file_section	attrs;
-	struct perf_file_section	data;
+	u64				magic;       /*PROFILE2*/
+	u64				size;        /*整个头大小*/
+	u64				attr_size;   /*一个attr的大小*/
+	struct perf_file_section	attrs;   /*attr们的位置和大小*/
+	struct perf_file_section	data;    /*实际数据的位置和大小*/
 	/* event_types is ignored */
 	struct perf_file_section	event_types;
-	DECLARE_BITMAP(adds_features, HEADER_FEAT_BITS);
+	DECLARE_BITMAP(adds_features, HEADER_FEAT_BITS); /*256bit位图*/
 };
 
 struct perf_pipe_file_header {
@@ -72,10 +72,10 @@ int perf_file_header__read(struct perf_file_header *header,
 struct perf_header {
 	enum perf_header_version	version;
 	bool				needs_swap;
-	u64				data_offset;
-	u64				data_size;
-	u64				feat_offset;
-	DECLARE_BITMAP(adds_features, HEADER_FEAT_BITS);
+	u64				data_offset;    /*数据段的偏移*/
+	u64				data_size;      /*数据段的大小*/
+	u64				feat_offset;    /*指向特性段的位置*/
+	DECLARE_BITMAP(adds_features, HEADER_FEAT_BITS); /*特性段位图*/
 	struct perf_env 	env;
 };
 

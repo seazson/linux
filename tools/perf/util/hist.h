@@ -254,16 +254,16 @@ struct perf_hpp_fmt {
 	struct list_head list;
 	struct list_head sort_list;
 	bool elide;
-	int len;
+	int len;     /*一个项目的长度*/
 	int user_len;
 	int idx;
 	int level;
 };
 
 struct perf_hpp_list {
-	struct list_head fields;
-	struct list_head sorts;
-
+	struct list_head fields;    /*用于控制输出时列的顺序*/
+	struct list_head sorts;     /*用于控制输出列的种类和排序优先级*/
+	/*表示是否包含了某种排序结构*/
 	int nr_header_lines;
 	int need_collapse;
 	int parent;

@@ -1536,7 +1536,7 @@ struct sort_entry sort_sym_size = {
 struct sort_dimension {
 	const char		*name;
 	struct sort_entry	*entry;
-	int			taken;
+	int			taken;   /*已经加入链表*/
 };
 
 #define DIM(d, n, func) [d] = { .name = n, .entry = &(func) }
@@ -1753,7 +1753,7 @@ static void hse_free(struct perf_hpp_fmt *fmt)
 	hse = container_of(fmt, struct hpp_sort_entry, hpp);
 	free(hse);
 }
-
+/*分配并初始化hpp*/
 static struct hpp_sort_entry *
 __sort_dimension__alloc_hpp(struct sort_dimension *sd, int level)
 {
@@ -2233,7 +2233,7 @@ static struct perf_evsel *find_evsel(struct perf_evlist *evlist, char *event_nam
 
 	return evsel;
 }
-
+/*添加tracepoint的字段作为排序关键字*/
 static int __dynamic_dimension__add(struct perf_evsel *evsel,
 				    struct format_field *field,
 				    bool raw_trace, int level)
@@ -2447,13 +2447,13 @@ int hpp_dimension__add_output(unsigned col)
 	BUG_ON(col >= PERF_HPP__MAX_INDEX);
 	return __hpp_dimension__add_output(&perf_hpp_list, &hpp_sort_dimensions[col]);
 }
-
+/*添加一种预定义的排序结构*/
 int sort_dimension__add(struct perf_hpp_list *list, const char *tok,
 			struct perf_evlist *evlist,
 			int level)
 {
 	unsigned int i;
-
+	/*字段的比较*/
 	for (i = 0; i < ARRAY_SIZE(common_sort_dimensions); i++) {
 		struct sort_dimension *sd = &common_sort_dimensions[i];
 
@@ -2491,18 +2491,18 @@ int sort_dimension__add(struct perf_hpp_list *list, const char *tok,
 			list->comm = 1;
 		}
 
-		return __sort_dimension__add(sd, list, level);
+		return __sort_dimension__add(sd, list, level);  /*分配hpp，并添加到全局链表中*/
 	}
-
+	/*周期或者负载的比较*/
 	for (i = 0; i < ARRAY_SIZE(hpp_sort_dimensions); i++) {
 		struct hpp_dimension *hd = &hpp_sort_dimensions[i];
 
 		if (strncasecmp(tok, hd->name, strlen(tok)))
 			continue;
 
-		return __hpp_dimension__add(hd, list, level);
+		return __hpp_dimension__add(hd, list, level);  /*与__sort不同，这里是拷贝一份，并添加到全局链表中*/
 	}
-
+	/*分支的比较*/
 	for (i = 0; i < ARRAY_SIZE(bstack_sort_dimensions); i++) {
 		struct sort_dimension *sd = &bstack_sort_dimensions[i];
 
@@ -2537,7 +2537,7 @@ int sort_dimension__add(struct perf_hpp_list *list, const char *tok,
 		__sort_dimension__add(sd, list, level);
 		return 0;
 	}
-
+	/*对tracepoint的字段排序*/
 	if (!add_dynamic_entry(evlist, tok, level))
 		return 0;
 
@@ -2573,6 +2573,8 @@ static int setup_sort_list(struct perf_hpp_list *list, char *str,
 
 		if (*tok) {
 			ret = sort_dimension__add(list, tok, evlist, level);
+			
+			pr_err("--sort key: `%s' %d\n", tok,level);
 			if (ret == -EINVAL) {
 				if (!cacheline_size && !strncasecmp(tok, "dcacheline", strlen(tok)))
 					pr_err("The \"dcacheline\" --sort key needs to know the cacheline size and it couldn't be determined on this system");
@@ -2696,7 +2698,7 @@ static int __setup_sorting(struct perf_evlist *evlist)
 	if (ret)
 		return ret;
 
-	sort_keys = sort_order;
+	sort_keys = sort_order;   /*以逗号分开的排序要求字符串*/
 	if (sort_keys == NULL) {
 		if (is_strict_order(field_order)) {
 			/*
@@ -2726,7 +2728,7 @@ static int __setup_sorting(struct perf_evlist *evlist)
 		}
 	}
 
-	ret = setup_sort_list(&perf_hpp_list, str, evlist);
+	ret = setup_sort_list(&perf_hpp_list, str, evlist);   /*建立排序结构体链表*/
 
 	free(str);
 	return ret;
@@ -2876,6 +2878,8 @@ static int setup_output_list(struct perf_hpp_list *list, char *str)
 	for (tok = strtok_r(str, ", ", &tmp);
 			tok; tok = strtok_r(NULL, ", ", &tmp)) {
 		ret = output_field_add(list, tok);
+		printf("fields key: `%s'\n", tok);
+
 		if (ret == -EINVAL) {
 			pr_err("Invalid --fields key: `%s'", tok);
 			break;
@@ -2942,8 +2946,8 @@ out:
 int setup_sorting(struct perf_evlist *evlist)
 {
 	int err;
-
-	err = __setup_sorting(evlist);
+/*建立sort链表*/
+	err = __setup_sorting(evlist);  /*分析排序参数，建立排序结构体链表*/
 	if (err < 0)
 		return err;
 
@@ -2953,22 +2957,22 @@ int setup_sorting(struct perf_evlist *evlist)
 			return err;
 	}
 
-	reset_dimensions();
-
+	reset_dimensions();   /*重置预定义的结构taken*/
+/*建立feild链表*/
 	/*
 	 * perf diff doesn't use default hpp output fields.
 	 */
 	if (sort__mode != SORT_MODE__DIFF)
-		perf_hpp__init();
+		perf_hpp__init();  /*添加hpp到feild链表*/
 
-	err = __setup_output_field();
+	err = __setup_output_field();  /*分析命令行，添加要排序的字段到feild链表*/
 	if (err < 0)
 		return err;
 
 	/* copy sort keys to output fields */
-	perf_hpp__setup_output_field(&perf_hpp_list);
+	perf_hpp__setup_output_field(&perf_hpp_list);   /*遍历sort链表，将他们添加到feild链表*/
 	/* and then copy output fields to sort keys */
-	perf_hpp__append_sort_keys(&perf_hpp_list);
+	perf_hpp__append_sort_keys(&perf_hpp_list);     /*遍历feild链表，将他们添加到sort链表*/
 
 	/* setup hists-specific output fields */
 	if (perf_hpp__setup_hists_formats(&perf_hpp_list, evlist) < 0)

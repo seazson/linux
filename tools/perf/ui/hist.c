@@ -468,7 +468,7 @@ struct perf_hpp_list perf_hpp_list = {
 #undef __HPP_SORT_ACC_FN
 #undef __HPP_SORT_RAW_FN
 
-
+/*添加周期负载排序字段到fields链表*/
 void perf_hpp__init(void)
 {
 	int i;

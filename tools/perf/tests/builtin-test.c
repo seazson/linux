@@ -38,15 +38,15 @@ static struct test generic_tests[] = {
 	},
 	{
 		.desc = "Detect openat syscall event",
-		.func = test__openat_syscall_event,
+		.func = test__openat_syscall_event,      /*验证perf_open是否好使*/
 	},
 	{
 		.desc = "Detect openat syscall event on all cpus",
-		.func = test__openat_syscall_event_on_all_cpus,
+		.func = test__openat_syscall_event_on_all_cpus,  /*验证所有cpu上perf_open是否好使*/
 	},
 	{
 		.desc = "Read samples using the mmap interface",
-		.func = test__basic_mmap,
+		.func = test__basic_mmap,   /*通过tracepoint验证一个完整的open，mmap，read流程*/
 	},
 	{
 		.desc = "Test data source output",
@@ -58,11 +58,11 @@ static struct test generic_tests[] = {
 	},
 	{
 		.desc = "Simple expression parser",
-		.func = test__expr,
+		.func = test__expr,         /*测试表达式*/
 	},
 	{
 		.desc = "PERF_RECORD_* events & perf_sample fields",
-		.func = test__PERF_RECORD,
+		.func = test__PERF_RECORD,  /*测试record功能是否可用*/
 	},
 	{
 		.desc = "Parse perf pmu format",
@@ -86,7 +86,7 @@ static struct test generic_tests[] = {
 	},
 	{
 		.desc = "Parse sched tracepoints fields",
-		.func = test__perf_evsel__tp_sched_test,
+		.func = test__perf_evsel__tp_sched_test,   /*测试调度器的tracepoint*/
 	},
 	{
 		.desc = "syscalls:sys_enter_openat event fields",

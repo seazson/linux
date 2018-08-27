@@ -60,7 +60,7 @@ static const Dwfl_Callbacks offline_callbacks = {
 	.find_elf = dwfl_build_id_find_elf,
 };
 
-/* Get a Dwarf from offline image */
+/* Get a Dwarf from offline image 打开一个可执行文件，看看是否有dwarf信息*/
 static int debuginfo__init_offline_dwarf(struct debuginfo *dbg,
 					 const char *path)
 {
@@ -131,7 +131,7 @@ struct debuginfo *debuginfo__new(const char *path)
 
 	for (type = distro_dwarf_types;
 	     !dinfo && *type != DSO_BINARY_TYPE__NOT_FOUND;
-	     type++) {
+	     type++) {/*先尝试打开已有的debug信息文件*/
 		if (dso__read_binary_type_filename(dso, *type, &nil,
 						   buf, PATH_MAX) < 0)
 			continue;
@@ -141,7 +141,7 @@ struct debuginfo *debuginfo__new(const char *path)
 
 out:
 	/* if failed to open all distro debuginfo, open given binary */
-	return dinfo ? : __debuginfo__new(path);
+	return dinfo ? : __debuginfo__new(path);   /*如果都没有的话就打开可执行文件本身*/
 }
 
 void debuginfo__delete(struct debuginfo *dbg)

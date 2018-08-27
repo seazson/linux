@@ -56,15 +56,15 @@ struct callchain_node {
 	struct callchain_node	*parent;
 	struct list_head	val;
 	struct list_head	parent_val;
-	struct rb_node		rb_node_in; /* to insert nodes in an rbtree */
+	struct rb_node		rb_node_in; /* to insert nodes in an rbtree 作为子节点，链向父节点*/
 	struct rb_node		rb_node;    /* to sort nodes in an output tree */
-	struct rb_root		rb_root_in; /* input tree of children */
+	struct rb_root		rb_root_in; /* input tree of children 作为父节点，下面是其子节点*/
 	struct rb_root		rb_root;    /* sorted output tree of children */
-	unsigned int		val_nr;
+	unsigned int		val_nr;    /*此node下的栈长度，不包括子节点的长度*/
 	unsigned int		count;
-	unsigned int		children_count;
-	u64			hit;
-	u64			children_hit;
+	unsigned int		children_count; /*栈数据相同的个数*/
+	u64			hit;   /*周期*/
+	u64			children_hit;   /*栈数据相同的hit值之和*/
 };
 
 struct callchain_root {
@@ -93,13 +93,13 @@ struct callchain_param {
 	bool			enabled;
 	enum perf_call_graph_mode record_mode;
 	u32			dump_size;
-	enum chain_mode 	mode;
+	enum chain_mode 	mode;      /*显示模式*/
 	u16			max_stack;
 	u32			print_limit;
 	double			min_percent;
 	sort_chain_func_t	sort;
-	enum chain_order	order;
-	bool			order_set;
+	enum chain_order	order;     /*按caller还是callee顺序显示*/
+	bool			order_set;     /*排序的关键字*/
 	enum chain_key		key;
 	bool			branch_callstack;
 	enum chain_value	value;
@@ -133,7 +133,7 @@ struct callchain_list {
  * allocations.
  */
 struct callchain_cursor_node {
-	u64				ip;
+	u64				ip;     /*符号的相对地址*/
 	struct map			*map;
 	struct symbol			*sym;
 	bool				branch;
@@ -145,11 +145,11 @@ struct callchain_cursor_node {
 };
 
 struct callchain_cursor {
-	u64				nr;
+	u64				nr;   /*栈长度*/
 	struct callchain_cursor_node	*first;
 	struct callchain_cursor_node	**last;
-	u64				pos;
-	struct callchain_cursor_node	*curr;
+	u64				pos;  /*当前遍历了多少个*/
+	struct callchain_cursor_node	*curr;  /*指向当前分析的位置*/
 };
 
 extern __thread struct callchain_cursor callchain_cursor;

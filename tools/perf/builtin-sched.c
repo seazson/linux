@@ -101,30 +101,30 @@ struct sched_atom {
 
 enum thread_state {
 	THREAD_SLEEPING = 0,
-	THREAD_WAIT_CPU,
+	THREAD_WAIT_CPU,    /*在就绪列表里，等待被换入*/
 	THREAD_SCHED_IN,
 	THREAD_IGNORE
 };
-
+/*一个进程每次切换都会创建一个*/
 struct work_atom {
 	struct list_head	list;
 	enum thread_state	state;
-	u64			sched_out_time;
-	u64			wake_up_time;
-	u64			sched_in_time;
+	u64			sched_out_time;  /*被换出的时间戳*/
+	u64			wake_up_time;    /*被唤醒时的时间戳*/
+	u64			sched_in_time;   /*被换入的时间戳*/
 	u64			runtime;
 };
-
+/*代表一个进程的信息*/
 struct work_atoms {
 	struct list_head	work_list;
 	struct thread		*thread;
 	struct rb_node		node;
 	u64			max_lat;
 	u64			max_lat_at;
-	u64			total_lat;
-	u64			nb_atoms;
+	u64			total_lat; /*总的唤醒延时*/
+	u64			nb_atoms;  /*其下总共有多少个work_atom，也就是总共切换过多少次*/
 	u64			total_runtime;
-	int			num_merged;
+	int			num_merged; /*合并了几个进程。进程名相同的时候是可以合并的*/
 };
 
 typedef int (*sort_fn_t)(struct work_atoms *, struct work_atoms *);
@@ -172,7 +172,7 @@ struct perf_sched {
 	unsigned long	 nr_tasks;
 	struct task_desc **pid_to_task;
 	struct task_desc **tasks;
-	const struct trace_sched_handler *tp_handler;
+	const struct trace_sched_handler *tp_handler;  /*latancy，timehist等都是不一样的*/
 	pthread_mutex_t	 start_work_mutex;
 	pthread_mutex_t	 work_done_wait_mutex;
 	int		 profile_cpu;
@@ -180,8 +180,8 @@ struct perf_sched {
  * Track the current task - that way we can know whether there's any
  * weird events, such as a task being switched away that is not current.
  */
-	int		 max_cpu;
-	u32		 curr_pid[MAX_CPUS];
+	int		 max_cpu;  /*保存最大的cpu编号*/
+	u32		 curr_pid[MAX_CPUS];    /*当前正在运行的进程号*/
 	struct thread	 *curr_thread[MAX_CPUS];
 	char		 next_shortname1;
 	char		 next_shortname2;
@@ -194,8 +194,8 @@ struct perf_sched {
 	unsigned long	 targetless_wakeups;
 	unsigned long	 multitarget_wakeups;
 	unsigned long	 nr_runs;
-	unsigned long	 nr_timestamps;
-	unsigned long	 nr_unordered_timestamps;
+	unsigned long	 nr_timestamps;            /*获取过多少次时间戳*/
+	unsigned long	 nr_unordered_timestamps;  /*时间戳异常的次数*/
 	unsigned long	 nr_context_switch_bugs;
 	unsigned long	 nr_events;
 	unsigned long	 nr_lost_chunks;
@@ -210,13 +210,13 @@ struct perf_sched {
 	u64		 sum_runtime;
 	u64		 sum_fluct;
 	u64		 run_avg;
-	u64		 all_runtime;
-	u64		 all_count;
-	u64		 cpu_last_switched[MAX_CPUS];
+	u64		 all_runtime;                 /*总的在cpu上运行时间*/
+	u64		 all_count;                   /*总共进程切换次数*/
+	u64		 cpu_last_switched[MAX_CPUS];    /*上一次切换时的时间戳*/
 	struct rb_root	 atom_root, sorted_atom_root, merged_atom_root;
-	struct list_head sort_list, cmp_pid;
+	struct list_head sort_list, cmp_pid;   /*cpm_list是一个比较函数链表*/
 	bool force;
-	bool skip_merge;
+	bool skip_merge;   /*是否合并进程名相同的进程*/
 	struct perf_sched_map map;
 
 	/* options for timehist command */
@@ -1028,7 +1028,7 @@ add_sched_in_event(struct work_atoms *atoms, u64 timestamp)
 	struct work_atom *atom;
 	u64 delta;
 
-	if (list_empty(&atoms->work_list))
+	if (list_empty(&atoms->work_list)) /*上一步肯定添加了*/
 		return;
 
 	atom = list_entry(atoms->work_list.prev, struct work_atom, list);
@@ -1081,7 +1081,7 @@ static int latency_switch_event(struct perf_sched *sched,
 		return -1;
 	}
 
-	sched_out = machine__findnew_thread(machine, -1, prev_pid);
+	sched_out = machine__findnew_thread(machine, -1, prev_pid);  /*找到要切换的线程结构*/
 	sched_in = machine__findnew_thread(machine, -1, next_pid);
 	if (sched_out == NULL || sched_in == NULL)
 		goto out_put;
@@ -1096,7 +1096,7 @@ static int latency_switch_event(struct perf_sched *sched,
 			goto out_put;
 		}
 	}
-	if (add_sched_out_event(out_events, sched_out_state(prev_state), timestamp))
+	if (add_sched_out_event(out_events, sched_out_state(prev_state), timestamp)) /*创建一个work_atom并添加到out_events下*/
 		return -1;
 
 	in_events = thread_atoms_search(&sched->atom_root, sched_in, &sched->cmp_pid);
@@ -1112,10 +1112,10 @@ static int latency_switch_event(struct perf_sched *sched,
 		 * Take came in we have not heard about yet,
 		 * add in an initial atom in runnable state:
 		 */
-		if (add_sched_out_event(in_events, 'R', timestamp))
+		if (add_sched_out_event(in_events, 'R', timestamp)) /*先添加到链表中，置为等待cpu状态*/
 			goto out_put;
 	}
-	add_sched_in_event(in_events, timestamp);
+	add_sched_in_event(in_events, timestamp); /*更改为运行状态，同时根据上一次保存的唤醒事件，计算本次从唤醒到运行的时延*/
 	err = 0;
 out_put:
 	thread__put(sched_out);
@@ -1170,7 +1170,7 @@ static int latency_wakeup_event(struct perf_sched *sched,
 	u64 timestamp = sample->time;
 	int err = -1;
 
-	wakee = machine__findnew_thread(machine, -1, pid);
+	wakee = machine__findnew_thread(machine, -1, pid); /*被唤醒的进程*/
 	if (wakee == NULL)
 		return -1;
 	atoms = thread_atoms_search(&sched->atom_root, wakee, &sched->cmp_pid);
@@ -1621,7 +1621,7 @@ static int process_sched_switch_event(struct perf_tool *tool,
 	}
 
 	if (sched->tp_handler->switch_event)
-		err = sched->tp_handler->switch_event(sched, evsel, sample, machine);
+		err = sched->tp_handler->switch_event(sched, evsel, sample, machine); /*对于latancy类型来说是 latency_switch_event*/
 
 	sched->curr_pid[this_cpu] = next_pid;
 	return err;
@@ -1684,7 +1684,7 @@ static int perf_sched__process_tracepoint_sample(struct perf_tool *tool __maybe_
 	int err = 0;
 
 	if (evsel->handler != NULL) {
-		tracepoint_handler f = evsel->handler;
+		tracepoint_handler f = evsel->handler;    /*不同的tracepoint的分析函数是不一样的*/
 		err = f(tool, evsel, sample, machine);
 	}
 
@@ -1716,11 +1716,11 @@ static int perf_sched__read_events(struct perf_sched *sched)
 
 	symbol__init(&session->header.env);
 
-	if (perf_session__set_tracepoints_handlers(session, handlers))
+	if (perf_session__set_tracepoints_handlers(session, handlers))  /*为每个类型挂接对应处理函数，在tools->sample里面会调用*/
 		goto out_delete;
 
 	if (perf_session__has_traces(session, "record -R")) {
-		int err = perf_session__process_events(session);
+		int err = perf_session__process_events(session);  /*分析每个事件*/
 		if (err) {
 			pr_err("Failed to process events, error %d", err);
 			goto out_delete;
@@ -3080,11 +3080,11 @@ static int perf_sched__lat(struct perf_sched *sched)
 
 	setup_pager();
 
-	if (perf_sched__read_events(sched))
+	if (perf_sched__read_events(sched))  /*遍历事件，分析时延*/
 		return -1;
 
-	perf_sched__merge_lat(sched);
-	perf_sched__sort_lat(sched);
+	perf_sched__merge_lat(sched);  /*合并进程名相同的进程*/
+	perf_sched__sort_lat(sched);   /*排序*/
 
 	printf("\n -----------------------------------------------------------------------------------------------------------------\n");
 	printf("  Task                  |   Runtime ms  | Switches | Average delay ms | Maximum delay ms | Maximum delay at       |\n");
@@ -3194,10 +3194,10 @@ static int perf_sched__replay(struct perf_sched *sched)
 {
 	unsigned long i;
 
-	calibrate_run_measurement_overhead(sched);
-	calibrate_sleep_measurement_overhead(sched);
+	calibrate_run_measurement_overhead(sched);     /*计算两条指令执行的误差*/
+	calibrate_sleep_measurement_overhead(sched);   /*计算sleep的误差*/
 
-	test_calibrations(sched);
+	test_calibrations(sched);   /*显示1ms中运行和sleep的误差*/
 
 	if (perf_sched__read_events(sched))
 		return -1;

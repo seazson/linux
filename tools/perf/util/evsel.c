@@ -1950,7 +1950,7 @@ static inline bool overflow(const void *endp, u16 max_size, const void *offset,
 
 #define OVERFLOW_CHECK_u64(offset) \
 	OVERFLOW_CHECK(offset, sizeof(u64), sizeof(u64))
-
+/*提取event到sample中*/
 int perf_evsel__parse_sample(struct perf_evsel *evsel, union perf_event *event,
 			     struct perf_sample *data)
 {
@@ -2587,7 +2587,7 @@ u64 format_field__intval(struct format_field *field, struct perf_sample *sample,
 
 	return 0;
 }
-
+/*获取tracepoint的某个值*/
 u64 perf_evsel__intval(struct perf_evsel *evsel, struct perf_sample *sample,
 		       const char *name)
 {

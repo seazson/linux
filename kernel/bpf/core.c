@@ -1354,7 +1354,7 @@ static int bpf_check_tail_call(const struct bpf_prog *fp)
  *
  * Try to JIT eBPF program, if JIT is not available, use interpreter.
  * The BPF program will be executed via BPF_PROG_RUN() macro.
- */
+ */ /*将bpf伪码在线转换成cpu平台指令*/
 struct bpf_prog *bpf_prog_select_runtime(struct bpf_prog *fp, int *err)
 {
 	u32 stack_depth = max_t(u32, fp->aux->stack_depth, 1);

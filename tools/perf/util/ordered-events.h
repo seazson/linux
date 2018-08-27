@@ -36,7 +36,7 @@ struct ordered_events {
 	struct list_head	to_free;
 	struct ordered_event	*buffer;
 	struct ordered_event	*last;
-	ordered_events__deliver_t deliver;
+	ordered_events__deliver_t deliver;   /*Ä¬ÈÏÊÇ ordered_events__deliver_event*/
 	int			buffer_idx;
 	unsigned int		nr_events;
 	enum oe_flush		last_flush_type;

@@ -718,6 +718,7 @@ int symsrc__init(struct symsrc *ss, struct dso *dso, const char *name,
 	}
 
 	/* Always reject images with a mismatched build-id: */
+#if 0
 	if (dso->has_build_id && !symbol_conf.ignore_vmlinux_buildid) {
 		u8 build_id[BUILD_ID_SIZE];
 
@@ -732,7 +733,7 @@ int symsrc__init(struct symsrc *ss, struct dso *dso, const char *name,
 			goto out_elf_end;
 		}
 	}
-
+#endif
 	ss->is_64_bit = (gelf_getclass(elf) == ELFCLASS64);
 
 	ss->symtab = elf_section_by_name(elf, &ehdr, &ss->symshdr, ".symtab",

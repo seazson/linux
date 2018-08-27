@@ -615,7 +615,7 @@ static int hist_entry__fprintf(struct hist_entry *he, size_t size,
 	if (symbol_conf.report_hierarchy)
 		return hist_entry__hierarchy_fprintf(he, &hpp, hists, fp);
 
-	hist_entry__snprintf(he, &hpp);
+	hist_entry__snprintf(he, &hpp);  /*在一行之中，遍历feild顺序，打印列*/
 
 	ret = fprintf(fp, "%s\n", bf);
 
@@ -842,19 +842,19 @@ size_t hists__fprintf(struct hists *hists, bool show_header, int max_rows,
 
 	init_rem_hits();
 
-	hists__reset_column_width(hists);
+	hists__reset_column_width(hists);   /*重置feild链表的宽度*/
 
 	if (symbol_conf.col_width_list_str)
 		perf_hpp__set_user_width(symbol_conf.col_width_list_str);
 
 	if (show_header)
-		nr_rows += hists__fprintf_headers(hists, fp);
+		nr_rows += hists__fprintf_headers(hists, fp);  /*打印列名称*/
 
 	if (max_rows && nr_rows >= max_rows)
 		goto out;
 
 	linesz = hists__sort_list_width(hists) + 3 + 1;
-	linesz += perf_hpp__color_overhead();
+	linesz += perf_hpp__color_overhead();    /*一行的最大长度*/
 	line = malloc(linesz);
 	if (line == NULL) {
 		ret = -1;
@@ -863,14 +863,14 @@ size_t hists__fprintf(struct hists *hists, bool show_header, int max_rows,
 
 	indent = hists__overhead_width(hists) + 4;
 
-	for (nd = rb_first(&hists->entries); nd; nd = __rb_hierarchy_next(nd, HMD_FORCE_CHILD)) {
+	for (nd = rb_first(&hists->entries); nd; nd = __rb_hierarchy_next(nd, HMD_FORCE_CHILD)) {/*按照排序优先级选择行*/
 		struct hist_entry *h = rb_entry(nd, struct hist_entry, rb_node);
 		float percent;
 
 		if (h->filtered)
 			continue;
 
-		percent = hist_entry__get_percent_limit(h);
+		percent = hist_entry__get_percent_limit(h);    /*计算占用百分比，小于规定值不打印*/
 		if (percent < min_pcnt)
 			continue;
 
@@ -893,7 +893,7 @@ size_t hists__fprintf(struct hists *hists, bool show_header, int max_rows,
 				break;
 		}
 
-		if (h->ms.map == NULL && verbose > 1) {
+		if (h->ms.map == NULL && verbose > 1) {/*打印map*/
 			__map_groups__fprintf_maps(h->thread->mg,
 						   MAP__FUNCTION, fp);
 			fprintf(fp, "%.10s end\n", graph_dotted_line);

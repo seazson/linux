@@ -484,7 +484,7 @@ struct pevent {
 	int cmdline_count;
 
 	struct func_map *func_map;
-	struct func_resolver *func_resolver;
+	struct func_resolver *func_resolver;  /*machine__resolve_kernel_addr*/
 	struct func_list *funclist;
 	unsigned int func_count;
 

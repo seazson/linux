@@ -1565,9 +1565,9 @@ static int process_sample_event(struct perf_tool *tool,
 		goto out_put;
 
 	if (scripting_ops)
-		scripting_ops->process_event(event, sample, evsel, &al);
+		scripting_ops->process_event(event, sample, evsel, &al);  /*使用脚本的方式分析sample*/
 	else
-		process_event(scr, sample, evsel, &al, machine);
+		process_event(scr, sample, evsel, &al, machine);  /*通用的打印sample函数*/
 
 out_put:
 	addr_location__put(&al);
@@ -2328,7 +2328,7 @@ static int list_available_scripts(const struct option *opt __maybe_unused,
 				desc = script_desc__findnew(script_root);
 				snprintf(script_path, MAXPATHLEN, "%s/%s",
 					 lang_path, script_dirent->d_name);
-				read_script_info(desc, script_path);
+				read_script_info(desc, script_path);    /*描述信息从report脚本的description注释获取*/
 				free(script_root);
 			}
 		}
@@ -2802,7 +2802,7 @@ int cmd_script(int argc, const char **argv)
 		NULL
 	};
 
-	setup_scripting();
+	setup_scripting();   /*注册脚本对应的ops函数*/
 
 	argc = parse_options_subcommand(argc, argv, options, script_subcommands, script_usage,
 			     PARSE_OPT_STOP_AT_NON_OPTION);
@@ -2832,7 +2832,7 @@ int cmd_script(int argc, const char **argv)
 
 	/* make sure PERF_EXEC_PATH is set for scripts */
 	set_argv_exec_path(get_argv_exec_path());
-
+	/*没有通过-s或者record，report指定脚本名称，而是直接输入脚本名称*/
 	if (argc && !script_name && !rec_script_path && !rep_script_path) {
 		int live_pipe[2];
 		int rep_args;
@@ -2940,11 +2940,11 @@ int cmd_script(int argc, const char **argv)
 	if (rep_script_path)
 		script_path = rep_script_path;
 
-	if (script_path) {
+	if (script_path) {/*要运行的shell文件。通过record和report指定的是shell脚本*/
 		j = 0;
 
 		if (!rec_script_path)
-			system_wide = false;
+			system_wide = false;  /*report命令不需要-a参数*/
 		else if (!system_wide) {
 			if (have_cmd(argc - 1, &argv[1]) != 0) {
 				err = -1;
@@ -2972,7 +2972,7 @@ int cmd_script(int argc, const char **argv)
 		exit(-1);
 	}
 
-	if (!script_name)
+	if (!script_name)  /*没有指定-s的话需要使用pager，因为会进行原始打印*/
 		setup_pager();
 
 	session = perf_session__new(&file, false, &script.tool);
@@ -3019,7 +3019,7 @@ int cmd_script(int argc, const char **argv)
 		return -1;
 	}
 
-	if (generate_script_lang) {
+	if (generate_script_lang) { /*产生脚本文件*/
 		struct stat perf_stat;
 		int input;
 
@@ -3060,7 +3060,7 @@ int cmd_script(int argc, const char **argv)
 		goto out_delete;
 	}
 
-	if (script_name) {
+	if (script_name) {/*以-s参数指定运行哪个脚本。实际上使用report方式时，脚本里面也会转换成调用-s*/
 		err = scripting_ops->start_script(script_name, argc, argv);
 		if (err)
 			goto out_delete;
@@ -3079,7 +3079,7 @@ int cmd_script(int argc, const char **argv)
 		return -EINVAL;
 	}
 
-	err = __cmd_script(&script);
+	err = __cmd_script(&script);  /*调用tools处理每个事件*/
 
 	flush_scripting();
 
