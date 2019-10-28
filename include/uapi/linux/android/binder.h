@@ -72,7 +72,7 @@ struct flat_binder_object {
 
 	/* 8 bytes of data. */
 	union {
-		binder_uintptr_t	binder;	/* local object */
+		binder_uintptr_t	binder;	/* local object server注册的时候次指针指向用户态函数表*/
 		__u32			handle;	/* remote object */
 	};
 
@@ -237,12 +237,12 @@ struct binder_transaction_data {
 	 */
 	union {
 		/* target descriptor of command transaction */
-		__u32	handle;
+		__u32	handle;  /*目标的handle编号，manger是0*/
 		/* target descriptor of return transaction */
-		binder_uintptr_t ptr;
+		binder_uintptr_t ptr;  /*目标Binder_node的内存地址*/
 	} target;
 	binder_uintptr_t	cookie;	/* target object cookie */
-	__u32		code;		/* transaction command */
+	__u32		code;		/* transaction command 代表Client与Server双方约定的命令码*/
 
 	/* General information about the transaction. */
 	__u32	        flags;
@@ -260,7 +260,7 @@ struct binder_transaction_data {
 			/* transaction data */
 			binder_uintptr_t	buffer;
 			/* offsets from buffer to flat_binder_object structs */
-			binder_uintptr_t	offsets;
+			binder_uintptr_t	offsets;   /*指向flat_binder_object*/
 		} ptr;
 		__u8	buf[8];
 	} data;

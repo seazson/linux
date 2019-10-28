@@ -59,7 +59,7 @@ struct binder_buffer {
 	size_t data_size;
 	size_t offsets_size;
 	size_t extra_buffers_size;
-	void *data;
+	void *data;  /*指向binder_alloc->buffer*/
 };
 
 /**
@@ -100,16 +100,16 @@ struct binder_lru_page {
  */
 struct binder_alloc {
 	struct mutex mutex;
-	struct vm_area_struct *vma;
+	struct vm_area_struct *vma;  /*对应用户进程vma*/
 	struct mm_struct *vma_vm_mm;
-	void *buffer;
-	ptrdiff_t user_buffer_offset;
-	struct list_head buffers;
+	void *buffer;   /*内核态虚拟地址*/
+	ptrdiff_t user_buffer_offset; /*内核态虚拟地址和用户态虚拟地址的差值*/
+	struct list_head buffers;  /*用于连接struct binder_buffer*/
 	struct rb_root free_buffers;
 	struct rb_root allocated_buffers;
 	size_t free_async_space;
 	struct binder_lru_page *pages;
-	size_t buffer_size;
+	size_t buffer_size;  /*映射的总大小*/
 	uint32_t buffer_free;
 	int pid;
 };

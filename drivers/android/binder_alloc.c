@@ -60,7 +60,7 @@ static struct binder_buffer *binder_buffer_prev(struct binder_buffer *buffer)
 {
 	return list_entry(buffer->entry.prev, struct binder_buffer, entry);
 }
-
+/*获取buffer大小,通过两个buffer对应数据地址差值*/
 static size_t binder_alloc_buffer_size(struct binder_alloc *alloc,
 				       struct binder_buffer *buffer)
 {
@@ -184,7 +184,7 @@ struct binder_buffer *binder_alloc_prepare_to_free(struct binder_alloc *alloc,
 	mutex_unlock(&alloc->mutex);
 	return buffer;
 }
-
+/*为用户态和内核态同时分配一个物理内存并建立映射，allocate==0也可以释放内存*/
 static int binder_update_page_range(struct binder_alloc *alloc, int allocate,
 				    void *start, void *end,
 				    struct vm_area_struct *vma)
@@ -237,7 +237,7 @@ static int binder_update_page_range(struct binder_alloc *alloc, int allocate,
 		index = (page_addr - alloc->buffer) / PAGE_SIZE;
 		page = &alloc->pages[index];
 
-		if (page->page_ptr) {
+		if (page->page_ptr) {/*之前已经分配过就从lru中取出*/
 			trace_binder_alloc_lru_start(alloc, index);
 
 			on_lru = list_lru_del(&binder_alloc_lru, &page->lru);
@@ -266,7 +266,7 @@ static int binder_update_page_range(struct binder_alloc *alloc, int allocate,
 					       PAGE_SIZE, PAGE_KERNEL,
 					       &page->page_ptr);
 		flush_cache_vmap((unsigned long)page_addr,
-				(unsigned long)page_addr + PAGE_SIZE);
+				(unsigned long)page_addr + PAGE_SIZE); /*建立物理页和内核虚拟地址页表*/
 		if (ret != 1) {
 			pr_err("%d: binder_alloc_buf failed to map page at %pK in kernel\n",
 			       alloc->pid, page_addr);
@@ -274,7 +274,7 @@ static int binder_update_page_range(struct binder_alloc *alloc, int allocate,
 		}
 		user_page_addr =
 			(uintptr_t)page_addr + alloc->user_buffer_offset;
-		ret = vm_insert_page(vma, user_page_addr, page[0].page_ptr);
+		ret = vm_insert_page(vma, user_page_addr, page[0].page_ptr); /*建立物理页与用户态虚拟地址映射*/
 		if (ret) {
 			pr_err("%d: binder_alloc_buf failed to map page at %lx in userspace\n",
 			       alloc->pid, user_page_addr);
@@ -372,7 +372,7 @@ struct binder_buffer *binder_alloc_new_buf_locked(struct binder_alloc *alloc,
 	/* Pad 0-size buffers so they get assigned unique addresses */
 	size = max(size, sizeof(void *));
 
-	while (n) {
+	while (n) {/*在之前以释放的buffer中找到一个大小最合适的buffer*/
 		buffer = rb_entry(n, struct binder_buffer, rb_node);
 		BUG_ON(!buffer->free);
 		buffer_size = binder_alloc_buffer_size(alloc, buffer);
@@ -387,7 +387,7 @@ struct binder_buffer *binder_alloc_new_buf_locked(struct binder_alloc *alloc,
 			break;
 		}
 	}
-	if (best_fit == NULL) {
+	if (best_fit == NULL) {/*没有找到合适的可用大小的buffer，打印目前buffer统计*/
 		size_t allocated_buffers = 0;
 		size_t largest_alloc_size = 0;
 		size_t total_alloc_size = 0;
@@ -420,7 +420,7 @@ struct binder_buffer *binder_alloc_new_buf_locked(struct binder_alloc *alloc,
 		       total_free_size, free_buffers, largest_free_size);
 		return ERR_PTR(-ENOSPC);
 	}
-	if (n == NULL) {
+	if (n == NULL) {/*扫描了一遍没有找到大小完全匹配的，但是有大的可以分配*/
 		buffer = rb_entry(best_fit, struct binder_buffer, rb_node);
 		buffer_size = binder_alloc_buffer_size(alloc, buffer);
 	}
@@ -435,13 +435,13 @@ struct binder_buffer *binder_alloc_new_buf_locked(struct binder_alloc *alloc,
 	end_page_addr =
 		(void *)PAGE_ALIGN((uintptr_t)buffer->data + size);
 	if (end_page_addr > has_page_addr)
-		end_page_addr = has_page_addr;
+		end_page_addr = has_page_addr; /*新分配的地址长度不能比最大情况下页对齐后还大*/
 	ret = binder_update_page_range(alloc, 1,
-	    (void *)PAGE_ALIGN((uintptr_t)buffer->data), end_page_addr, NULL);
+	    (void *)PAGE_ALIGN((uintptr_t)buffer->data), end_page_addr, NULL);/*真正分配物理页*/
 	if (ret)
 		return ERR_PTR(ret);
 
-	if (buffer_size != size) {
+	if (buffer_size != size) {/*实际需要的比之前分配的小，分裂成两个*/
 		struct binder_buffer *new_buffer;
 
 		new_buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
@@ -455,7 +455,7 @@ struct binder_buffer *binder_alloc_new_buf_locked(struct binder_alloc *alloc,
 		new_buffer->free = 1;
 		binder_insert_free_buffer(alloc, new_buffer);
 	}
-
+	/*从空闲链表中移除后放到已分配链表中*/
 	rb_erase(best_fit, &alloc->free_buffers);
 	buffer->free = 0;
 	buffer->free_in_progress = 0;
@@ -608,7 +608,7 @@ static void binder_free_buf_locked(struct binder_alloc *alloc,
 	if (!list_is_last(&buffer->entry, &alloc->buffers)) {
 		struct binder_buffer *next = binder_buffer_next(buffer);
 
-		if (next->free) {
+		if (next->free) {/*表示前后两个是否的buffer可以连起来，如果可以将后面一个删除*/
 			rb_erase(&next->rb_node, &alloc->free_buffers);
 			binder_delete_free_buffer(alloc, next);
 		}
@@ -692,14 +692,14 @@ int binder_alloc_mmap_handler(struct binder_alloc *alloc,
 #endif
 	alloc->pages = kzalloc(sizeof(alloc->pages[0]) *
 				   ((vma->vm_end - vma->vm_start) / PAGE_SIZE),
-			       GFP_KERNEL);
+			       GFP_KERNEL); /*分配结构体空间*/
 	if (alloc->pages == NULL) {
 		ret = -ENOMEM;
 		failure_string = "alloc page array";
 		goto err_alloc_pages_failed;
 	}
 	alloc->buffer_size = vma->vm_end - vma->vm_start;
-
+	/*分配buffer，并插入alloc的红黑树中*/
 	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
 	if (!buffer) {
 		ret = -ENOMEM;
@@ -710,12 +710,12 @@ int binder_alloc_mmap_handler(struct binder_alloc *alloc,
 	buffer->data = alloc->buffer;
 	list_add(&buffer->entry, &alloc->buffers);
 	buffer->free = 1;
-	binder_insert_free_buffer(alloc, buffer);
+	binder_insert_free_buffer(alloc, buffer); /*插入到free buffer树中*/
 	alloc->free_async_space = alloc->buffer_size / 2;
 	barrier();
 	alloc->vma = vma;
 	alloc->vma_vm_mm = vma->vm_mm;
-	mmgrab(alloc->vma_vm_mm);
+	mmgrab(alloc->vma_vm_mm); /*增加引用计数，防止mm被释放*/
 
 	return 0;
 

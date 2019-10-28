@@ -261,9 +261,9 @@ static struct binder_transaction_log_entry *binder_transaction_log_add(
 	memset(e, 0, sizeof(*e));
 	return e;
 }
-
+/*代表device上下文*/
 struct binder_context {
-	struct binder_node *binder_context_mgr_node;
+	struct binder_node *binder_context_mgr_node;  /*管理进程对应的node*/
 	struct mutex context_mgr_node_lock;
 
 	kuid_t binder_context_mgr_uid;
@@ -361,7 +361,7 @@ struct binder_error {
  * Bookkeeping structure for binder nodes.
  */
 struct binder_node {
-	int debug_id;
+	int debug_id; /*node唯一的id号*/
 	spinlock_t lock;
 	struct binder_work work;
 	union {
@@ -374,8 +374,8 @@ struct binder_node {
 	int local_weak_refs;
 	int local_strong_refs;
 	int tmp_refs;
-	binder_uintptr_t ptr;
-	binder_uintptr_t cookie;
+	binder_uintptr_t ptr;  /*用户态扁平结构传过来的函数表*/
+	binder_uintptr_t cookie; /*用户态扁平结构传过来的*/
 	struct {
 		/*
 		 * bitfield elements protected by
@@ -421,7 +421,7 @@ struct binder_ref_death {
  */
 struct binder_ref_data {
 	int debug_id;
-	uint32_t desc;
+	uint32_t desc;/*用户态handle值*/
 	int strong;
 	int weak;
 };
@@ -452,7 +452,7 @@ struct binder_ref {
 	struct rb_node rb_node_desc;
 	struct rb_node rb_node_node;
 	struct hlist_node node_entry;
-	struct binder_proc *proc;
+	struct binder_proc *proc;   /*指向被关联的进程，也就是消息要发送到的*/
 	struct binder_node *node;
 	struct binder_ref_death *death;
 };
@@ -519,13 +519,13 @@ enum binder_deferred_state {
  *                        Lock order: 1) outer, 2) node, 3) inner
  *
  * Bookkeeping structure for binder processes
- */
+ */ /*每次打开binder文件的时候会创建一个*/
 struct binder_proc {
 	struct hlist_node proc_node;
 	struct rb_root threads;
-	struct rb_root nodes;
-	struct rb_root refs_by_desc;
-	struct rb_root refs_by_node;
+	struct rb_root nodes;         /*此进程注册的node，每当进程对外注册一个server就会建一个node，key是server回调函数表*/
+	struct rb_root refs_by_desc;  /*以handle号为key，维护struct binder_ref树，是所有与此进程要通信的*/
+	struct rb_root refs_by_node; /*以node地址为key，维护所有需要与此进程通信的node*/
 	struct list_head waiting_threads;
 	int pid;
 	struct task_struct *tsk;
@@ -600,8 +600,8 @@ struct binder_thread {
 	int pid;
 	int looper;              /* only modified by this thread */
 	bool looper_need_return; /* can be written by other thread */
-	struct binder_transaction *transaction_stack;
-	struct list_head todo;
+	struct binder_transaction *transaction_stack;  /*本线程正在处理的事务，表示已经从todo取出，并且交给用户态处理还未返回*/
+	struct list_head todo;   /*本线程待处理的事务*/
 	struct binder_error return_error;
 	struct binder_error reply_error;
 	wait_queue_head_t wait;
@@ -611,10 +611,10 @@ struct binder_thread {
 };
 
 struct binder_transaction {
-	int debug_id;
+	int debug_id; /*全局自增*/
 	struct binder_work work;
 	struct binder_thread *from;
-	struct binder_transaction *from_parent;
+	struct binder_transaction *from_parent; /*此消息由parent触发*/
 	struct binder_proc *to_proc;
 	struct binder_thread *to_thread;
 	struct binder_transaction *to_parent;
@@ -1396,7 +1396,7 @@ static struct binder_ref *binder_get_ref_olocked(struct binder_proc *proc,
 	while (n) {
 		ref = rb_entry(n, struct binder_ref, rb_node_desc);
 
-		if (desc < ref->data.desc) {
+		if (desc < ref->data.desc) {/*desc代表handle号*/
 			n = n->rb_left;
 		} else if (desc > ref->data.desc) {
 			n = n->rb_right;
@@ -1459,7 +1459,7 @@ static struct binder_ref *binder_get_ref_for_node_olocked(
 	new_ref->node = node;
 	rb_link_node(&new_ref->rb_node_node, parent, p);
 	rb_insert_color(&new_ref->rb_node_node, &proc->refs_by_node);
-
+	/*计算新的handle号*/
 	new_ref->data.desc = (node == context->binder_context_mgr_node) ? 0 : 1;
 	for (n = rb_first(&proc->refs_by_desc); n != NULL; n = rb_next(n)) {
 		ref = rb_entry(n, struct binder_ref, rb_node_desc);
@@ -2239,9 +2239,9 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 	struct binder_ref_data rdata;
 	int ret = 0;
 
-	node = binder_get_node(proc, fp->binder);
+	node = binder_get_node(proc, fp->binder);/*根据用户态参数地址作为key查找node*/
 	if (!node) {
-		node = binder_new_node(proc, fp);
+		node = binder_new_node(proc, fp);/*本进程未注册过则新建一个node*/
 		if (!node)
 			return -ENOMEM;
 	}
@@ -2257,7 +2257,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 		ret = -EPERM;
 		goto done;
 	}
-
+	/*根据要发送的进程，创建或者增加ref*/
 	ret = binder_inc_ref_for_node(target_proc, node,
 			fp->hdr.type == BINDER_TYPE_BINDER,
 			&thread->todo, &rdata);
@@ -2269,7 +2269,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 	else
 		fp->hdr.type = BINDER_TYPE_WEAK_HANDLE;
 	fp->binder = 0;
-	fp->handle = rdata.desc;
+	fp->handle = rdata.desc;  /*新创建了handle号*/
 	fp->cookie = 0;
 
 	trace_binder_transaction_node_to_ref(t, node, &rdata);
@@ -2325,7 +2325,7 @@ static int binder_translate_handle(struct flat_binder_object *fp,
 			     src_rdata.debug_id, src_rdata.desc, node->debug_id,
 			     (u64)node->ptr);
 		binder_node_unlock(node);
-	} else {
+	} else {/*查询后reply时会走这里*/
 		struct binder_ref_data dest_rdata;
 
 		binder_node_unlock(node);
@@ -2562,7 +2562,7 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	}
 
 	if (!thread && !target_list)
-		thread = binder_select_thread_ilocked(proc);
+		thread = binder_select_thread_ilocked(proc); /*找一个进程下在等待的线程*/
 
 	if (thread)
 		target_list = &thread->todo;
@@ -2574,7 +2574,7 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	binder_enqueue_work_ilocked(&t->work, target_list);
 
 	if (wakeup)
-		binder_wakeup_thread_ilocked(proc, thread, !oneway /* sync */);
+		binder_wakeup_thread_ilocked(proc, thread, !oneway /* sync */); /*唤醒线程*/
 
 	binder_inner_proc_unlock(proc);
 	binder_node_unlock(node);
@@ -2689,7 +2689,7 @@ static void binder_transaction(struct binder_proc *proc,
 		thread->transaction_stack = in_reply_to->to_parent;
 		binder_inner_proc_unlock(proc);
 		binder_set_nice(in_reply_to->saved_priority);
-		target_thread = binder_get_txn_from_and_acq_inner(in_reply_to);
+		target_thread = binder_get_txn_from_and_acq_inner(in_reply_to); /*获取之前的发送者*/
 		if (target_thread == NULL) {
 			return_error = BR_DEAD_REPLY;
 			return_error_line = __LINE__;
@@ -2713,7 +2713,7 @@ static void binder_transaction(struct binder_proc *proc,
 		target_proc->tmp_ref++;
 		binder_inner_proc_unlock(target_thread->proc);
 	} else {
-		if (tr->target.handle) {
+		if (tr->target.handle) {/*发给的是普通server*/
 			struct binder_ref *ref;
 
 			/*
@@ -2725,7 +2725,7 @@ static void binder_transaction(struct binder_proc *proc,
 			 */
 			binder_proc_lock(proc);
 			ref = binder_get_ref_olocked(proc, tr->target.handle,
-						     true);
+						     true);  /*获取强引用，没有强引用返回null*/
 			if (ref) {
 				target_node = binder_get_node_refs_for_txn(
 						ref->node, &target_proc,
@@ -2736,13 +2736,13 @@ static void binder_transaction(struct binder_proc *proc,
 				return_error = BR_FAILED_REPLY;
 			}
 			binder_proc_unlock(proc);
-		} else {
-			mutex_lock(&context->context_mgr_node_lock);
+		} else {/*发给的是管理进程*/
+			mutex_lock(&context->context_mgr_node_lock);/*锁住整个device上下文*/
 			target_node = context->binder_context_mgr_node;
 			if (target_node)
 				target_node = binder_get_node_refs_for_txn(
 						target_node, &target_proc,
-						&return_error);
+						&return_error);  /*增加node引用计数，同时返回对应target_proc*/
 			else
 				return_error = BR_DEAD_REPLY;
 			mutex_unlock(&context->context_mgr_node_lock);
@@ -2764,7 +2764,7 @@ static void binder_transaction(struct binder_proc *proc,
 			goto err_invalid_target_handle;
 		}
 		binder_inner_proc_lock(proc);
-		if (!(tr->flags & TF_ONE_WAY) && thread->transaction_stack) {
+		if (!(tr->flags & TF_ONE_WAY) && thread->transaction_stack) {/*本线程有正在处理的事务*/
 			struct binder_transaction *tmp;
 
 			tmp = thread->transaction_stack;
@@ -2800,7 +2800,7 @@ static void binder_transaction(struct binder_proc *proc,
 		binder_inner_proc_unlock(proc);
 	}
 	if (target_thread)
-		e->to_thread = target_thread->pid;
+		e->to_thread = target_thread->pid;   /*？？？*/
 	e->to_proc = target_proc->pid;
 
 	/* TODO: reuse incoming transaction for reply */
@@ -2847,7 +2847,7 @@ static void binder_transaction(struct binder_proc *proc,
 	if (!reply && !(tr->flags & TF_ONE_WAY))
 		t->from = thread;
 	else
-		t->from = NULL;
+		t->from = NULL; /*reply不需要记录from*/
 	t->sender_euid = task_euid(proc->tsk);
 	t->to_proc = target_proc;
 	t->to_thread = target_thread;
@@ -2856,7 +2856,7 @@ static void binder_transaction(struct binder_proc *proc,
 	t->priority = task_nice(current);
 
 	trace_binder_transaction(reply, t, target_node);
-
+	/*分配新的buffer*/
 	t->buffer = binder_alloc_new_buf(&target_proc->alloc, tr->data_size,
 		tr->offsets_size, extra_buffers_size,
 		!reply && (t->flags & TF_ONE_WAY));
@@ -2879,7 +2879,7 @@ static void binder_transaction(struct binder_proc *proc,
 	off_start = (binder_size_t *)(t->buffer->data +
 				      ALIGN(tr->data_size, sizeof(void *)));
 	offp = off_start;
-
+	/*拷贝用户态数据到内核申请的buffer中*/
 	if (copy_from_user(t->buffer->data, (const void __user *)(uintptr_t)
 			   tr->data.ptr.buffer, tr->data_size)) {
 		binder_user_error("%d:%d got transaction with invalid data ptr\n",
@@ -2889,6 +2889,7 @@ static void binder_transaction(struct binder_proc *proc,
 		return_error_line = __LINE__;
 		goto err_copy_data_failed;
 	}
+	/*拷贝紧接着的flat_binder_object数据*/
 	if (copy_from_user(offp, (const void __user *)(uintptr_t)
 			   tr->data.ptr.offsets, tr->offsets_size)) {
 		binder_user_error("%d:%d got transaction with invalid offsets ptr\n",
@@ -2919,7 +2920,7 @@ static void binder_transaction(struct binder_proc *proc,
 	sg_bufp = (u8 *)(PTR_ALIGN(off_end, sizeof(void *)));
 	sg_buf_end = sg_bufp + extra_buffers_size;
 	off_min = 0;
-	for (; offp < off_end; offp++) {
+	for (; offp < off_end; offp++) {/*解析扁平结构*/
 		struct binder_object_header *hdr;
 		size_t object_size = binder_validate_object(t->buffer, *offp);
 
@@ -2937,12 +2938,12 @@ static void binder_transaction(struct binder_proc *proc,
 		hdr = (struct binder_object_header *)(t->buffer->data + *offp);
 		off_min = *offp + object_size;
 		switch (hdr->type) {
-		case BINDER_TYPE_BINDER:
+		case BINDER_TYPE_BINDER: /*server在注册的时候会发送这个*/
 		case BINDER_TYPE_WEAK_BINDER: {
 			struct flat_binder_object *fp;
 
 			fp = to_flat_binder_object(hdr);
-			ret = binder_translate_binder(fp, t, thread);
+			ret = binder_translate_binder(fp, t, thread);  /*创建新的node和ref，此时的thread是server*/
 			if (ret < 0) {
 				return_error = BR_FAILED_REPLY;
 				return_error_param = ret;
@@ -2950,12 +2951,12 @@ static void binder_transaction(struct binder_proc *proc,
 				goto err_translate_failed;
 			}
 		} break;
-		case BINDER_TYPE_HANDLE:
+		case BINDER_TYPE_HANDLE: /*client在请求server handle时会触发*/
 		case BINDER_TYPE_WEAK_HANDLE: {
 			struct flat_binder_object *fp;
 
 			fp = to_flat_binder_object(hdr);
-			ret = binder_translate_handle(fp, t, thread);
+			ret = binder_translate_handle(fp, t, thread);  /*此时的thread是manger*/
 			if (ret < 0) {
 				return_error = BR_FAILED_REPLY;
 				return_error_param = ret;
@@ -3090,7 +3091,7 @@ static void binder_transaction(struct binder_proc *proc,
 		t->from_parent = thread->transaction_stack;
 		thread->transaction_stack = t;
 		binder_inner_proc_unlock(proc);
-		if (!binder_proc_transaction(t, target_proc, target_thread)) {
+		if (!binder_proc_transaction(t, target_proc, target_thread)) {/*将任务加到目标进程/线程的todo上。只有reply会有target_thread？*/
 			binder_inner_proc_lock(proc);
 			binder_pop_transaction_ilocked(thread, t);
 			binder_inner_proc_unlock(proc);
@@ -3737,7 +3738,7 @@ static int binder_thread_read(struct binder_proc *proc,
 	int ret = 0;
 	int wait_for_proc_work;
 
-	if (*consumed == 0) {
+	if (*consumed == 0) {/*第一次总是返回BR_NOOP*/
 		if (put_user(BR_NOOP, (uint32_t __user *)ptr))
 			return -EFAULT;
 		ptr += sizeof(uint32_t);
@@ -3967,7 +3968,7 @@ retry:
 		} break;
 		}
 
-		if (!t)
+		if (!t)  /*只有BINDER_WORK_TRANSACTION类型才往下走*/
 			continue;
 
 		BUG_ON(t->buffer == NULL);
@@ -4364,7 +4365,7 @@ static int binder_ioctl_write_read(struct file *filp,
 out:
 	return ret;
 }
-
+/*设置进程为管理进程*/
 static int binder_ioctl_set_ctx_mgr(struct file *filp)
 {
 	int ret = 0;
@@ -4394,7 +4395,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp)
 	} else {
 		context->binder_context_mgr_uid = curr_euid;
 	}
-	new_node = binder_new_node(proc, NULL);
+	new_node = binder_new_node(proc, NULL); /*创建并初始化一个node*/
 	if (!new_node) {
 		ret = -ENOMEM;
 		goto out;
@@ -4456,7 +4457,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (ret)
 		goto err_unlocked;
 
-	thread = binder_get_thread(proc);
+	thread = binder_get_thread(proc); /*获取当前线程结构，如果没有的话创建。一个进程至少会创建一个proc和一个thread*/
 	if (thread == NULL) {
 		ret = -ENOMEM;
 		goto err;
@@ -4482,7 +4483,7 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	}
 	case BINDER_SET_CONTEXT_MGR:
-		ret = binder_ioctl_set_ctx_mgr(filp);
+		ret = binder_ioctl_set_ctx_mgr(filp);  /*注册为管理进程，会创建node*/
 		if (ret)
 			goto err;
 		break;
@@ -4581,10 +4582,10 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct binder_proc *proc = filp->private_data;
 	const char *failure_string;
 
-	if (proc->tsk != current->group_leader)
+	if (proc->tsk != current->group_leader) /*只有主进程才能映射，从线程不用映射*/
 		return -EINVAL;
 
-	if ((vma->vm_end - vma->vm_start) > SZ_4M)
+	if ((vma->vm_end - vma->vm_start) > SZ_4M) /*最多映射4M*/
 		vma->vm_end = vma->vm_start + SZ_4M;
 
 	binder_debug(BINDER_DEBUG_OPEN_CLOSE,
@@ -4602,7 +4603,7 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_ops = &binder_vm_ops;
 	vma->vm_private_data = proc;
 
-	ret = binder_alloc_mmap_handler(&proc->alloc, vma);
+	ret = binder_alloc_mmap_handler(&proc->alloc, vma);/*预留内核虚拟空间，分配buffer*/
 	if (ret)
 		return ret;
 	proc->files = get_files_struct(current);
@@ -4643,7 +4644,7 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	filp->private_data = proc;
 
 	mutex_lock(&binder_procs_lock);
-	hlist_add_head(&proc->proc_node, &binder_procs);
+	hlist_add_head(&proc->proc_node, &binder_procs); /*管理所有proc*/
 	mutex_unlock(&binder_procs_lock);
 
 	if (binder_debugfs_dir_entry_proc) {
