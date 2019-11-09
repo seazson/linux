@@ -1802,7 +1802,7 @@ int parse_events_option(const struct option *opt, const char *str,
 
 	return ret;
 }
-
+/*设置evlist下所有evsel*/
 static int
 foreach_evsel_in_last_glob(struct perf_evlist *evlist,
 			   int (*func)(struct perf_evsel *evsel,

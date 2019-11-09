@@ -3010,7 +3010,7 @@ int cmd_script(int argc, const char **argv)
 		symbol_conf.use_callchain = true;
 	else
 		symbol_conf.use_callchain = false;
-
+    /*为tracepoint注册处理函数*/
 	if (session->tevent.pevent &&
 	    pevent_set_function_resolver(session->tevent.pevent,
 					 machine__resolve_kernel_addr,
@@ -3068,7 +3068,7 @@ int cmd_script(int argc, const char **argv)
 		script_started = true;
 	}
 
-
+	/*校验evsel和attr设置是否正确*/
 	err = perf_session__check_output_opt(session);
 	if (err < 0)
 		goto out_delete;

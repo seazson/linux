@@ -71,7 +71,7 @@ void trace_event__cleanup(struct trace_event *t)
 
 /*
  * Returns pointer with encoded error via <linux/err.h> interface.
- */
+ */ /*读取并分析tracepoint的format格式，创建format对应结构*/
 static struct event_format*
 tp_format(const char *sys, const char *name)
 {

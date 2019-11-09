@@ -46,24 +46,24 @@ static int perf_session__open(struct perf_session *session)
 	if (perf_header__has_feat(&session->header, HEADER_STAT))
 		return 0;
 
-	if (!perf_evlist__valid_sample_type(session->evlist)) {
+	if (!perf_evlist__valid_sample_type(session->evlist)) {/*所有sample的id在数据中的偏移应该一样*/
 		pr_err("non matching sample_type\n");
 		return -1;
 	}
 
-	if (!perf_evlist__valid_sample_id_all(session->evlist)) {
+	if (!perf_evlist__valid_sample_id_all(session->evlist)) {/*所有的sample设置的sample_id_all属性必须一样*/
 		pr_err("non matching sample_id_all\n");
 		return -1;
 	}
 
-	if (!perf_evlist__valid_read_format(session->evlist)) {
+	if (!perf_evlist__valid_read_format(session->evlist)) {/*所有的sample的read_format必须一样，而且必须有id*/
 		pr_err("non matching read_format\n");
 		return -1;
 	}
 
 	return 0;
 }
-
+/*计算sample的头大小*/
 void perf_session__set_id_hdr_size(struct perf_session *session)
 {
 	u16 id_hdr_size = perf_evlist__id_hdr_size(session->evlist);
@@ -142,7 +142,7 @@ struct perf_session *perf_session__new(struct perf_data_file *file,
 		session->file = file;
 
 		if (perf_data_file__is_read(file)) {/*report模式*/
-			if (perf_session__open(session) < 0)
+			if (perf_session__open(session) < 0) /*读取头，并且检查各种属性是否正确*/
 				goto out_close;
 
 			/*
@@ -150,7 +150,7 @@ struct perf_session *perf_session__new(struct perf_data_file *file,
 			 * but not in pipe-mode.
 			 */
 			if (!file->is_pipe) {
-				perf_session__set_id_hdr_size(session);
+				perf_session__set_id_hdr_size(session); /*计算sample头大小*/
 				perf_session__set_comm_exec(session);
 			}
 		}
@@ -1499,7 +1499,7 @@ static s64 perf_session__process_event(struct perf_session *session,
 	int ret;
 
 	if (session->header.needs_swap)
-		event_swap(event, perf_evlist__sample_id_all(evlist));
+		event_swap(event, perf_evlist__sample_id_all(evlist)); /*根据event的类型调用相应的swap函数交换大小端*/
 
 	if (event->header.type >= PERF_RECORD_HEADER_MAX)
 		return -EINVAL;

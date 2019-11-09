@@ -1994,7 +1994,7 @@ static int vmlinux_path__add(const char *new_entry)
 
 	return 0;
 }
-
+/*添加默认vmlinux路径*/
 static int vmlinux_path__init(struct perf_env *env)
 {
 	struct utsname uts;
@@ -2102,7 +2102,7 @@ int symbol__annotation_init(void)
 	symbol_conf.init_annotation = true;
 	return 0;
 }
-
+/*初始化symbol相关结构体*/
 int symbol__init(struct perf_env *env)
 {
 	const char *symfs;

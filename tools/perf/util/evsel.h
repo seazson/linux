@@ -92,7 +92,7 @@ struct perf_evsel {
 	char			*filter;
 	struct xyarray		*fd;
 	struct xyarray		*sample_id;
-	u64			*id;
+	u64			*id;   /*u64数组，个数对应cpu*thread */
 	struct perf_counts	*counts;
 	struct perf_counts	*prev_raw_counts;
 	int			idx;
@@ -109,9 +109,9 @@ struct perf_evsel {
 	struct cpu_map		*cpus;
 	struct cpu_map		*own_cpus;
 	struct thread_map	*threads;
-	unsigned int		sample_size;
-	int			id_pos;
-	int			is_pos;
+	unsigned int		sample_size; /*每个采样数据大小*/
+	int			id_pos;   /*普通sample中event id在采样点中的偏移*/
+	int			is_pos;   /*非正常sample中event id在采样点中的偏移*/
 	bool			snapshot;
 	bool 			supported;
 	bool 			needs_swap;

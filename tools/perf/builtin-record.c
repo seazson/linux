@@ -913,7 +913,7 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 	fd = perf_data_file__fd(file);
 	rec->session = session;
 
-	record__init_features(rec);
+	record__init_features(rec);  /*修正头上的feature*/
 
 	if (forks) {
 		err = perf_evlist__prepare_workload(rec->evlist, &opts->target,
@@ -952,7 +952,7 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 
 	if (!rec->evlist->nr_groups)
 		perf_header__clear_feat(&session->header, HEADER_GROUP_DESC);
-
+	/*写入文件头*/
 	if (file->is_pipe) {
 		err = perf_header__write_pipe(fd);
 		if (err < 0)
@@ -976,7 +976,7 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 	err = record__synthesize(rec, false);
 	if (err < 0)
 		goto out_child;
-
+	/*提升优先级*/
 	if (rec->realtime_prio) {
 		struct sched_param param;
 
@@ -1043,7 +1043,7 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 
 		perf_evlist__start_workload(rec->evlist);
 	}
-
+	/*延迟模式在这里才是能evsel*/
 	if (opts->initial_delay) {
 		usleep(opts->initial_delay * USEC_PER_MSEC);
 		perf_evlist__enable(rec->evlist);
@@ -1711,14 +1711,14 @@ int cmd_record(int argc, const char **argv)
 # undef REASON
 #endif
 
-	rec->evlist = perf_evlist__new();
+	rec->evlist = perf_evlist__new();  /*初始化一个evlist结构*/
 	if (rec->evlist == NULL)
 		return -ENOMEM;
-
+	/*从config文件中获取配置信息*/
 	err = perf_config(perf_record_config, rec);
 	if (err)
 		return err;
-
+    /*从命令行获取信息*/
 	argc = parse_options(argc, argv, record_options, record_usage,
 			    PARSE_OPT_STOP_AT_NON_OPTION);
 	if (quiet)
@@ -1739,7 +1739,7 @@ int cmd_record(int argc, const char **argv)
 		parse_options_usage(record_usage, record_options, "switch-events", 0);
 		return -EINVAL;
 	}
-
+	/*保存的时候将文件分片保存*/
 	if (switch_output_setup(rec)) {
 		parse_options_usage(record_usage, record_options, "switch-output", 0);
 		return -EINVAL;
@@ -1766,7 +1766,7 @@ int cmd_record(int argc, const char **argv)
 	 * filters. Refer to auxtrace_parse_filters().
 	 */
 	symbol_conf.allow_aliases = true;
-
+	/*初始化符号表需要的结构及链表*/
 	symbol__init(NULL);
 
 	err = auxtrace_parse_filters(rec->evlist);
@@ -1798,7 +1798,7 @@ int cmd_record(int argc, const char **argv)
 
 	if (rec->no_buildid_cache || rec->no_buildid) {
 		disable_buildid_cache();
-	} else if (rec->switch_output.enabled) {
+	} else if (rec->switch_output.enabled) {/*分片模式不需要每次都写入buildid*/
 		/*
 		 * In 'perf record --switch-output', disable buildid
 		 * generation by default to reduce data file switching
@@ -1829,7 +1829,7 @@ int cmd_record(int argc, const char **argv)
 
 	if (record.opts.overwrite)
 		record.opts.tail_synthesize = true;
-
+    /*创建一个默认hw类型的evsel，并加入到evlist中*/
 	if (rec->evlist->nr_entries == 0 &&
 	    __perf_evlist__add_default(rec->evlist, !record.opts.no_samples) < 0) {
 		pr_err("Not enough memory for event selector list\n");
@@ -1839,13 +1839,13 @@ int cmd_record(int argc, const char **argv)
 	if (rec->opts.target.tid && !rec->opts.no_inherit_set)
 		rec->opts.no_inherit = true;
 
-	err = target__validate(&rec->opts.target);
+	err = target__validate(&rec->opts.target);  /*检查目标与cpu可行性*/
 	if (err) {
 		target__strerror(&rec->opts.target, err, errbuf, BUFSIZ);
 		ui__warning("%s", errbuf);
 	}
 
-	err = target__parse_uid(&rec->opts.target);
+	err = target__parse_uid(&rec->opts.target); /*检查uid可行性*/
 	if (err) {
 		int saved_errno = errno;
 
@@ -1875,7 +1875,7 @@ int cmd_record(int argc, const char **argv)
 	if (rec->opts.full_auxtrace)
 		rec->buildid_all = true;
 
-	if (record_opts__config(&rec->opts)) {
+	if (record_opts__config(&rec->opts)) {  /*设置频率*/
 		err = -EINVAL;
 		goto out;
 	}

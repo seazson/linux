@@ -249,7 +249,7 @@ int __perf_evlist__add_default(struct perf_evlist *evlist, bool precise)
 	if (evsel == NULL)
 		return -ENOMEM;
 
-	perf_evlist__add(evlist, evsel);
+	perf_evlist__add(evlist, evsel);  /*加入到evlist中*/
 	return 0;
 }
 
@@ -1560,7 +1560,7 @@ u64 perf_evlist__read_format(struct perf_evlist *evlist)
 	struct perf_evsel *first = perf_evlist__first(evlist);
 	return first->attr.read_format;
 }
-
+/*计算sample头大小*/
 u16 perf_evlist__id_hdr_size(struct perf_evlist *evlist)
 {
 	struct perf_evsel *first = perf_evlist__first(evlist);

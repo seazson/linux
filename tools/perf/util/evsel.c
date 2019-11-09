@@ -254,7 +254,7 @@ void perf_evsel__init(struct perf_evsel *evsel,
 	evsel->metric_events = NULL;
 	evsel->collect_stat  = false;
 }
-
+/*创建新的evsel*/
 struct perf_evsel *perf_evsel__new_idx(struct perf_event_attr *attr, int idx)
 {
 	struct perf_evsel *evsel = zalloc(perf_evsel__object.size);
@@ -275,7 +275,7 @@ static bool perf_event_can_profile_kernel(void)
 {
 	return geteuid() == 0 || perf_event_paranoid() == -1;
 }
-
+/*创建一个hw类型evsel*/
 struct perf_evsel *perf_evsel__new_cycles(bool precise)
 {
 	struct perf_event_attr attr = {
@@ -341,7 +341,7 @@ struct perf_evsel *perf_evsel__newtp_idx(const char *sys, const char *name, int 
 
 		if (asprintf(&evsel->name, "%s:%s", sys, name) < 0)
 			goto out_free;
-
+		/*建立对应format数据结构*/
 		evsel->tp_format = trace_event__tp_format(sys, name);
 		if (IS_ERR(evsel->tp_format)) {
 			err = PTR_ERR(evsel->tp_format);
@@ -351,7 +351,7 @@ struct perf_evsel *perf_evsel__newtp_idx(const char *sys, const char *name, int 
 		event_attr_init(&attr);
 		attr.config = evsel->tp_format->id;
 		attr.sample_period = 1;
-		perf_evsel__init(evsel, &attr, idx);
+		perf_evsel__init(evsel, &attr, idx);  /*初始化一个evsel*/
 	}
 
 	return evsel;
@@ -1101,7 +1101,7 @@ int perf_evsel__set_filter(struct perf_evsel *evsel, const char *filter)
 
 	return -1;
 }
-
+/*追加新的filter字符串*/
 static int perf_evsel__append_filter(struct perf_evsel *evsel,
 				     const char *fmt, const char *filter)
 {

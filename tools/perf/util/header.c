@@ -2588,7 +2588,7 @@ bool is_perf_magic(u64 magic)
 
 	return false;
 }
-
+/*检查magic头，判断大小端*/
 static int check_magic_endian(u64 magic, uint64_t hdr_sz,
 			      bool is_pipe, struct perf_header *ph)
 {
@@ -2695,7 +2695,7 @@ int perf_file_header__read(struct perf_file_header *header,
 	ph->feat_offset  = header->data.offset + header->data.size;
 	return 0;
 }
-
+/*调用每个特性对应的  处理函数*/
 static int perf_file_section__process(struct perf_file_section *section,
 				      struct perf_header *ph,
 				      int feat, int fd, void *data)
@@ -2876,9 +2876,9 @@ int perf_session__read_header(struct perf_session *session)
 	session->evlist->env = &header->env;
 	session->machines.host.env = &header->env;
 	if (perf_data_file__is_pipe(file))
-		return perf_header__read_pipe(session);
+		return perf_header__read_pipe(session);  /*从文件中读入头，并写入标准输出*/
 
-	if (perf_file_header__read(&f_header, header, fd) < 0)  /*读取perf_file_header*/
+	if (perf_file_header__read(&f_header, header, fd) < 0)  /*读取perf_file_header转换成perf_header，会处理大小端*/
 		return -EINVAL;
 
 	/*
@@ -2922,7 +2922,7 @@ int perf_session__read_header(struct perf_session *session)
 		 */
 		perf_evlist__add(session->evlist, evsel);
 
-		nr_ids = f_attr.ids.size / sizeof(u64);
+		nr_ids = f_attr.ids.size / sizeof(u64);/*nr_ids代表有多少个thread*/
 		/*
 		 * We don't have the cpu and thread maps on the header, so
 		 * for allocating the perf_sample_id table we fake 1 cpu and
@@ -2933,7 +2933,7 @@ int perf_session__read_header(struct perf_session *session)
 
 		lseek(fd, f_attr.ids.offset, SEEK_SET);
 
-		for (j = 0; j < nr_ids; j++) {
+		for (j = 0; j < nr_ids; j++) {/*读取id信息，并添加到evsel的sample_id中*/
 			if (perf_header__getbuffer64(header, fd, &f_id, sizeof(f_id)))
 				goto out_errno;
 
@@ -2946,7 +2946,7 @@ int perf_session__read_header(struct perf_session *session)
 	symbol_conf.nr_events = nr_attrs;
 
 	perf_header__process_sections(header, fd, &session->tevent,
-				      perf_file_section__process);   /*解析头的特性*/
+				      perf_file_section__process);   /*解析头的特性，写到header->env中*/
 
 	if (perf_evlist__prepare_tracepoint_events(session->evlist,
 						   session->tevent.pevent))  /*关联evsel和event_format*/

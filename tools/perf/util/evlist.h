@@ -74,8 +74,8 @@ enum bkw_mmap_state {
 };
 
 struct perf_evlist {
-	struct list_head entries;
-	struct hlist_head heads[PERF_EVLIST__HLIST_SIZE];
+	struct list_head entries;   /*¥Ê∑≈evsel*/
+	struct hlist_head heads[PERF_EVLIST__HLIST_SIZE]; /*¥Ê∑≈perf_sample_id…¢¡–*/
 	int		 nr_entries;
 	int		 nr_groups;
 	int		 nr_mmaps;

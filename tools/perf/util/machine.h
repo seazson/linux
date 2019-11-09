@@ -27,7 +27,7 @@ struct vdso_info;
 struct machine {
 	struct rb_node	  rb_node;
 	pid_t		  pid;
-	u16		  id_hdr_size;
+	u16		  id_hdr_size;  /*sampleÕ∑¥Û–°*/
 	bool		  comm_exec;
 	bool		  kptr_restrict_warned;
 	char		  *root_dir;

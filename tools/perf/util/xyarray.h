@@ -5,9 +5,9 @@
 #include <sys/types.h>
 
 struct xyarray {
-	size_t row_size;
-	size_t entry_size;
-	size_t entries;
+	size_t row_size;   /* y*entry_size */
+	size_t entry_size; /*每一项数据大小*/
+	size_t entries;    /* x*y */
 	size_t max_x;
 	size_t max_y;
 	char contents[];

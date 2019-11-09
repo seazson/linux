@@ -12,7 +12,7 @@
 struct cpu_map {
 	refcount_t refcnt;
 	int nr;
-	int map[];
+	int map[]; /*int型数组，里面是cpu编号*/
 };
 
 struct cpu_map *cpu_map__new(const char *cpu_list);

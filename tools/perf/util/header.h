@@ -47,7 +47,7 @@ struct perf_file_section {
 	u64 offset;
 	u64 size;
 };
-
+/*真正写入文件的头结构*/
 struct perf_file_header {
 	u64				magic;       /*PROFILE2*/
 	u64				size;        /*整个头大小*/
@@ -71,12 +71,12 @@ int perf_file_header__read(struct perf_file_header *header,
 
 struct perf_header {
 	enum perf_header_version	version;
-	bool				needs_swap;
+	bool				needs_swap; /*数据大小端*/
 	u64				data_offset;    /*数据段的偏移*/
 	u64				data_size;      /*数据段的大小*/
 	u64				feat_offset;    /*指向特性段的位置*/
 	DECLARE_BITMAP(adds_features, HEADER_FEAT_BITS); /*特性段位图*/
-	struct perf_env 	env;
+	struct perf_env 	env;  /*从头里面读取并解析的数据*/
 };
 
 struct perf_evlist;
