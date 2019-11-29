@@ -125,7 +125,7 @@ enum perf_event_sample_format {
 	PERF_SAMPLE_TID				= 1U << 1,
 	PERF_SAMPLE_TIME			= 1U << 2,
 	PERF_SAMPLE_ADDR			= 1U << 3,
-	PERF_SAMPLE_READ			= 1U << 4,
+	PERF_SAMPLE_READ			= 1U << 4,     /*是否记录通过read系统调用读出的数据*/
 	PERF_SAMPLE_CALLCHAIN			= 1U << 5,
 	PERF_SAMPLE_ID				= 1U << 6,
 	PERF_SAMPLE_CPU				= 1U << 7,
@@ -327,8 +327,8 @@ struct perf_event_attr {
 		__u64		sample_freq;
 	};
 
-	__u64			sample_type;
-	__u64			read_format;
+	__u64			sample_type;  /*标识数据需要采样的内容。perf_event_sample_format类型*/
+	__u64			read_format;  /*标识通过系统调用read()时,读取的数据格式。perf_event_read_format类型*/
 
 	__u64			disabled       :  1, /* off by default        */
 				inherit	       :  1, /* children inherit it   */

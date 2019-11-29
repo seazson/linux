@@ -59,7 +59,7 @@ const char perf_version_string[] = PERF_VERSION;
 
 struct perf_file_attr {
 	struct perf_event_attr	attr;
-	struct perf_file_section	ids;
+	struct perf_file_section	ids;  /*指明id数组在文件中的位置及大小*/
 };
 
 struct feat_fd {
@@ -2391,7 +2391,7 @@ int perf_session__write_header(struct perf_session *session,
 
 	ff = (struct feat_fd){ .fd = fd};
 	lseek(fd, sizeof(f_header), SEEK_SET);
-
+	/*在文件头的后面写入evsel的id信息*/
 	evlist__for_each_entry(session->evlist, evsel) {
 		evsel->id_offset = lseek(fd, 0, SEEK_CUR);
 		err = do_write(&ff, evsel->id, evsel->ids * sizeof(u64));
@@ -2402,7 +2402,7 @@ int perf_session__write_header(struct perf_session *session,
 	}
 
 	attr_offset = lseek(ff.fd, 0, SEEK_CUR);
-
+	/*id信息的后面写入attr信息*/
 	evlist__for_each_entry(evlist, evsel) {
 		f_attr = (struct perf_file_attr){
 			.attr = evsel->attr,
@@ -2421,13 +2421,13 @@ int perf_session__write_header(struct perf_session *session,
 	if (!header->data_offset)
 		header->data_offset = lseek(fd, 0, SEEK_CUR);
 	header->feat_offset = header->data_offset + header->data_size;
-
+    /*写入各种feat段*/
 	if (at_exit) {
 		err = perf_header__adds_write(header, evlist, fd);
 		if (err < 0)
 			return err;
 	}
-
+    /*最后写文件头*/
 	f_header = (struct perf_file_header){
 		.magic	   = PERF_MAGIC,
 		.size	   = sizeof(f_header),

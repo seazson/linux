@@ -54,7 +54,7 @@ Elf_Scn *elf_section_by_name(Elf *elf, GElf_Ehdr *ep,
  */
 struct symbol {
 	struct rb_node	rb_node;
-	u64		start;
+	u64		start;  /*symbol在文件内的相对偏移*/
 	u64		end;
 	u16		namelen;
 	u8		binding;
@@ -170,7 +170,7 @@ static inline void *symbol__priv(struct symbol *sym)
 {
 	return ((void *)sym) - symbol_conf.priv_size;
 }
-
+/*记录起始符号名称及地址*/
 struct ref_reloc_sym {
 	const char	*name;
 	u64		addr;
@@ -209,7 +209,7 @@ struct addr_location {
 	struct thread *thread;
 	struct map    *map;
 	struct symbol *sym;
-	u64	      addr;
+	u64	      addr;    /*运行时的虚拟地址*/
 	char	      level;
 	u8	      filtered;
 	u8	      cpumode;

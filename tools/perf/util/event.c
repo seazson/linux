@@ -1465,7 +1465,7 @@ void thread__find_addr_location(struct thread *thread,
 /*
  * Callers need to drop the reference to al->thread, obtained in
  * machine__findnew_thread()
- */
+ *//*查找sample对应的符号表*/
 int machine__resolve(struct machine *machine, struct addr_location *al,
 		     struct perf_sample *sample)
 {

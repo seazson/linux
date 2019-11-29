@@ -46,9 +46,9 @@ struct map {
 	u64			ino_generation;/* only valid for MMAP2 record */
 
 	/* ip -> dso rip */
-	u64			(*map_ip)(struct map *, u64);
+	u64			(*map_ip)(struct map *, u64);  /*map__map_ip*/
 	/* dso rip -> ip */
-	u64			(*unmap_ip)(struct map *, u64);
+	u64			(*unmap_ip)(struct map *, u64); /*map__unmap_ip*/
 
 	struct dso		*dso;
 	struct map_groups	*groups;

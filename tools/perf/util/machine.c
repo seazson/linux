@@ -823,7 +823,7 @@ int __machine__create_kernel_maps(struct machine *machine, struct dso *kernel)
 	int type;
 	u64 start = 0;
 
-	if (machine__get_running_kernel_start(machine, NULL, &start))
+	if (machine__get_running_kernel_start(machine, NULL, &start))  /*根据符号表找到内核的起始地址*/
 		return -1;
 
 	/* In case of renewal the kernel map, destroy previous one */
@@ -833,7 +833,7 @@ int __machine__create_kernel_maps(struct machine *machine, struct dso *kernel)
 		struct kmap *kmap;
 		struct map *map;
 
-		machine->vmlinux_maps[type] = map__new2(start, kernel, type);
+		machine->vmlinux_maps[type] = map__new2(start, kernel, type); /*创建map+kmap空间*/
 		if (machine->vmlinux_maps[type] == NULL)
 			return -1;
 
@@ -1186,7 +1186,7 @@ static int machine__create_modules(struct machine *machine)
 
 int machine__create_kernel_maps(struct machine *machine)
 {
-	struct dso *kernel = machine__get_kernel(machine);
+	struct dso *kernel = machine__get_kernel(machine);/*创建一个dso*/
 	const char *name = NULL;
 	u64 addr = 0;
 	int ret;

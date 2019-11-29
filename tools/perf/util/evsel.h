@@ -20,9 +20,10 @@ struct perf_evsel;
  */
 struct perf_sample_id {
 	struct hlist_node 	node;
-	u64		 	id;
+	u64		 	id;   /*由内核创建的自增计数，每一个perf_event会有一个，也就是每个fd*/
 	struct perf_evsel	*evsel;
-	int			idx;
+	int			idx;  /*逻辑id，用户态维护，用来跟踪所属cpu/thread的mmap上下文。例如以cpu方式跟踪时代表cpu内部逻辑编号。
+	                   以thread跟踪时是thread内部逻辑编号。同时也是对应mmap[idx]的编号*/
 	int			cpu;
 	pid_t			tid;
 
@@ -92,23 +93,23 @@ struct perf_evsel {
 	char			*filter;
 	struct xyarray		*fd;
 	struct xyarray		*sample_id;
-	u64			*id;   /*u64数组，个数对应cpu*thread */
+	u64			*id;   /*u64数组，个数对应cpu*thread。id是每个fd内核会自增分配一个*/
 	struct perf_counts	*counts;
 	struct perf_counts	*prev_raw_counts;
 	int			idx;
-	u32			ids;
+	u32			ids;    /*上面id数组中已经分配过的个数计数*/
 	char			*name;
 	double			scale;
 	const char		*unit;
 	struct event_format	*tp_format;    /*计数器是tracepoint类型*/
-	off_t			id_offset;
+	off_t			id_offset;   /*evsel id信息在文件中的偏移*/
 	void			*priv;
 	u64			db_id;
 	struct cgroup_sel	*cgrp;
 	void			*handler;    /*处理函数，用于找到对应类型数据时调用*/
-	struct cpu_map		*cpus;
+	struct cpu_map		*cpus;   /*要跟踪的cpu*/
 	struct cpu_map		*own_cpus;
-	struct thread_map	*threads;
+	struct thread_map	*threads; /*要跟踪的线程，用于在open的时候获取pid*/
 	unsigned int		sample_size; /*每个采样数据大小*/
 	int			id_pos;   /*普通sample中event id在采样点中的偏移*/
 	int			is_pos;   /*非正常sample中event id在采样点中的偏移*/

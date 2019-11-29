@@ -141,7 +141,7 @@ int sample__fprintf_callchain(struct perf_sample *sample, int left_alignment,
 				printed += fprintf(fp, "%c%16" PRIx64, s, node->ip);
 
 			if (node->map)
-				addr = node->map->map_ip(node->map, node->ip);
+				addr = node->map->map_ip(node->map, node->ip);  /*将模块内相对地址转换成进程虚拟地址*/
 
 			if (print_sym) {
 				printed += fprintf(fp, " ");

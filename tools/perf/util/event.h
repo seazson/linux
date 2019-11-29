@@ -193,7 +193,7 @@ struct perf_sample {
 	u32 pid, tid;
 	u64 time;
 	u64 addr;
-	u64 id;
+	u64 id;     /*用来查找对应的evsel*/
 	u64 stream_id;
 	u64 period;
 	u64 weight;

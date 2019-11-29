@@ -77,7 +77,7 @@ struct record {
 	bool			no_buildid_set;
 	bool			no_buildid_cache;
 	bool			no_buildid_cache_set;
-	bool			buildid_all;
+	bool			buildid_all;    /*记录所有的dso信息，无论是否真的被调用过*/
 	bool			timestamp_filename;
 	struct switch_output	switch_output;
 	unsigned long long	samples;
@@ -120,7 +120,7 @@ static int record__write(struct record *rec, void *bf, size_t size)
 
 	return 0;
 }
-
+/*记录一个事件*/
 static int process_synthesized_event(struct perf_tool *tool,
 				     union perf_event *event,
 				     struct perf_sample *sample __maybe_unused,
@@ -206,7 +206,7 @@ record__mmap_read(struct record *rec, struct perf_mmap *md,
 		perf_mmap__consume(md, overwrite || backward);
 		return 0;
 	}
-
+	/*表示有跨边界情况*/
 	if ((start & md->mask) + size != (end & md->mask)) {
 		buf = &data[start & md->mask];
 		size = md->mask + 1 - (start & md->mask);
@@ -478,7 +478,7 @@ try_again:
 out:
 	return rc;
 }
-
+/*标记访问过的dso*/
 static int process_sample_event(struct perf_tool *tool,
 				union perf_event *event,
 				struct perf_sample *sample,
@@ -491,7 +491,7 @@ static int process_sample_event(struct perf_tool *tool,
 
 	return build_id__mark_dso_hit(tool, event, sample, evsel, machine);
 }
-
+/*在最后写入文件头的时候需要遍历所有sample，根据是否访问过dso来决定将哪些buildid写入文件中*/
 static int process_buildids(struct record *rec)
 {
 	struct perf_data_file *file  = &rec->file;
@@ -514,7 +514,7 @@ static int process_buildids(struct record *rec)
 	/*
 	 * If --buildid-all is given, it marks all DSO regardless of hits,
 	 * so no need to process samples.
-	 */
+	 */ /*此时表示会记录所有dso信息，不需要再遍历sample了*/
 	if (rec->buildid_all)
 		rec->tool.sample = NULL;
 
@@ -637,7 +637,7 @@ static void record__init_features(struct record *rec)
 
 	perf_header__clear_feat(&session->header, HEADER_STAT);
 }
-
+/*写文件头，attr，buildin，idx等信息*/
 static void
 record__finish_output(struct record *rec)
 {
@@ -785,7 +785,7 @@ static const struct perf_event_mmap_page *record__pick_pc(struct record *rec)
 		return pc;
 	return NULL;
 }
-
+/*写入kernel，模块，thread的comm，fork，map类型的event到文件中*/
 static int record__synthesize(struct record *rec, bool tail)
 {
 	struct perf_session *session = rec->session;
@@ -952,7 +952,7 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 
 	if (!rec->evlist->nr_groups)
 		perf_header__clear_feat(&session->header, HEADER_GROUP_DESC);
-	/*写入文件头*/
+	/*先写一次文件头，并没有写文件末尾的feat段，因为此时还不知道数据段多大，而且要记录哪些dso的buildid也没确认*/
 	if (file->is_pipe) {
 		err = perf_header__write_pipe(fd);
 		if (err < 0)
@@ -999,7 +999,7 @@ static int __cmd_record(struct record *rec, int argc, const char **argv)
 	/*
 	 * Let the child rip
 	 */
-	if (forks) {
+	if (forks) {/*写入子进程的信息*/
 		union perf_event *event;
 		pid_t tgid;
 

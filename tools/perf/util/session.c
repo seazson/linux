@@ -162,7 +162,7 @@ struct perf_session *perf_session__new(struct perf_data_file *file,
 		/*
 		 * In O_RDONLY mode this will be performed when reading the
 		 * kernel MMAP event, in perf_event__process_mmap().
-		 */
+		 */ /*创建内核和模块的dso，map，kmap映射，确定起始地址，但是还未读入符号*/
 		if (perf_session__create_kernel_maps(session) < 0)
 			pr_warning("Cannot read kernel map\n");
 	}

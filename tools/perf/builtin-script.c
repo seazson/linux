@@ -1552,7 +1552,7 @@ static int process_sample_event(struct perf_tool *tool,
 		return 0;
 	}
 
-	if (machine__resolve(machine, &al, sample) < 0) {
+	if (machine__resolve(machine, &al, sample) < 0) {/*查找sample对应的符号表*/
 		pr_err("problem processing %d event, skipping it.\n",
 		       event->header.type);
 		return -1;

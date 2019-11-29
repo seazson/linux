@@ -78,10 +78,10 @@ struct perf_evlist {
 	struct hlist_head heads[PERF_EVLIST__HLIST_SIZE]; /*存放perf_sample_id散列*/
 	int		 nr_entries;
 	int		 nr_groups;
-	int		 nr_mmaps;
+	int		 nr_mmaps; /*由要跟踪的cpu或者线程数量(cpu未设置，或者全局时)决定*/
 	bool		 overwrite;
 	bool		 enabled;
-	bool		 has_user_cpus;
+	bool		 has_user_cpus;  /*用户设置了要跟踪的cpu*/
 	size_t		 mmap_len;
 	int		 id_pos;
 	int		 is_pos;
@@ -91,11 +91,11 @@ struct perf_evlist {
 		int	cork_fd;
 		pid_t	pid;
 	} workload;
-	struct fdarray	 pollfd;
+	struct fdarray	 pollfd; /*所有 evsel*cpu*thread个fd */
 	struct perf_mmap *mmap;
 	struct perf_mmap *backward_mmap;
-	struct thread_map *threads;
-	struct cpu_map	  *cpus;
+	struct thread_map *threads;  /*维护要跟踪的线程*/
+	struct cpu_map	  *cpus;     /*维护要跟踪的cpu.不跟踪cpu[也就是dummy cpu]有两种情况1：设置了default_per_cpu&&per_thread。2，（没有指定cpu或者没有使用-a）&&没有设置uses_mmap比特*/
 	struct perf_evsel *selected;
 	struct events_stats stats;
 	struct perf_env	*env;

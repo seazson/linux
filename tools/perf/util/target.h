@@ -11,10 +11,10 @@ struct target {
 	const char   *cpu_list;
 	const char   *uid_str;
 	uid_t	     uid;
-	bool	     system_wide;
-	bool	     uses_mmap;
-	bool	     default_per_cpu;
-	bool	     per_thread;
+	bool	     system_wide;  /*-a模式是1*/
+	bool	     uses_mmap;    /*kvm会设置为false，其他为true*/
+	bool	     default_per_cpu; /*跟踪cpu*/
+	bool	     per_thread; /*跟踪线程，优先级高于default_per_cpu*/
 };
 
 enum target_errno {

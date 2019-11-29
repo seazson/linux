@@ -17,7 +17,7 @@ struct pollfd;
  *	  but doing 'fda->priv = malloc(M)' is not allowed.
  */
 struct fdarray {
-	int	       nr;
+	int	       nr; /*当前用到的位置*/
 	int	       nr_alloc;
 	int	       nr_autogrow;
 	struct pollfd *entries;

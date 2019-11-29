@@ -679,7 +679,7 @@ struct perf_event {
 	struct rcu_head			rcu_head;
 
 	struct pid_namespace		*ns;
-	u64				id;
+	u64				id;    /*×ÔÔöid*/
 
 	u64				(*clock)(void);
 	perf_overflow_handler_t		overflow_handler;

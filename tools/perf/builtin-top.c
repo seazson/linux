@@ -809,7 +809,7 @@ static void perf_top__mmap_read_idx(struct perf_top *top, int idx)
 	struct machine *machine;
 	int ret;
 
-	while ((event = perf_evlist__mmap_read(top->evlist, idx)) != NULL) {
+	while ((event = perf_evlist__mmap_read(top->evlist, idx)) != NULL) {/*从ringbuffer中读取一个数据*/
 		ret = perf_evlist__parse_sample(top->evlist, event, &sample);
 		if (ret) {
 			pr_err("Can't parse sample, err = %d\n", ret);
@@ -864,10 +864,10 @@ static void perf_top__mmap_read_idx(struct perf_top *top, int idx)
 		} else
 			++session->evlist->stats.nr_unknown_events;
 next_event:
-		perf_evlist__mmap_consume(top->evlist, idx);
+		perf_evlist__mmap_consume(top->evlist, idx); /*处理完数据之后需要更新tail指针*/
 	}
 }
-
+/*读取数据并分析统计*/
 static void perf_top__mmap_read(struct perf_top *top)
 {
 	int i;

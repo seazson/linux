@@ -250,7 +250,7 @@ out_free_threads:
 	zfree(&threads);
 	goto out;
 }
-
+/*跟踪所有进程时会设置*/
 struct thread_map *thread_map__new_dummy(void)
 {
 	struct thread_map *threads = thread_map__alloc(1);

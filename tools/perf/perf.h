@@ -57,7 +57,7 @@ struct record_opts {
 	bool	     record_switch_events;
 	bool	     all_kernel;
 	bool	     all_user;
-	bool	     tail_synthesize;
+	bool	     tail_synthesize;   /*文件信息在sample采集完之后写入*/
 	bool	     overwrite;
 	bool	     ignore_missing_thread;
 	unsigned int freq;

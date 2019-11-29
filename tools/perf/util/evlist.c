@@ -514,7 +514,7 @@ void perf_evlist__id_add(struct perf_evlist *evlist, struct perf_evsel *evsel,
 	perf_evlist__id_hash(evlist, evsel, cpu, thread, id);
 	evsel->id[evsel->ids++] = id;
 }
-
+/*获取fd对应的id号，并添加到evlist和evsel对应结构中*/
 int perf_evlist__id_add_fd(struct perf_evlist *evlist,
 			   struct perf_evsel *evsel,
 			   int cpu, int thread, int fd)
@@ -524,7 +524,7 @@ int perf_evlist__id_add_fd(struct perf_evlist *evlist,
 	u64 id;
 	int ret;
 
-	ret = ioctl(fd, PERF_EVENT_IOC_ID, &id);
+	ret = ioctl(fd, PERF_EVENT_IOC_ID, &id);/*从内核获取event id，每一个打开的fd都会有一个id*/
 	if (!ret)
 		goto add;
 
@@ -549,7 +549,7 @@ int perf_evlist__id_add_fd(struct perf_evlist *evlist,
 	if (evsel->attr.read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
 		++id_idx;
 
-	id = read_data[id_idx];
+	id = read_data[id_idx];/*旧的方式获取id*/
 
  add:
 	perf_evlist__id_add(evlist, evsel, cpu, thread, id);
@@ -747,7 +747,7 @@ perf_mmap__read(struct perf_mmap *md, bool check_messup, u64 start,
 		/*
 		 * Event straddles the mmap boundary -- header should always
 		 * be inside due to u64 alignment of output.
-		 */
+		 */ /*如果一个event数据出现跨页边界的情况，就需要将数据拷贝到md中，否则直接返回原始数据*/
 		if ((start & md->mask) + size != ((start + size) & md->mask)) {
 			unsigned int offset = start;
 			unsigned int len = min(sizeof(*event), size), cpy;
@@ -902,7 +902,7 @@ void perf_mmap__consume(struct perf_mmap *md, bool overwrite)
 	if (refcount_read(&md->refcnt) == 1 && perf_mmap__empty(md))
 		perf_mmap__put(md);
 }
-
+/*非覆盖模式会更新tail指针*/
 void perf_evlist__mmap_consume(struct perf_evlist *evlist, int idx)
 {
 	perf_mmap__consume(&evlist->mmap[idx], evlist->overwrite);
@@ -973,7 +973,7 @@ static struct perf_mmap *perf_evlist__alloc_mmap(struct perf_evlist *evlist)
 	struct perf_mmap *map;
 
 	evlist->nr_mmaps = cpu_map__nr(evlist->cpus);
-	if (cpu_map__empty(evlist->cpus))
+	if (cpu_map__empty(evlist->cpus)) /*如果没有设置cpu，就以线程号个数决定*/
 		evlist->nr_mmaps = thread_map__nr(evlist->threads);
 	map = zalloc(evlist->nr_mmaps * sizeof(struct perf_mmap));
 	if (!map)
@@ -1046,7 +1046,7 @@ perf_evlist__should_poll(struct perf_evlist *evlist __maybe_unused,
 	return true;
 }
 
-static int perf_evlist__mmap_per_evsel(struct perf_evlist *evlist, int idx,
+static int perf_evlist__mmap_per_evsel(struct perf_evlist *evlist, int idx,/*cpu或者thread内部逻辑号*/
 				       struct mmap_params *mp, int cpu_idx,
 				       int thread, int *_output, int *_output_backward)
 {
@@ -1077,7 +1077,7 @@ static int perf_evlist__mmap_per_evsel(struct perf_evlist *evlist, int idx,
 		if (evsel->system_wide && thread)
 			continue;
 
-		cpu = cpu_map__idx(evsel->cpus, evlist_cpu);
+		cpu = cpu_map__idx(evsel->cpus, evlist_cpu);/*转换成cpu内部逻辑号*/
 		if (cpu == -1)
 			continue;
 
@@ -1103,7 +1103,7 @@ static int perf_evlist__mmap_per_evsel(struct perf_evlist *evlist, int idx,
 		 * POLLHUP, but it is used for tracking in combination with
 		 * other events, so it should not need to be polled anyway.
 		 * Therefore don't add it for polling.
-		 */
+		 */ /*非全局模式添加fd对应的poll事件*/
 		if (!evsel->system_wide &&
 		    __perf_evlist__add_pollfd(evlist, fd, &maps[idx], revent) < 0) {
 			perf_mmap__put(&maps[idx]);
@@ -1311,11 +1311,11 @@ int perf_evlist__mmap_ex(struct perf_evlist *evlist, unsigned int pages,
 	};
 
 	if (!evlist->mmap)
-		evlist->mmap = perf_evlist__alloc_mmap(evlist);
+		evlist->mmap = perf_evlist__alloc_mmap(evlist); /*根据cpu或者线程数来决定要建立多少个mmap*/
 	if (!evlist->mmap)
 		return -ENOMEM;
 
-	if (evlist->pollfd.entries == NULL && perf_evlist__alloc_pollfd(evlist) < 0)
+	if (evlist->pollfd.entries == NULL && perf_evlist__alloc_pollfd(evlist) < 0) /*准备好pollfd空间*/
 		return -ENOMEM;
 
 	evlist->overwrite = overwrite;
@@ -1328,15 +1328,15 @@ int perf_evlist__mmap_ex(struct perf_evlist *evlist, unsigned int pages,
 
 	evlist__for_each_entry(evlist, evsel) {
 		if ((evsel->attr.read_format & PERF_FORMAT_ID) &&
-		    evsel->sample_id == NULL &&
+		    evsel->sample_id == NULL &&  /*为每个evsel分配id空间*/
 		    perf_evsel__alloc_id(evsel, cpu_map__nr(cpus), threads->nr) < 0)
 			return -ENOMEM;
 	}
 
 	if (cpu_map__empty(cpus))
-		return perf_evlist__mmap_per_thread(evlist, &mp);
+		return perf_evlist__mmap_per_thread(evlist, &mp); /*以线程为单位建立mmap*/
 
-	return perf_evlist__mmap_per_cpu(evlist, &mp);
+	return perf_evlist__mmap_per_cpu(evlist, &mp); /*以cpu为单位建立mmap*/
 }
 
 int perf_evlist__mmap(struct perf_evlist *evlist, unsigned int pages,
@@ -1349,14 +1349,14 @@ int perf_evlist__create_maps(struct perf_evlist *evlist, struct target *target)
 {
 	struct cpu_map *cpus;
 	struct thread_map *threads;
-
+	/*创建要跟踪的thread_map结构,如果没有指定进程跟踪，至少会有一个-1pid*/
 	threads = thread_map__new_str(target->pid, target->tid, target->uid);
 
 	if (!threads)
 		return -1;
 
 	if (target__uses_dummy_map(target))
-		cpus = cpu_map__dummy_new();
+		cpus = cpu_map__dummy_new();/*dummy表示不跟踪cpu*/
 	else
 		cpus = cpu_map__new(target->cpu_list);
 
