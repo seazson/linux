@@ -468,7 +468,7 @@ struct bpf_prog {
 	struct bpf_prog_aux	*aux;		/* Auxiliary fields */
 	struct sock_fprog_kern	*orig_prog;	/* Original BPF program */
 	unsigned int		(*bpf_func)(const void *ctx,
-					    const struct bpf_insn *insn);
+					    const struct bpf_insn *insn); /*指向可执行代码位置，如果开启jit指向的时jit后的起始指令，否则指向解释器interpreters*/
 	/* Instructions for interpreter */
 	union {
 		struct sock_filter	insns[0];

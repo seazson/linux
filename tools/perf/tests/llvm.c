@@ -115,7 +115,7 @@ test_llvm__fetch_bpf_obj(void **p_obj_buf,
 	clang_opt_old = llvm_param.clang_opt;
 	llvm_param.clang_opt = clang_opt_new;
 
-	err = llvm__compile_bpf("-", p_obj_buf, p_obj_buf_sz);
+	err = llvm__compile_bpf("-", p_obj_buf, p_obj_buf_sz);/*±‡“Î≥…bpf*/
 
 	llvm_param.clang_bpf_cmd_template = tmpl_old;
 	llvm_param.clang_opt = clang_opt_old;

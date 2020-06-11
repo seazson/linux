@@ -1844,7 +1844,8 @@ struct iommu_resv_region *iommu_alloc_resv_region(phys_addr_t start,
 	region->type = type;
 	return region;
 }
-
+/*如果group下只有一个dev，新申请一个identity的domain类型替换原来的
+identity类型的domain是物理地址和虚拟地址一样的。也就是passthrough模式。需要iommuv2支持*/
 /* Request that a device is direct mapped by the IOMMU */
 int iommu_request_dm_for_dev(struct device *dev)
 {

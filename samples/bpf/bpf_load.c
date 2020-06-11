@@ -270,14 +270,14 @@ static int get_sec(Elf *elf, int i, GElf_Ehdr *ehdr, char **shname,
 
 	return 0;
 }
-
-static int parse_relo_and_apply(Elf_Data *data, Elf_Data *symbols,
-				GElf_Shdr *shdr, struct bpf_insn *insn,
+/*根据可重定位表，修改指令，将指令中的要加载的fd换成刚创建的map的fd*/
+static int parse_relo_and_apply(Elf_Data *data, Elf_Data *symbols,/*data是可重定位段数据*/
+				GElf_Shdr *shdr, struct bpf_insn *insn, /*insn指向要修改的指令段*/
 				struct bpf_map_data *maps, int nr_maps)
 {
 	int i, nrels;
 
-	nrels = shdr->sh_size / shdr->sh_entsize;
+	nrels = shdr->sh_size / shdr->sh_entsize;/*shdr是可重定位段头，计算可重定位段里entry个数*/
 
 	for (i = 0; i < nrels; i++) {
 		GElf_Sym sym;
@@ -286,11 +286,11 @@ static int parse_relo_and_apply(Elf_Data *data, Elf_Data *symbols,
 		bool match = false;
 		int j, map_idx;
 
-		gelf_getrel(data, i, &rel);
+		gelf_getrel(data, i, &rel);/*取出一个可重定位数据*/
 
-		insn_idx = rel.r_offset / sizeof(struct bpf_insn);
+		insn_idx = rel.r_offset / sizeof(struct bpf_insn);/*找到要修改的指令地址*/
 
-		gelf_getsym(symbols, GELF_R_SYM(rel.r_info), &sym);
+		gelf_getsym(symbols, GELF_R_SYM(rel.r_info), &sym);/*根据可重定位，找到对应符号表*/
 
 		if (insn[insn_idx].code != (BPF_LD | BPF_IMM | BPF_DW)) {
 			printf("invalid relo for insn[%d].code 0x%x\n",
@@ -301,13 +301,13 @@ static int parse_relo_and_apply(Elf_Data *data, Elf_Data *symbols,
 
 		/* Match FD relocation against recorded map_data[] offset */
 		for (map_idx = 0; map_idx < nr_maps; map_idx++) {
-			if (maps[map_idx].elf_offset == sym.st_value) {
+			if (maps[map_idx].elf_offset == sym.st_value) {/*符号的值st_value表示此符号在段中偏移，等于map引用地址*/
 				match = true;
 				break;
 			}
 		}
 		if (match) {
-			insn[insn_idx].imm = maps[map_idx].fd;
+			insn[insn_idx].imm = maps[map_idx].fd; /*替换成刚创建的map的fd*/
 		} else {
 			printf("invalid relo for insn[%d] no map_data match\n",
 			       insn_idx);
@@ -330,7 +330,7 @@ static int cmp_symbols(const void *l, const void *r)
 	else
 		return 0;
 }
-
+/*从符号表和map中取出map名称和struct bpf_map_def，存放到bpf_map_data中*/
 static int load_elf_maps_section(struct bpf_map_data *maps, int maps_shndx,
 				 Elf *elf, Elf_Data *symbols, int strtabidx)
 {
@@ -357,19 +357,19 @@ static int load_elf_maps_section(struct bpf_map_data *maps, int maps_shndx,
 		return -EINVAL;
 	}
 
-	/* For each map get corrosponding symbol table entry */
+	/* For each map get corrosponding symbol table entry 获取符号表中属于map名的符号*/
 	sym = calloc(MAX_MAPS+1, sizeof(GElf_Sym));
 	for (i = 0, nr_maps = 0; i < symbols->d_size / sizeof(GElf_Sym); i++) {
 		assert(nr_maps < MAX_MAPS+1);
-		if (!gelf_getsym(symbols, i, &sym[nr_maps]))
+		if (!gelf_getsym(symbols, i, &sym[nr_maps])) /*读取符号表中的符号*/
 			continue;
-		if (sym[nr_maps].st_shndx != maps_shndx)
+		if (sym[nr_maps].st_shndx != maps_shndx) /*找到的符号必须是map段中的*/
 			continue;
 		/* Only increment iif maps section */
 		nr_maps++;
 	}
 
-	/* Align to map_fd[] order, via sort on offset in sym.st_value */
+	/* Align to map_fd[] order, via sort on offset in sym.st_value 根据map表地址排序符号*/
 	qsort(sym, nr_maps, sizeof(GElf_Sym), cmp_symbols);
 
 	/* Keeping compatible with ELF maps section changes
@@ -382,7 +382,7 @@ static int load_elf_maps_section(struct bpf_map_data *maps, int maps_shndx,
 	 * the same size, and simply divide with number of map
 	 * symbols.
 	 */
-	map_sz_elf = data_maps->d_size / nr_maps;
+	map_sz_elf = data_maps->d_size / nr_maps;  /*计算每个bpf_map_def字段大小*/
 	map_sz_copy = sizeof(struct bpf_map_def);
 	if (map_sz_elf < map_sz_copy) {
 		/*
@@ -407,7 +407,7 @@ static int load_elf_maps_section(struct bpf_map_data *maps, int maps_shndx,
 		const char *map_name;
 		size_t offset;
 
-		map_name = elf_strptr(elf, strtabidx, sym[i].st_name);
+		map_name = elf_strptr(elf, strtabidx, sym[i].st_name);/*获取map的名称*/
 		maps[i].name = strdup(map_name);
 		if (!maps[i].name) {
 			printf("strdup(%s): %s(%d)\n", map_name,
@@ -417,7 +417,7 @@ static int load_elf_maps_section(struct bpf_map_data *maps, int maps_shndx,
 		}
 
 		/* Symbol value is offset into ELF maps section data area */
-		offset = sym[i].st_value;
+		offset = sym[i].st_value;/*根据符号找到map定义的位置*/
 		def = (struct bpf_map_def *)(data_maps->d_buf + offset);
 		maps[i].elf_offset = offset;
 		memset(&maps[i].def, 0, sizeof(struct bpf_map_def));
@@ -498,12 +498,12 @@ static int do_load_bpf_file(const char *path, fixup_map_cb fixup_map)
 		} else if (strcmp(shname, "maps") == 0) {
 			int j;
 
-			maps_shndx = i;
+			maps_shndx = i;/*保存map section编号*/
 			data_maps = data;
 			for (j = 0; j < MAX_MAPS; j++)
 				map_data[j].fd = -1;
 		} else if (shdr.sh_type == SHT_SYMTAB) {
-			strtabidx = shdr.sh_link;
+			strtabidx = shdr.sh_link; /*符号表对应的字符串表编号*/
 			symbols = data;
 		}
 	}
@@ -517,16 +517,16 @@ static int do_load_bpf_file(const char *path, fixup_map_cb fixup_map)
 
 	if (data_maps) {
 		nr_maps = load_elf_maps_section(map_data, maps_shndx,
-						elf, symbols, strtabidx);
+						elf, symbols, strtabidx);/*提取map信息*/
 		if (nr_maps < 0) {
 			printf("Error: Failed loading ELF maps (errno:%d):%s\n",
 			       nr_maps, strerror(-nr_maps));
 			ret = 1;
 			goto done;
 		}
-		if (load_maps(map_data, nr_maps, fixup_map))
+		if (load_maps(map_data, nr_maps, fixup_map)) /*创建内核map*/
 			goto done;
-		map_data_count = nr_maps;
+		map_data_count = nr_maps; /*存放共有多少map*/
 
 		processed_sec[maps_shndx] = true;
 	}
@@ -542,7 +542,7 @@ static int do_load_bpf_file(const char *path, fixup_map_cb fixup_map)
 		if (shdr.sh_type == SHT_REL) {
 			struct bpf_insn *insns;
 
-			/* locate prog sec that need map fixup (relocations) */
+			/* locate prog sec that need map fixup (relocations) 找到重定位表所作用的段*/
 			if (get_sec(elf, shdr.sh_info, &ehdr, &shname_prog,
 				    &shdr_prog, &data_prog))
 				continue;

@@ -85,17 +85,17 @@ struct bpf_object *bpf__prepare_load(const char *filename, bool source)
 		libbpf_initialized = true;
 	}
 
-	if (source) {
+	if (source) {/*需要编译源码*/
 		int err;
 		void *obj_buf;
 		size_t obj_buf_sz;
 
 		perf_clang__init();
-		err = perf_clang__compile_bpf(filename, &obj_buf, &obj_buf_sz);
+		err = perf_clang__compile_bpf(filename, &obj_buf, &obj_buf_sz);/*使用perf集成编译*/
 		perf_clang__cleanup();
 		if (err) {
 			pr_warning("bpf: builtin compilation failed: %d, try external compiler\n", err);
-			err = llvm__compile_bpf(filename, &obj_buf, &obj_buf_sz);
+			err = llvm__compile_bpf(filename, &obj_buf, &obj_buf_sz);/*调用外部clang工具编译*/
 			if (err)
 				return ERR_PTR(-BPF_LOADER_ERRNO__COMPILE);
 		} else
@@ -246,7 +246,7 @@ do_prog_config(const char *key, const char *value,
 
 	return -BPF_LOADER_ERRNO__PROGCONF_TERM;
 }
-
+/*解析字符串key=value*/
 static const char *
 parse_prog_config_kvpair(const char *config_str, struct perf_probe_event *pev)
 {
@@ -299,7 +299,7 @@ parse_prog_config(const char *config_str, const char **p_main_str,
 		return PTR_ERR(main_str);
 
 	*p_main_str = main_str;
-	if (!strchr(main_str, '=')) {
+	if (!strchr(main_str, '=')) {  /*表明是tracepoint*/
 		/* Is a tracepoint event? */
 		const char *s = strchr(main_str, ':');
 
@@ -312,9 +312,9 @@ parse_prog_config(const char *config_str, const char **p_main_str,
 		*is_tp = true;
 		return 0;
 	}
-
+    /*否则是probe*/
 	*is_tp = false;
-	err = parse_perf_probe_command(main_str, pev);
+	err = parse_perf_probe_command(main_str, pev); /*此时main_str还是key=value样式*/
 	if (err < 0) {
 		pr_debug("bpf: '%s' is not a valid config string\n",
 			 config_str);
@@ -323,7 +323,7 @@ parse_prog_config(const char *config_str, const char **p_main_str,
 	}
 	return 0;
 }
-
+/*根据段名解析要添加的是probe还是tp，并创建bpf_prog_priv及初始化*/
 static int
 config_bpf_program(struct bpf_program *prog)
 {
@@ -337,7 +337,7 @@ config_bpf_program(struct bpf_program *prog)
 	probe_conf.no_inlines = false;
 	probe_conf.force_add = false;
 
-	config_str = bpf_program__title(prog, false);
+	config_str = bpf_program__title(prog, false);/*section_name*/
 	if (IS_ERR(config_str)) {
 		pr_debug("bpf: unable to get title for program\n");
 		return PTR_ERR(config_str);
@@ -350,7 +350,7 @@ config_bpf_program(struct bpf_program *prog)
 	}
 	pev = &priv->pev;
 
-	pr_debug("bpf: config program '%s'\n", config_str);
+	pr_debug("bpf: config program '%s'\n", config_str); /*段名，类似func=SyS_epoll_wait*/
 	err = parse_prog_config(config_str, &main_str, &is_tp, pev);
 	if (err)
 		goto errout;
@@ -401,7 +401,7 @@ errout:
 	free(priv);
 	return err;
 }
-
+/*准备probe前的环境：symbol及machine初始化*/
 static int bpf__prepare_probe(void)
 {
 	static int err = 0;
@@ -654,7 +654,7 @@ int bpf__probe(struct bpf_object *obj)
 	}
 
 	bpf_object__for_each_program(prog, obj) {
-		err = config_bpf_program(prog);
+		err = config_bpf_program(prog);/*解析并创建priv*/
 		if (err)
 			goto out;
 
@@ -665,11 +665,11 @@ int bpf__probe(struct bpf_object *obj)
 		}
 
 		if (priv->is_tp) {
-			bpf_program__set_tracepoint(prog);
+			bpf_program__set_tracepoint(prog);/*设置prog->type类型为tp*/
 			continue;
 		}
 
-		bpf_program__set_kprobe(prog);
+		bpf_program__set_kprobe(prog);/*设置prog->type类型为kprobe*/
 		pev = &priv->pev;
 
 		err = convert_perf_probe_events(pev, 1);
@@ -678,7 +678,7 @@ int bpf__probe(struct bpf_object *obj)
 			goto out;
 		}
 
-		err = apply_perf_probe_events(pev, 1);
+		err = apply_perf_probe_events(pev, 1);/*添加probe*/
 		if (err < 0) {
 			pr_debug("bpf_probe: failed to apply perf probe events\n");
 			goto out;
@@ -745,7 +745,7 @@ int bpf__load(struct bpf_object *obj)
 {
 	int err;
 
-	err = bpf_object__load(obj);
+	err = bpf_object__load(obj);/*创建map，relocation，加载程序*/
 	if (err) {
 		pr_debug("bpf: load objects failed\n");
 		return err;
@@ -1204,7 +1204,7 @@ bpf__obj_config_map(struct bpf_object *obj,
 		goto out;
 	}
 
-	map = bpf_object__find_map_by_name(obj, map_name);
+	map = bpf_object__find_map_by_name(obj, map_name);/*根据map名字找到map*/
 	if (!map) {
 		pr_debug("ERROR: Map %s doesn't exist\n", map_name);
 		err = -BPF_LOADER_ERRNO__OBJCONF_MAP_NOTEXIST;
@@ -1425,7 +1425,7 @@ apply_config_evsel_for_key(const char *name, int map_fd, void *pkey,
 		return -BPF_LOADER_ERRNO__INTERNAL;
 	}
 
-	if (xy->row_size / xy->entry_size != 1) {
+	if (xy->row_size / xy->entry_size != 1) {/*y方向只能一个实例，也就是nthread只能为1*/
 		pr_debug("ERROR: Dimension of target event is incorrect for map %s\n",
 			 name);
 		return -BPF_LOADER_ERRNO__OBJCONF_MAP_EVTDIM;
@@ -1448,7 +1448,7 @@ apply_config_evsel_for_key(const char *name, int map_fd, void *pkey,
 		return -BPF_LOADER_ERRNO__OBJCONF_MAP_EVTTYPE;
 	}
 
-	events = xy->entries / (xy->row_size / xy->entry_size);
+	events = xy->entries / (xy->row_size / xy->entry_size);/*x方向，即ncpu*/
 	key = *((unsigned int *)pkey);
 	if (key >= events) {
 		pr_debug("ERROR: there is no event %d for map %s\n",
@@ -1561,7 +1561,7 @@ int bpf__setup_stdout(struct perf_evlist *evlist __maybe_unused)
 	if (!need_init)
 		return 0;
 
-	if (!tmpl_priv) {
+	if (!tmpl_priv) {/*添加默认的bpf-output*/
 		err = parse_events(evlist, "bpf-output/no-inherit=1,name=__bpf_stdout__/",
 				   NULL);
 		if (err) {
@@ -1581,7 +1581,7 @@ int bpf__setup_stdout(struct perf_evlist *evlist __maybe_unused)
 			continue;
 
 		if (tmpl_priv) {
-			priv = bpf_map_priv__clone(tmpl_priv);
+			priv = bpf_map_priv__clone(tmpl_priv); /*创建一个新的bpf_map_priv，并克隆bpf_map_op*/
 			if (!priv)
 				return -ENOMEM;
 
@@ -1590,7 +1590,7 @@ int bpf__setup_stdout(struct perf_evlist *evlist __maybe_unused)
 				bpf_map_priv__clear(map, priv);
 				return err;
 			}
-		} else if (evsel) {
+		} else if (evsel) {/*关联evsel和map*/
 			struct bpf_map_op *op;
 
 			op = bpf_map__add_newop(map, NULL);

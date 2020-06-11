@@ -445,7 +445,7 @@ int llvm__compile_bpf(const char *path, void **p_obj_buf,
 		template = CLANG_BPF_CMD_DEFAULT_TEMPLATE;
 
 	err = search_program(llvm_param.clang_path,
-			     "clang", clang_path);
+			     "clang", clang_path);/*获取clang可执行文件的路径*/
 	if (err) {
 		pr_err(
 "ERROR:\tunable to find clang.\n"
@@ -459,7 +459,7 @@ int llvm__compile_bpf(const char *path, void **p_obj_buf,
 	 * This is an optional work. Even it fail we can continue our
 	 * work. Needn't to check error return.
 	 */
-	llvm__get_kbuild_opts(&kbuild_dir, &kbuild_include_opts);
+	llvm__get_kbuild_opts(&kbuild_dir, &kbuild_include_opts);/*获取内核头文件位置*/
 
 	nr_cpus_avail = llvm__get_nr_cpus();
 	snprintf(nr_cpus_avail_str, sizeof(nr_cpus_avail_str), "%d",
@@ -487,7 +487,7 @@ int llvm__compile_bpf(const char *path, void **p_obj_buf,
 		      (path[0] == '-') ? path : abspath);
 
 	pr_debug("llvm compiling command template: %s\n", template);
-	err = read_from_pipe(template, &obj_buf, &obj_buf_sz);
+	err = read_from_pipe(template, &obj_buf, &obj_buf_sz);/*调用外部clang命令编译成bpf*/
 	if (err) {
 		pr_err("ERROR:\tunable to compile %s\n", path);
 		pr_err("Hint:\tCheck error message shown above.\n");

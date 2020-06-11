@@ -345,7 +345,7 @@ static int map_create(union bpf_attr *attr)
 	if (err)
 		goto free_map;
 
-	err = bpf_map_new_fd(map);
+	err = bpf_map_new_fd(map);/*分配文件描述符关联map*/
 	if (err < 0) {
 		/* failed to allocate fd.
 		 * bpf_map_put() is needed because the above
@@ -998,7 +998,7 @@ static int bpf_prog_load(union bpf_attr *attr)
 	/* eBPF programs must be GPL compatible to use GPL-ed functions */
 	is_gpl = license_is_gpl_compatible(license);  /*许可是否满足gpl*/
 
-	if (attr->insn_cnt == 0 || attr->insn_cnt > BPF_MAXINSNS)
+	if (attr->insn_cnt == 0 || attr->insn_cnt > BPF_MAXINSNS) /*指令长度检查*/
 		return -E2BIG;
 
 	if (type == BPF_PROG_TYPE_KPROBE &&
@@ -1033,12 +1033,12 @@ static int bpf_prog_load(union bpf_attr *attr)
 	prog->gpl_compatible = is_gpl ? 1 : 0;
 
 	/* find program type: socket_filter vs tracing_filter */
-	err = find_prog_type(type, prog);
+	err = find_prog_type(type, prog); /*根据类型找到对应的bpf_verifier_ops*/
 	if (err < 0)
 		goto free_prog;
 
 	/* run eBPF verifier */
-	err = bpf_check(&prog, attr);   /*固件代码的合理性检查*/
+	err = bpf_check(&prog, attr);   /*固件代码的合理性检查，会将imm中map的fd转换成内核bpf-map的地址*/
 	if (err < 0)
 		goto free_used_maps;
 

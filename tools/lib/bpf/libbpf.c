@@ -198,7 +198,7 @@ struct bpf_map {
 	char *name;
 	size_t offset;
 	struct bpf_map_def def;
-	void *priv;
+	void *priv;   /*bpf_map_priv*/
 	bpf_map_clear_priv_t clear_priv;
 };
 
@@ -208,10 +208,10 @@ struct bpf_object {
 	char license[64];
 	u32 kern_version;
 
-	struct bpf_program *programs;
-	size_t nr_programs;
-	struct bpf_map *maps;
-	size_t nr_maps;
+	struct bpf_program *programs; /*prog数组*/
+	size_t nr_programs; /*一个bpf_object可以有多个prog*/
+	struct bpf_map *maps; /*maps数组*/
+	size_t nr_maps; /*一个bpf_object可以有多个map*/
 
 	bool loaded;
 
@@ -423,7 +423,7 @@ static int bpf_object__elf_init(struct bpf_object *obj)
 		pr_warning("elf init: internal error\n");
 		return -LIBBPF_ERRNO__LIBELF;
 	}
-
+	/*有两种方式，一种是通过bpf_object__open来打开.o文件，另一种是用bpf_object__open_buffer打开之前已经加载的内存数据*/
 	if (obj->efile.obj_buf_sz > 0) {
 		/*
 		 * obj_buf should have been validated by
@@ -1156,14 +1156,14 @@ __bpf_object__open(const char *path, void *obj_buf, size_t obj_buf_sz)
 		return ERR_PTR(-LIBBPF_ERRNO__LIBELF);
 	}
 
-	obj = bpf_object__new(path, obj_buf, obj_buf_sz);
+	obj = bpf_object__new(path, obj_buf, obj_buf_sz);/*分配object结构体空间*/
 	if (IS_ERR(obj))
 		return obj;
 
-	CHECK_ERR(bpf_object__elf_init(obj), err, out);
-	CHECK_ERR(bpf_object__check_endianness(obj), err, out);
-	CHECK_ERR(bpf_object__elf_collect(obj), err, out);
-	CHECK_ERR(bpf_object__collect_reloc(obj), err, out);
+	CHECK_ERR(bpf_object__elf_init(obj), err, out);/*打开elf文件*/
+	CHECK_ERR(bpf_object__check_endianness(obj), err, out); /*检查大小端是否匹配*/
+	CHECK_ERR(bpf_object__elf_collect(obj), err, out);/*加载段，版本，map信息*/
+	CHECK_ERR(bpf_object__collect_reloc(obj), err, out);/*加载可重定位段信息*/
 	CHECK_ERR(bpf_object__validate(obj), err, out);
 
 	bpf_object__elf_finish(obj);
@@ -1172,7 +1172,7 @@ out:
 	bpf_object__close(obj);
 	return ERR_PTR(err);
 }
-
+/*打开方式1：是已经编译过的.o文件*/
 struct bpf_object *bpf_object__open(const char *path)
 {
 	/* param validation */
@@ -1183,7 +1183,7 @@ struct bpf_object *bpf_object__open(const char *path)
 
 	return __bpf_object__open(path, NULL, 0);
 }
-
+/*打开方式2：打开llvm编译之后的内存*/
 struct bpf_object *bpf_object__open_buffer(void *obj_buf,
 					   size_t obj_buf_sz,
 					   const char *name)
@@ -1379,7 +1379,7 @@ int bpf_map__pin(struct bpf_map *map, const char *path)
 	pr_debug("pinned map '%s'\n", path);
 	return 0;
 }
-
+/*pin住obj里的prog和map*/
 int bpf_object__pin(struct bpf_object *obj, const char *path)
 {
 	struct bpf_program *prog;
@@ -1745,7 +1745,7 @@ long libbpf_get_error(const void *ptr)
 		return PTR_ERR(ptr);
 	return 0;
 }
-
+/*为selftest*/
 int bpf_prog_load(const char *file, enum bpf_prog_type type,
 		  struct bpf_object **pobj, int *prog_fd)
 {

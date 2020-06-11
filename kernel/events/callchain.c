@@ -4,7 +4,7 @@
  *  Copyright (C) 2008 Thomas Gleixner <tglx@linutronix.de>
  *  Copyright (C) 2008-2011 Red Hat, Inc., Ingo Molnar
  *  Copyright (C) 2008-2011 Red Hat, Inc., Peter Zijlstra
- *  Copyright  ©  2009 Paul Mackerras, IBM Corp. <paulus@au1.ibm.com>
+ *  Copyright  ? 2009 Paul Mackerras, IBM Corp. <paulus@au1.ibm.com>
  *
  * For licensing details see kernel-base/COPYING
  */
@@ -192,7 +192,7 @@ perf_callchain(struct perf_event *event, struct pt_regs *regs)
 
 	return get_perf_callchain(regs, 0, kernel, user, max_stack, crosstask, true);
 }
-
+/*¥””√ªßÃ¨ªÚ’ﬂƒ⁄∫ÀÃ¨ªÒ»°∂—’ª–≈œ¢*/
 struct perf_callchain_entry *
 get_perf_callchain(struct pt_regs *regs, u32 init_nr, bool kernel, bool user,
 		   u32 max_stack, bool crosstask, bool add_mark)

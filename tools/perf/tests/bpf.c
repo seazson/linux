@@ -155,7 +155,7 @@ static int do_test(struct bpf_object *obj, int (*func)(void),
 		goto out_delete_evlist;
 	}
 
-	perf_evlist__splice_list_tail(evlist, &parse_state.list);
+	perf_evlist__splice_list_tail(evlist, &parse_state.list);/*将evsel和evlist关联起来*/
 	evlist->nr_groups = parse_state.nr_groups;
 
 	perf_evlist__config(evlist, &opts, NULL);
@@ -220,7 +220,7 @@ static int __test__bpf(int idx)
 	void *obj_buf;
 	size_t obj_buf_sz;
 	struct bpf_object *obj;
-
+    /*编译成.o文件*/
 	ret = test_llvm__fetch_bpf_obj(&obj_buf, &obj_buf_sz,
 				       bpf_testcase_table[idx].prog_id,
 				       true, NULL);
@@ -232,7 +232,7 @@ static int __test__bpf(int idx)
 		else
 			return TEST_FAIL;
 	}
-
+    /*为.o创建对应的bpf_object，并解析elf格式*/
 	obj = prepare_bpf(obj_buf, obj_buf_sz,
 			  bpf_testcase_table[idx].name);
 	if ((!!bpf_testcase_table[idx].target_func) != (!!obj)) {
@@ -267,7 +267,7 @@ static int __test__bpf(int idx)
 				ret = TEST_FAIL;
 				goto out;
 			}
-			if (bpf_object__pin(obj, PERF_TEST_BPF_PATH))
+			if (bpf_object__pin(obj, PERF_TEST_BPF_PATH)) /*pin住此object里的prog和map们*/
 				ret = TEST_FAIL;
 			if (rm_rf(PERF_TEST_BPF_PATH))
 				ret = TEST_FAIL;
@@ -333,7 +333,7 @@ int test__bpf(struct test *test __maybe_unused, int i)
 		return TEST_SKIP;
 	}
 
-	if (check_env())
+	if (check_env())  /*加载一个简单的move指令*/
 		return TEST_SKIP;
 
 	err = __test__bpf(i);

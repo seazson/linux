@@ -162,7 +162,7 @@ struct iommu_resv_region {
  * @capable: check capability
  * @domain_alloc: allocate iommu domain
  * @domain_free: free iommu domain
- * @attach_dev: attach device to an iommu domain
+ * @attach_dev: attach device to an iommu domain 将dev跟domain关联，设置dev页表项位置指向domain
  * @detach_dev: detach device from an iommu domain
  * @map: map a physically contiguous memory region to an iommu domain
  * @unmap: unmap a physically contiguous memory region from an iommu domain

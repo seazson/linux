@@ -20,7 +20,7 @@ struct bpf_map_def {
 struct bpf_map_data {
 	int fd;
 	char *name;
-	size_t elf_offset;
+	size_t elf_offset; /*map信息在map段的偏移*/
 	struct bpf_map_def def;
 };
 

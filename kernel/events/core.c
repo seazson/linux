@@ -8081,7 +8081,7 @@ static void bpf_overflow_handler(struct perf_event *event,
 	if (unlikely(__this_cpu_inc_return(bpf_prog_active) != 1))
 		goto out;
 	rcu_read_lock();
-	ret = BPF_PROG_RUN(event->prog, &ctx);   /*å…ˆæ‰§è¡Œbpfç¨‹åº*/
+	ret = BPF_PROG_RUN(event->prog, &ctx);   /*ÏÈÖ´ÐÐbpf³ÌÐò*/
 	rcu_read_unlock();
 out:
 	__this_cpu_dec(bpf_prog_active);
@@ -8089,7 +8089,7 @@ out:
 	if (!ret)
 		return;
 
-	event->orig_overflow_handler(event, data, regs); /*å†æ‰§è¡ŒåŽŸå§‹çš„perf eventå¤„ç†å‡½æ•°*/
+	event->orig_overflow_handler(event, data, regs); /*ÔÙÖ´ÐÐÔ­À´µÄÄ¬ÈÏÒç³ö´¦Àí³ÌÐò*/
 }
 
 static int perf_event_set_bpf_handler(struct perf_event *event, u32 prog_fd)
@@ -8103,7 +8103,7 @@ static int perf_event_set_bpf_handler(struct perf_event *event, u32 prog_fd)
 	if (event->prog)
 		return -EEXIST;
 
-	prog = bpf_prog_get_type(prog_fd, BPF_PROG_TYPE_PERF_EVENT);
+	prog = bpf_prog_get_type(prog_fd, BPF_PROG_TYPE_PERF_EVENT); /*»ñÈ¡prog²¢¼ì²éÊÇ·ñÊÇperf_eventÀàÐÍ*/
 	if (IS_ERR(prog))
 		return PTR_ERR(prog);
 
@@ -8140,7 +8140,7 @@ static int perf_event_set_bpf_prog(struct perf_event *event, u32 prog_fd)
 	struct bpf_prog *prog;
 
 	if (event->attr.type != PERF_TYPE_TRACEPOINT)
-		return perf_event_set_bpf_handler(event, prog_fd);   /*è¯´æ˜Žæ˜¯é‡‡æ ·äº‹ä»¶*/
+		return perf_event_set_bpf_handler(event, prog_fd);   /*²»ÊÇtracepointÄÇ¾ÍÊÇperf_eventÀàÐÍ*/
 
 	if (event->tp_event->prog)
 		return -EEXIST;

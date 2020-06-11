@@ -682,8 +682,8 @@ struct perf_event {
 	u64				id;    /*自增id*/
 
 	u64				(*clock)(void);
-	perf_overflow_handler_t		overflow_handler;
-	void				*overflow_handler_context;
+	perf_overflow_handler_t		overflow_handler; /*默认为perf_event_output_backward/perf_event_output_forward*/
+	void				*overflow_handler_context;/*定义了表示是使用自定义overflow_handler。目前有hw breakpoint or kernel counter（包括oprofile，kvm，watchdog少数几种）*/
 #ifdef CONFIG_BPF_SYSCALL
 	perf_overflow_handler_t		orig_overflow_handler;
 	struct bpf_prog			*prog;

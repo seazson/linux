@@ -92,7 +92,7 @@ struct parse_events_term {
 		char *str;
 		u64  num;
 	} val;
-	int type_val;
+	int type_val;  /*指定是字符型还是数值型*/
 	int type_term;
 	struct list_head list;
 	bool used;

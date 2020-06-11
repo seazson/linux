@@ -114,7 +114,7 @@ free_smap:
 	bpf_map_area_free(smap);
 	return ERR_PTR(err);
 }
-
+/*×¥È¡¶ÑÕ»£¬·µ»Ø¶ÑÕ»hashid*/
 BPF_CALL_3(bpf_get_stackid, struct pt_regs *, regs, struct bpf_map *, map,
 	   u64, flags)
 {

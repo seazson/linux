@@ -596,7 +596,7 @@ struct __add_bpf_event_param {
 	struct list_head *list;
 	struct list_head *head_config;
 };
-
+/*添加evsel事件，并关联bpf的fd。只有tp和probe*/
 static int add_bpf_event(const char *group, const char *event, int fd,
 			 void *_param)
 {
@@ -629,12 +629,12 @@ static int add_bpf_event(const char *group, const char *event, int fd,
 	list_for_each_entry(pos, &new_evsels, node) {
 		pr_debug("adding %s:%s to %p\n",
 			 group, event, pos);
-		pos->bpf_fd = fd;
+		pos->bpf_fd = fd;   /*关联evsel和bpffd，以便在打开evsel的时候调用PERF_EVENT_IOC_SET_BPF*/
 	}
 	list_splice(&new_evsels, list);
 	return 0;
 }
-
+/*前提是要构建好bpf_object。加载bpf程序，添加probe，创建evsel*/
 int parse_events_load_bpf_obj(struct parse_events_state *parse_state,
 			      struct list_head *list,
 			      struct bpf_object *obj,
@@ -658,23 +658,23 @@ int parse_events_load_bpf_obj(struct parse_events_state *parse_state,
 	 * created when failure.
 	 */
 	if (!registered_unprobe_atexit) {
-		atexit(bpf__clear);
+		atexit(bpf__clear);/*注册一次回收回调函数*/
 		registered_unprobe_atexit = true;
 	}
 
-	err = bpf__probe(obj);
+	err = bpf__probe(obj);/*根据段名解析是tp还是probe，并创建priv初始化数据结构*/
 	if (err) {
 		bpf__strerror_probe(obj, err, errbuf, sizeof(errbuf));
 		goto errout;
 	}
 
-	err = bpf__load(obj);
+	err = bpf__load(obj);/*加载程序*/
 	if (err) {
 		bpf__strerror_load(obj, err, errbuf, sizeof(errbuf));
 		goto errout;
 	}
 
-	err = bpf__foreach_event(obj, add_bpf_event, &param);
+	err = bpf__foreach_event(obj, add_bpf_event, &param);/*遍历需要的tp和probe，创建evsel并关联bpf*/
 	if (err) {
 		snprintf(errbuf, sizeof(errbuf),
 			 "Attach events in BPF object failed");
@@ -768,7 +768,7 @@ split_bpf_config_terms(struct list_head *evt_head_config,
 int parse_events_load_bpf(struct parse_events_state *parse_state,
 			  struct list_head *list,
 			  char *bpf_file_name,
-			  bool source,
+			  bool source, /*表示是源文件还是编译后的.o文件*/
 			  struct list_head *head_config)
 {
 	int err;
@@ -776,9 +776,9 @@ int parse_events_load_bpf(struct parse_events_state *parse_state,
 	LIST_HEAD(obj_head_config);
 
 	if (head_config)
-		split_bpf_config_terms(head_config, &obj_head_config);
+		split_bpf_config_terms(head_config, &obj_head_config);/*区分开evt或obj类型的config*/
 
-	obj = bpf__prepare_load(bpf_file_name, source);
+	obj = bpf__prepare_load(bpf_file_name, source);/*创建bpf-object。直接打开obj或者编译后打开*/
 	if (IS_ERR(obj)) {
 		char errbuf[BUFSIZ];
 
@@ -798,10 +798,10 @@ int parse_events_load_bpf(struct parse_events_state *parse_state,
 		return err;
 	}
 
-	err = parse_events_load_bpf_obj(parse_state, list, obj, head_config);
+	err = parse_events_load_bpf_obj(parse_state, list, obj, head_config); /*处理evt类型的config。根据需要跟踪的tp/probe来创建evsel，并加载bpf*/
 	if (err)
 		return err;
-	err = parse_events_config_bpf(parse_state, obj, &obj_head_config);
+	err = parse_events_config_bpf(parse_state, obj, &obj_head_config); /*处理obj类型的config*/
 
 	/*
 	 * Caller doesn't know anything about obj_head_config,

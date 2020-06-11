@@ -7152,7 +7152,7 @@ static struct bpf_test tests[] = {
 		.flags = F_NEEDS_EFFICIENT_UNALIGNED_ACCESS,
 	},
 };
-
+/*获取指令总长度*/
 static int probe_filter_length(const struct bpf_insn *fp)
 {
 	int len;

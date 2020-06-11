@@ -45,7 +45,7 @@ static int bpf_array_alloc_percpu(struct bpf_array *array)
 	return 0;
 }
 
-/* Called from syscall */
+/* Called from syscall 根据属性创建bpf_array和bpf_map*/
 static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 {
 	bool percpu = attr->map_type == BPF_MAP_TYPE_PERCPU_ARRAY;
@@ -477,7 +477,7 @@ static void bpf_event_entry_free_rcu(struct bpf_event_entry *ee)
 {
 	call_rcu(&ee->rcu, __bpf_event_entry_free);
 }
-
+/*创建bpf_event_entry结构，建立map_file与perf event的关系*/
 static void *perf_event_fd_array_get_ptr(struct bpf_map *map,
 					 struct file *map_file, int fd)
 {
